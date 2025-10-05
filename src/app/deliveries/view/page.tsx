@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { 
-    Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow 
+import {
+    Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -38,9 +38,9 @@ interface DeliveryData {
 }
 
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-PK', {
         style: 'currency',
-        currency: 'USD',
+        currency: 'PKR',
         minimumFractionDigits: 2,
     }).format(amount);
 };
@@ -85,7 +85,7 @@ export default function ViewDeliveries() {
     return (
         <div className='p-6 max-w-6xl mx-auto bg-gray-50 min-h-screen'>
             <h2 className='text-3xl font-extrabold mb-8 text-gray-900 border-b pb-2'>Delivery Records</h2>
-            
+
             {/* Search and Stats */}
             <div className='grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8'>
                 <Card className='lg:col-span-3'>
@@ -101,7 +101,7 @@ export default function ViewDeliveries() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className='flex-1'
                             />
-                            <Button 
+                            <Button
                                 onClick={fetchDeliveries}
                                 variant='outline'
                             >
@@ -136,6 +136,7 @@ export default function ViewDeliveries() {
                                 <TableCaption>All recorded deliveries with expense details</TableCaption>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead>Status</TableHead>
                                         <TableHead>Delivery Date</TableHead>
                                         <TableHead>Bility No</TableHead>
                                         <TableHead>Register No</TableHead>
@@ -146,12 +147,21 @@ export default function ViewDeliveries() {
                                         <TableHead>Station Lab</TableHead>
                                         <TableHead>Cart Lab</TableHead>
                                         <TableHead className='text-right'>Total Expenses</TableHead>
-                                        <TableHead>Status</TableHead>
+                                        <TableHead className='text-right'>Delivery Charges</TableHead>
+                                        <TableHead className='text-right'>Total (Delivery + Expense)</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredDeliveries.map((delivery) => (
                                         <TableRow key={delivery.delivery_id}>
+                                            <TableCell>
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${delivery.delivery_status === 'DELIVERED'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-yellow-100 text-yellow-800'
+                                                    }`}>
+                                                    {delivery.delivery_status}
+                                                </span>
+                                            </TableCell>
                                             <TableCell className='font-medium'>
                                                 {new Date(delivery.delivery_date).toLocaleDateString()}
                                             </TableCell>
@@ -166,15 +176,14 @@ export default function ViewDeliveries() {
                                             <TableCell className='text-right font-bold text-red-600'>
                                                 {formatCurrency(delivery.total_expenses)}
                                             </TableCell>
-                                            <TableCell>
-                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                    delivery.delivery_status === 'DELIVERED' 
-                                                        ? 'bg-green-100 text-green-800' 
-                                                        : 'bg-yellow-100 text-yellow-800'
-                                                }`}>
-                                                    {delivery.delivery_status}
-                                                </span>
+                                            <TableCell className='text-right font-bold text-blue-600'>
+                                                {formatCurrency(delivery.shipment.total_charges)}
                                             </TableCell>
+                                            <TableCell className='text-right font-bold text-purple-600'>
+                                                {formatCurrency(Number(delivery.shipment.total_charges) + Number(delivery.total_expenses))}
+
+                                            </TableCell>
+
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -184,7 +193,6 @@ export default function ViewDeliveries() {
                 </CardContent>
             </Card>
 
-            {/* Summary Statistics */}
             {deliveries.length > 0 && (
                 <div className='grid grid-cols-1 md:grid-cols-3 gap-6 mt-8'>
                     <Card className='bg-blue-50 border-blue-200'>
@@ -193,7 +201,8 @@ export default function ViewDeliveries() {
                         </CardHeader>
                         <CardContent>
                             <p className='text-2xl font-bold text-blue-600'>
-                                {formatCurrency(deliveries.reduce((sum, d) => sum + d.station_expense, 0))}
+                                {/* FIXED: Added Number() conversion */}
+                                {formatCurrency(deliveries.reduce((sum, d) => sum + Number(d.station_expense), 0))}
                             </p>
                         </CardContent>
                     </Card>
@@ -204,7 +213,8 @@ export default function ViewDeliveries() {
                         </CardHeader>
                         <CardContent>
                             <p className='text-2xl font-bold text-purple-600'>
-                                {formatCurrency(deliveries.reduce((sum, d) => sum + d.station_labour, 0))}
+                                {/* FIXED: Added Number() conversion */}
+                                {formatCurrency(deliveries.reduce((sum, d) => sum + Number(d.station_labour), 0))}
                             </p>
                         </CardContent>
                     </Card>
@@ -214,7 +224,8 @@ export default function ViewDeliveries() {
                         </CardHeader>
                         <CardContent>
                             <p className='text-2xl font-bold text-purple-600'>
-                                {formatCurrency(deliveries.reduce((sum, d) => sum + d.cart_labour, 0))}
+                                {/* FIXED: Added Number() conversion */}
+                                {formatCurrency(deliveries.reduce((sum, d) => sum + Number(d.cart_labour), 0))}
                             </p>
                         </CardContent>
                     </Card>
@@ -225,12 +236,12 @@ export default function ViewDeliveries() {
                         </CardHeader>
                         <CardContent>
                             <p className='text-2xl font-bold text-red-600'>
-                                {formatCurrency(deliveries.reduce((sum, d) => sum + d.total_expenses, 0))}
+                                {/* FIXED: Added Number() conversion */}
+                                {formatCurrency(deliveries.reduce((sum, d) => sum + Number(d.total_expenses), 0))}
                             </p>
                         </CardContent>
                     </Card>
                 </div>
-            )}
-        </div>
+            )}        </div>
     );
 }

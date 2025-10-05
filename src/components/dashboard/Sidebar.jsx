@@ -10,7 +10,7 @@ import {
 const sidebarNavSections = [
     {
         name: 'Dashboard', 
-        href: '/dashboard?view=home',
+        href: '/dashboard?view=add-trip',
         icon: Home,
         isAccordion: false,
     },
@@ -32,6 +32,16 @@ const sidebarNavSections = [
         items: [
             { name: 'Record Delivery', href: '/dashboard?view=add-delivery', icon: Package2 },
             { name: 'View Deliveries', href: '/dashboard?view=view-deliveries', icon: FileText },
+        ],
+    },
+    {
+        name: 'Trip Operations',
+        href: '', // Group header doesn't link to a page
+        icon: Truck,
+        isAccordion: false,
+        items: [
+            { name: 'Add Trip', href: '/dashboard?view=add-trip', icon: Truck },
+            { name: 'View Trips', href: '/dashboard?view=view-trips', icon: FileText },
         ],
     },
     {

@@ -179,7 +179,7 @@ export async function GET(request: Request) {
             });
         }
 
-        // Return a 200 OK response with the list of shipments
+        // Return a 200 OK response with the list of shipments  
         return NextResponse.json(bility_number ? shipments[0] || null : shipments, { status: 200 });
     } catch (error) {
         console.error('Error fetching shipments:', error);

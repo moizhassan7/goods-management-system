@@ -52,9 +52,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const WALK_IN_CUSTOMER_ID = 1; 
 
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-PK', {
         style: 'currency',
-        currency: 'USD',
+        currency: 'PKR',
         minimumFractionDigits: 2,
     }).format(amount);
 };
