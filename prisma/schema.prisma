@@ -1,21 +1,15 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// -------------------------------------------------------------------
-// --- SUPPORTING MODELS ---
-// -------------------------------------------------------------------
-
 model City {
   id                 Int        @id @default(autoincrement())
-  name               String     @unique @db.VarChar(50)
+  name               String     @unique
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
   departingShipments Shipment[] @relation("DepartureCity")
@@ -24,126 +18,118 @@ model City {
 
 model Agency {
   id        Int        @id @default(autoincrement())
-  name      String     @unique @db.VarChar(100)
+  name      String     @unique
   shipments Shipment[]
 }
 
 model Vehicle {
   id            Int        @id @default(autoincrement())
-  vehicleNumber String     @unique @db.VarChar(50)
+  vehicleNumber String     @unique
   shipments     Shipment[]
   tripLogs      TripLog[]
 }
 
 model Party {
-  id              Int        @id @default(autoincrement())
-  name            String     @db.VarChar(100)
-  contactInfo     String     @db.VarChar(100)
-  opening_balance Decimal    @db.Decimal(10, 2)
-  sentShipments   Shipment[] @relation("SenderParty")
+  id                Int        @id @default(autoincrement())
+  name              String
+  contactInfo       String
+  opening_balance   Decimal
   receivedShipments Shipment[] @relation("ReceiverParty")
+  sentShipments     Shipment[] @relation("SenderParty")
 }
 
 model ItemCatalog {
   id               Int            @id @default(autoincrement())
-  item_description String         @unique @db.VarChar(100)
-  createdAt        DateTime       @default(now()) @db.DateTime(6)
-  updatedAt        DateTime       @updatedAt @db.DateTime(6)
+  item_description String         @unique
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
   goodsDetails     GoodsDetails[]
 }
 
-// -------------------------------------------------------------------
-// --- CORE MODELS ---
-// -------------------------------------------------------------------
-
 model GoodsDetails {
-  good_detail_id Int       @id @default(autoincrement())
-  shipment_id    String    @db.VarChar(50)
-  shipment       Shipment  @relation(fields: [shipment_id], references: [register_number], onDelete: Cascade)
-  item_name_id   Int
-  itemCatalog    ItemCatalog @relation(fields: [item_name_id], references: [id])
-  quantity       Int
-  charges        Decimal   @default(0.00) @db.Decimal(10, 2)
-  delivery_charges Decimal @default(0.00) @db.Decimal(10, 2)
-  createdAt      DateTime  @default(now()) @db.DateTime(6)
-  updatedAt      DateTime  @updatedAt @db.DateTime(6)
+  good_detail_id   Int         @id @default(autoincrement())
+  shipment_id      String
+  item_name_id     Int
+  quantity         Int
+  charges          Decimal     @default(0.00)
+  delivery_charges Decimal     @default(0.00)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  itemCatalog      ItemCatalog @relation(fields: [item_name_id], references: [id])
+  shipment         Shipment    @relation(fields: [shipment_id], references: [register_number], onDelete: Cascade)
 
   @@map("Goods_Details")
 }
 
 model Transaction {
-  transaction_id   Int       @id @default(autoincrement())
-  transaction_date DateTime  @default(now()) @db.DateTime(6)
-  party_type       String    @db.VarChar(20)
+  transaction_id   Int      @id @default(autoincrement())
+  transaction_date DateTime @default(now())
+  party_type       String
   party_ref_id     Int
-  shipment_id      String    @db.VarChar(50)
-  shipment         Shipment  @relation(fields: [shipment_id], references: [register_number])
-  credit_amount    Decimal   @db.Decimal(10, 2)
-  debit_amount     Decimal   @db.Decimal(10, 2)
-  description      String?   @db.VarChar(255)
-  createdAt        DateTime  @default(now()) @db.DateTime(6)
-  updatedAt        DateTime  @updatedAt @db.DateTime(6)
+  shipment_id      String
+  credit_amount    Decimal
+  debit_amount     Decimal
+  description      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  shipment         Shipment @relation(fields: [shipment_id], references: [register_number])
 
   @@map("Transactions")
 }
 
 model Shipment {
-  register_number    String @id @db.VarChar(50)
-  bility_number      String @unique @db.VarChar(50)
-  bility_date        DateTime @db.Date
-  departure_city_id  Int
-  departureCity      City   @relation("DepartureCity", fields: [departure_city_id], references: [id])
-  to_city_id         Int?
-  toCity             City?  @relation("ArrivalCity", fields: [to_city_id], references: [id])
-  forwarding_agency_id Int
-  forwardingAgency   Agency @relation(fields: [forwarding_agency_id], references: [id])
-  vehicle_number_id  Int
-  vehicle            Vehicle @relation(fields: [vehicle_number_id], references: [id])
-  sender_id          Int
-  sender             Party  @relation("SenderParty", fields: [sender_id], references: [id])
-  receiver_id        Int
-  receiver           Party  @relation("ReceiverParty", fields: [receiver_id], references: [id])
-  walk_in_sender_name   String? @db.VarChar(100)
-  walk_in_receiver_name String? @db.VarChar(100)
-  total_charges        Decimal @db.Decimal(10, 2)
-  delivery_date        DateTime? @db.Date
-  remarks              String? @db.Text
-  total_delivery_charges Decimal @default(0.00) @db.Decimal(10, 2)
-  goodsDetails       GoodsDetails[]
-  transactions       Transaction[]
-  deliveries         Delivery[]
-  createdAt          DateTime @default(now()) @db.DateTime(6)
-  updatedAt          DateTime @updatedAt @db.DateTime(6)
+  register_number        String         @id
+  bility_number          String         @unique
+  bility_date            DateTime
+  departure_city_id      Int
+  to_city_id             Int?
+  forwarding_agency_id   Int
+  vehicle_number_id      Int
+  sender_id              Int
+  receiver_id            Int
+  walk_in_sender_name    String?
+  walk_in_receiver_name  String?
+  total_charges          Decimal
+  delivery_date          DateTime?
+  remarks                String?
+  total_delivery_charges Decimal        @default(0.00)
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  deliveries             Delivery[]
+  goodsDetails           GoodsDetails[]
+  departureCity          City           @relation("DepartureCity", fields: [departure_city_id], references: [id])
+  forwardingAgency       Agency         @relation(fields: [forwarding_agency_id], references: [id])
+  receiver               Party          @relation("ReceiverParty", fields: [receiver_id], references: [id])
+  sender                 Party          @relation("SenderParty", fields: [sender_id], references: [id])
+  toCity                 City?          @relation("ArrivalCity", fields: [to_city_id], references: [id])
+  vehicle                Vehicle        @relation(fields: [vehicle_number_id], references: [id])
+  transactions           Transaction[]
 }
 
-// -------------------------------------------------------------------
-// --- VEHICLE TRIP / FINANCIAL LOG MODELS ---
-// -------------------------------------------------------------------
-
 model TripLog {
-  id                   Int      @id @default(autoincrement())
+  id                   Int               @id @default(autoincrement())
   vehicle_id           Int
-  vehicle              Vehicle  @relation(fields: [vehicle_id], references: [id])
-  driver_name          String   @db.VarChar(100)
-  driver_mobile        String   @db.VarChar(20)
-  station_name         String   @db.VarChar(100)
-  city                 String   @db.VarChar(50)
-  date                 DateTime @db.Date
-  arrival_time         String   @db.VarChar(10)
-  departure_time       String   @db.VarChar(10)
-  total_fare_collected Decimal  @db.Decimal(10, 2)
-  delivery_cut         Decimal  @db.Decimal(10, 2)
-  commission           Decimal  @db.Decimal(10, 2)
-  arrears              Decimal  @db.Decimal(10, 2)
-  cuts                 Decimal  @default(0.00) @db.Decimal(10, 2)
-  munsihna_reward      Decimal  @default(0.00) @db.Decimal(10, 2)
-  distant_charges      Decimal  @default(0.00) @db.Decimal(10, 2)
-  accountant_charges   Decimal  @default(0.00) @db.Decimal(10, 2)
-  received_amount      Decimal  @db.Decimal(10, 2)
-  note                 String?  @db.Text
+  driver_name          String
+  driver_mobile        String
+  station_name         String
+  city                 String
+  date                 DateTime
+  arrival_time         String
+  departure_time       String
+  total_fare_collected Decimal
+  delivery_cut         Decimal
+  commission           Decimal
+  arrears              Decimal
+  cuts                 Decimal           @default(0.00)
+  munsihna_reward      Decimal           @default(0.00)
+  distant_charges      Decimal           @default(0.00)
+  accountant_charges   Decimal           @default(0.00)
+  received_amount      Decimal
+  note                 String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  vehicle              Vehicle           @relation(fields: [vehicle_id], references: [id])
   shipmentLogs         TripShipmentLog[]
-  createdAt            DateTime @default(now()) @db.DateTime(6)
-  updatedAt            DateTime @updatedAt @db.DateTime(6)
 
   @@map("Trip_Log")
 }
@@ -151,41 +137,38 @@ model TripLog {
 model TripShipmentLog {
   id               Int      @id @default(autoincrement())
   trip_log_id      Int
-  tripLog          TripLog  @relation(fields: [trip_log_id], references: [id])
-  bilty_number     String   @db.VarChar(50)
+  bilty_number     String
   serial_number    Int
-  receiver_name    String   @db.VarChar(100)
-  item_details     String   @db.VarChar(255)
+  receiver_name    String
+  item_details     String
   quantity         Int
-  delivery_charges Decimal  @db.Decimal(10, 2)
-  createdAt        DateTime @default(now()) @db.DateTime(6)
+  delivery_charges Decimal
+  createdAt        DateTime @default(now())
+  tripLog          TripLog  @relation(fields: [trip_log_id], references: [id])
 
   @@unique([trip_log_id, bilty_number])
   @@map("Trip_Shipment_Log")
 }
 
-// -------------------------------------------------------------------
-// --- EXISTING DELIVERY MODEL ---
-// -------------------------------------------------------------------
 model Delivery {
-  delivery_id        Int       @id @default(autoincrement())
-  shipment_id        String    @db.VarChar(50)
-  shipment           Shipment  @relation(fields: [shipment_id], references: [register_number])
-  delivery_date      DateTime  @db.Date
-  delivery_time      DateTime? @db.Time(0)
-  station_expense    Decimal   @default(0.00) @db.Decimal(10, 2)
-  bility_expense     Decimal   @default(0.00) @db.Decimal(10, 2)
-  station_labour     Decimal   @default(0.00) @db.Decimal(10, 2)
-  cart_labour        Decimal   @default(0.00) @db.Decimal(10, 2)
-  total_expenses     Decimal   @default(0.00) @db.Decimal(10, 2)
-  receiver_name      String    @db.VarChar(100)
-  receiver_phone     String    @db.VarChar(20)
-  receiver_cnic      String    @db.VarChar(15)
-  receiver_address   String    @db.Text
-  delivery_notes     String?   @db.Text
-  delivery_status    String    @default("DELIVERED") @db.VarChar(20)
-  createdAt          DateTime  @default(now()) @db.DateTime(6)
-  updatedAt          DateTime  @updatedAt @db.DateTime(6)
+  delivery_id      Int       @id @default(autoincrement())
+  shipment_id      String
+  delivery_date    DateTime
+  delivery_time    DateTime?
+  station_expense  Decimal   @default(0.00)
+  bility_expense   Decimal   @default(0.00)
+  station_labour   Decimal   @default(0.00)
+  cart_labour      Decimal   @default(0.00)
+  total_expenses   Decimal   @default(0.00)
+  receiver_name    String
+  receiver_phone   String
+  receiver_cnic    String
+  receiver_address String
+  delivery_notes   String?
+  delivery_status  String    @default("DELIVERED")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  shipment         Shipment  @relation(fields: [shipment_id], references: [register_number])
 
   @@map("Delivery")
 }
