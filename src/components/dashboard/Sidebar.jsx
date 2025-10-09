@@ -41,7 +41,7 @@ const sidebarNavSections = [
         isAccordion: false,
         items: [
             { name: 'Add Trip', href: '/dashboard?view=add-trip', icon: Truck },
-            { name: 'View Trips', href: '/dashboard?view=view-trips', icon: FileText },
+            { name: 'Trip Report', href: '/dashboard?view=trip-report', icon: FileText },
         ],
     },
     {
@@ -87,7 +87,7 @@ const sidebarNavSections = [
                 icon: Box, 
                 items: [
                     { name: 'Add Item Type', href: '/dashboard?view=add-item' },
-                    // Assuming 'View Items' isn't explicitly defined but often useful
+                    // Note: 'View Items' not implemented; keeping only add flow for now
                 ] 
             },
         ],

@@ -22,6 +22,7 @@ import AddShipment from './shipments/add/page';
 import AddDelivery from './deliveries/add/page';
 import ViewDeliveries from './deliveries/view/page';
 import AddTrip from './trips/add/page';
+import TripReportPage from './trips/report/page';
 
 /**
  * A helper function to map the view state to the correct component.
@@ -54,6 +55,8 @@ const renderComponent = (currentView: string | null) => {
       return <ViewDeliveries />;
     case 'add-trip':
       return <AddTrip />;
+    case 'trip-report':
+      return <TripReportPage />;
     default:
       // A welcome or default dashboard view
       return <div className="p-8">
