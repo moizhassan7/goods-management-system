@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       console.warn('Attempted to add a duplicate vehicle number.');
       return NextResponse.json(
-        { message: `The vehicle number ${vehicleNumber} already exists. Vehicle numbers must be unique.` },
+        { message: 'The provided vehicle number already exists. Vehicle numbers must be unique.' },
         { status: 409 } // 409 Conflict
       );
     }

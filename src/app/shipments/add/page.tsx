@@ -62,7 +62,7 @@ const formatCurrency = (amount: number) => {
 // --- Zod Schemas ---
 const GoodsDetailSchema = z.object({
     id: z.string().optional(), 
-    item_id: z.coerce.number({ required_error: "Item is required" }),
+    item_id: z.coerce.number().int().min(1, 'Item is required'),
     quantity: z.coerce.number().min(1, 'Min quantity is 1'),
 });
 
@@ -70,16 +70,16 @@ const ShipmentFormSchema = z.object({
     register_number: z.string().min(3, 'Register ID is required'),
     bility_number: z.string().min(1, 'Lading number required').max(50), 
     bility_date: z.string().min(1, 'Bility date is required'), 
-    departure_city_id: z.coerce.number({ required_error: "Departure city is required" }),
-    forwarding_agency_id: z.coerce.number({ required_error: "Agency is required" }),
-    vehicle_number_id: z.coerce.number({ required_error: "Vehicle is required" }),
+    departure_city_id: z.coerce.number().int().min(1, 'Departure city is required'),
+    forwarding_agency_id: z.coerce.number().int().min(1, 'Agency is required'),
+    vehicle_number_id: z.coerce.number().int().min(1, 'Vehicle is required'),
     
     goods_details: z.array(GoodsDetailSchema)
         .min(1, { message: "You must add at least one item detail." }),
     
-    sender_id: z.coerce.number({ required_error: "Sender is required" }),
-    receiver_id: z.coerce.number({ required_error: "Receiver is required" }),
-    to_city_id: z.coerce.number({ required_error: "Destination city is required" }),
+    sender_id: z.coerce.number().int().min(1, 'Sender is required'),
+    receiver_id: z.coerce.number().int().min(1, 'Receiver is required'),
+    to_city_id: z.coerce.number().int().min(1, 'Destination city is required'),
     
     walk_in_sender_name: z.string().optional(),
     walk_in_receiver_name: z.string().optional(),
@@ -130,6 +130,7 @@ interface ShipmentData {
     walk_in_sender_name?: string;
     walk_in_receiver_name?: string;
     created_at: string;
+    goodsDetails?: { quantity: number; itemCatalog?: { item_description?: string } | null }[];
 }
 
 const today = new Date().toISOString().substring(0, 10);
@@ -138,15 +139,15 @@ const generateDefaultValues = (): ShipmentFormValues => ({
     register_number: '', 
     bility_number: '',
     bility_date: today,
-    departure_city_id: undefined as any,
-    forwarding_agency_id: undefined as any,
-    vehicle_number_id: undefined as any,
+    departure_city_id: 0,
+    forwarding_agency_id: 0,
+    vehicle_number_id: 0,
     goods_details: [
-      { id: uuidv4(), item_id: undefined as any, quantity: 1 }
+      { id: uuidv4(), item_id: 0, quantity: 1 }
     ],
-    sender_id: undefined as any,
-    receiver_id: undefined as any,
-    to_city_id: undefined,
+    sender_id: 0,
+    receiver_id: 0,
+    to_city_id: 0,
     walk_in_sender_name: '',
     walk_in_receiver_name: '',
     total_delivery_charges: 0.00,
@@ -186,7 +187,7 @@ export default function AddShipment() {
     };
 
     const form = useForm<ShipmentFormValues>({
-        resolver: zodResolver(ShipmentFormSchema),
+        resolver: zodResolver(ShipmentFormSchema) as any,
         defaultValues: generateDefaultValues(), 
         mode: 'onChange',
     });

@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client';
 
 // Define the shape of the data expected from the client
 interface GoodsDetailPayload {
-    item_name_id: number;
+    item_id: number;
     quantity: number;
     delivery_charges: number; 
 }
