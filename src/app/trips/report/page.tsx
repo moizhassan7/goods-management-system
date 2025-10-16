@@ -16,6 +16,7 @@ type TripShipmentLog = {
   item_details: string;
   quantity: number;
   delivery_charges: number;
+  total_charges: number;
 };
 
 type TripLog = {
@@ -38,6 +39,7 @@ type TripLog = {
   distant_charges: number;
   accountant_charges: number;
   received_amount: number;
+
   note?: string;
   shipmentLogs: TripShipmentLog[];
 };
@@ -79,9 +81,9 @@ export default function TripReportPage() {
   }
 
   const totals = useMemo(() => {
-    if (!tripLog) return { logsFare: 0 };
+    if (!tripLog) return { totalFare: 0 };
     return {
-      logsFare: tripLog.shipmentLogs.reduce((s, l) => s + Number(l.delivery_charges || 0), 0),
+      totalFare: tripLog.shipmentLogs.reduce((s, l) => s + Number(l.total_charges || 0), 0),
     };
   }, [tripLog]);
 
@@ -141,7 +143,7 @@ export default function TripReportPage() {
                   <TableHead>Receiver</TableHead>
                   <TableHead>Item</TableHead>
                   <TableHead>Qty</TableHead>
-                  <TableHead>Charges</TableHead>
+                  <TableHead>Total Charges</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -152,7 +154,7 @@ export default function TripReportPage() {
                     <TableCell>{log.receiver_name}</TableCell>
                     <TableCell>{log.item_details}</TableCell>
                     <TableCell>{log.quantity}</TableCell>
-                    <TableCell>{Number(log.delivery_charges).toFixed(2)}</TableCell>
+                    <TableCell>{Number(log.total_charges).toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -160,14 +162,10 @@ export default function TripReportPage() {
           </div>
 
           <div className='grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded bg-white'>
-            <div><div className='text-gray-500'>Total Delivery Charges</div><div className='font-semibold'>{totals.logsFare.toFixed(2)}</div></div>
-            <div><div className='text-gray-500'>Delivery</div><div className='font-semibold'>{Number(tripLog.delivery_cut).toFixed(2)}</div></div>
-            <div><div className='text-gray-500'>Commission</div><div className='font-semibold'>{Number(tripLog.commission).toFixed(2)}</div></div>
+            <div><div className='text-gray-500'>Total Fare</div><div className='font-semibold'>{totals.totalFare.toFixed(2)}</div></div>
             <div><div className='text-gray-500'>Received</div><div className='font-semibold'>{Number(tripLog.received_amount).toFixed(2)}</div></div>
             <div><div className='text-gray-500'>Cuts</div><div className='font-semibold'>{Number(tripLog.cuts).toFixed(2)}</div></div>
-            <div><div className='text-gray-500'>Reward</div><div className='font-semibold'>{Number(tripLog.munsihna_reward).toFixed(2)}</div></div>
             <div><div className='text-gray-500'>Muhshiana</div><div className='font-semibold'>{Number(tripLog.accountant_charges).toFixed(2)}</div></div>
-            <div><div className='text-gray-500'>Distant Charges</div><div className='font-semibold'>{Number(tripLog.distant_charges).toFixed(2)}</div></div>
           </div>
         </div>
       )}

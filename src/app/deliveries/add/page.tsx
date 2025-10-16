@@ -73,7 +73,8 @@ interface ShipmentData {
     register_number: string;
     bility_number: string;
     bility_date: string;
-    total_charges: number;
+    // FIX: Changed type to handle Prisma Decimal which is usually returned as a string
+    total_charges: number | string; 
     departureCity?: {
         name: string;
     };
@@ -141,12 +142,19 @@ export default function AddDelivery() {
         try {
             const response = await fetch(`/api/shipments?bility_number=${bilityNumber}`);
             if (!response.ok) {
-                throw new Error('Failed to search shipment');
+                // If response is not ok, but not a 404, throw a generic error
+                if (response.status !== 404) {
+                    throw new Error('Failed to search shipment');
+                }
             }
             const shipment = await response.json();
             
-            if (shipment) {
-                setShipmentData(shipment);
+            // The API search by query returns an array, but searching by exact bility_number 
+            // from the frontend form should probably return a single object or null/empty array
+            const foundShipment = Array.isArray(shipment) ? shipment[0] : shipment;
+
+            if (foundShipment) {
+                setShipmentData(foundShipment);
                 toast.success({ 
                     title: 'Shipment Found', 
                     description: `Found shipment for bility number: ${bilityNumber}` 
@@ -168,8 +176,9 @@ export default function AddDelivery() {
     };
 
     const handleSubmit = async (values: DeliveryFormValues) => {
-        if (!shipmentData) {
-            toast.error({ title: 'Error', description: 'Please search and select a shipment first.' });
+        // Ensure that the register_number (which is the shipment_id) is used
+        if (!shipmentData || !shipmentData.register_number) {
+            toast.error({ title: 'Error', description: 'Please search and select a valid shipment first.' });
             return;
         }
 
@@ -177,8 +186,9 @@ export default function AddDelivery() {
         try {
             const payload = {
                 ...values,
-                shipment_id: shipmentData.register_number,
-                delivery_date: values.delivery_date,
+                // Use the register_number as the shipment_id for the delivery
+                shipment_id: shipmentData.register_number, 
+                // delivery_date is already correctly formatted in values
             };
 
             const response = await fetch('/api/deliveries', {
@@ -269,13 +279,17 @@ export default function AddDelivery() {
                                     </div>
                                     <div>
                                         <label className='text-sm font-medium text-gray-600'>Bility Date</label>
-                                        <p className='text-lg font-semibold'>{new Date(shipmentData.bility_date).toLocaleDateString()}</p>
+                                        <p className='text-lg font-semibold'>
+                                            {/* FIX: Explicitly parse date with time to prevent "Invalid Date" errors */}
+                                            {new Date(shipmentData.bility_date + 'T00:00:00').toLocaleDateString()}
+                                        </p>
                                     </div>
                                     <div>
                                     <label className='text-sm font-medium text-gray-600'>Total Amount</label>
-                                        <p className='text-lg font-semibold text-green-600'>
-                                            **${Number(shipmentData.total_charges).toFixed(2)}**
-                                        </p>
+                                        <p className='text-lg font-semibold text-green-600'>
+                                            {/* FIX: Ensure total_charges is converted to string before Number() to handle Prisma Decimal type reliably */}
+                                            **${Number(shipmentData.total_charges.toString()).toFixed(2)}**
+                                        </p>
                                     </div>
                                     <div>
                                         <label className='text-sm font-medium text-gray-600'>From</label>

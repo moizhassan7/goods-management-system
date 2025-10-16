@@ -11,6 +11,11 @@ export async function POST(request: NextRequest) {
     if (!name || typeof name !== 'string' || name.trim() === '') {
       return NextResponse.json({ error: 'Invalid city name' }, { status: 400 });
     }
+    // Check for duplicate
+    const existing = await prisma.city.findUnique({ where: { name: name.trim() } });
+    if (existing) {
+      return NextResponse.json({ error: 'City name already exists' }, { status: 409 });
+    }
     // Save to database using Prisma
     const createCity = await prisma.city.create({
         data: { name: name.trim() },

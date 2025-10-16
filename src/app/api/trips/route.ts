@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
           munsihna_reward: 0, // No longer used
           distant_charges: 0, // No longer used
           accountant_charges: validatedData.accountant_charges,
-          received_amount: calculatedReceivedAmount,
+          received_amount: validatedData.received_amount,
           note: validatedData.note,
         },
       });
@@ -93,6 +93,18 @@ export async function POST(request: NextRequest) {
 
       await tx.tripShipmentLog.createMany({
         data: shipmentLogsData,
+      });
+
+      // Create vehicle transaction with the received amount as debit
+      await tx.vehicleTransaction.create({
+        data: {
+          vehicle_id: validatedData.vehicle_id,
+          trip_id: tripLog.id,
+          transaction_date: new Date(validatedData.date),
+          credit_amount: 0,
+          debit_amount: validatedData.received_amount, // Always save received_amount as debit
+          description: `Received amount for trip on ${validatedData.date}`,
+        },
       });
 
       return tripLog;
@@ -130,14 +142,65 @@ export async function GET(request: NextRequest) {
 
     const tripLogs = await prisma.tripLog.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        vehicle_id: true,
         vehicle: { select: { vehicleNumber: true } },
-        shipmentLogs: true,
+        driver_name: true,
+        driver_mobile: true,
+        station_name: true,
+        city: true,
+        date: true,
+        arrival_time: true,
+        departure_time: true,
+        total_fare_collected: true,
+        delivery_cut: true,
+        commission: true,
+        arrears: true,
+        cuts: true,
+        munsihna_reward: true,
+        distant_charges: true,
+        accountant_charges: true,
+        received_amount: true,
+        note: true,
+        shipmentLogs: {
+          select: {
+            id: true,
+            bilty_number: true,
+            serial_number: true,
+            receiver_name: true,
+            item_details: true,
+            quantity: true,
+            delivery_charges: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json(tripLogs, { status: 200 });
+    // Fetch total_charges from Shipment table for each shipment log
+    const biltyNumbers = tripLogs.flatMap((log: any) => log.shipmentLogs.map((s: any) => s.bilty_number)).filter(Boolean);
+    const shipments = await prisma.shipment.findMany({
+      where: {
+        bility_number: { in: biltyNumbers },
+      },
+      select: {
+        bility_number: true,
+        total_charges: true,
+      },
+    });
+    const shipmentChargesMap = new Map(shipments.map(s => [s.bility_number, s.total_charges]));
+
+    // Add total_charges to shipmentLogs
+    const enrichedTripLogs = tripLogs.map((log: any) => ({
+      ...log,
+      shipmentLogs: log.shipmentLogs.map((s: any) => ({
+        ...s,
+        total_charges: shipmentChargesMap.get(s.bilty_number) || 0,
+      })),
+    }));
+
+    return NextResponse.json(enrichedTripLogs, { status: 200 });
   } catch (error) {
     console.error('Error fetching trip logs:', error);
     return NextResponse.json(

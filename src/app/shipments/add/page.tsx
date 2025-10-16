@@ -67,7 +67,7 @@ const GoodsDetailSchema = z.object({
 });
 
 const ShipmentFormSchema = z.object({
-    register_number: z.string().min(3, 'Register ID is required'),
+    register_number: z.string().optional(), // Will be set after POST response
     bility_number: z.string().min(1, 'Lading number required').max(50), 
     bility_date: z.string().min(1, 'Bility date is required'), 
     departure_city_id: z.coerce.number().int().min(1, 'Departure city is required'),
@@ -136,7 +136,7 @@ interface ShipmentData {
 const today = new Date().toISOString().substring(0, 10);
 
 const generateDefaultValues = (): ShipmentFormValues => ({
-    register_number: '', 
+    register_number: '',
     bility_number: '',
     bility_date: today,
     departure_city_id: 0,
@@ -164,12 +164,14 @@ const findNameById = (data: DropdownData | null, listName: keyof DropdownData, i
     return item?.name || 'Unknown Party/City';
 };
 
+
 export default function AddShipment() {
     const { toast } = useToast();
     const [data, setData] = useState<DropdownData | null>(null);
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [shipments, setShipments] = useState<ShipmentData[]>([]);
     const [isLoadingShipments, setIsLoadingShipments] = useState(false);
+    const [isFetchingRegNum, setIsFetchingRegNum] = useState(false);
 
     const fetchShipments = async () => {
         setIsLoadingShipments(true);
@@ -200,7 +202,33 @@ export default function AddShipment() {
     const goodsDetails = form.watch("goods_details");
     const senderId = form.watch("sender_id");
     const receiverId = form.watch("receiver_id");
+    const bilityDate = form.watch("bility_date");
 
+    // Fetch next registration number when bility_date changes
+    useEffect(() => {
+        async function fetchNextRegNum() {
+            if (!bilityDate) {
+                form.setValue('register_number', '');
+                return;
+            }
+            setIsFetchingRegNum(true);
+            try {
+                const res = await fetch(`/api/shipments/next-register-number?bility_date=${bilityDate}`);
+                if (res.ok) {
+                    const { register_number } = await res.json();
+                    form.setValue('register_number', register_number);
+                } else {
+                    form.setValue('register_number', '');
+                }
+            } catch {
+                form.setValue('register_number', '');
+            } finally {
+                setIsFetchingRegNum(false);
+            }
+        }
+        fetchNextRegNum();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [bilityDate]);
 
     useEffect(() => {
         async function fetchInitialData() {
@@ -232,12 +260,14 @@ export default function AddShipment() {
                 vehicle_number_id: Number(values.vehicle_number_id),
                 sender_id: Number(values.sender_id),
                 receiver_id: Number(values.receiver_id),
-                
                 goods_details: values.goods_details.map(detail => ({
                     item_id: Number(detail.item_id),
                     quantity: Number(detail.quantity),
                 }))
             };
+
+            // Remove register_number from payload, let backend generate it
+            delete payloadToSend.register_number;
 
             const response = await fetch('/api/shipments', {
                 method: 'POST',
@@ -249,13 +279,16 @@ export default function AddShipment() {
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Failed to register shipment.');
             }
-            
+            const result = await response.json();
+            const regNum = result.register_number;
+
             toast.success({ 
                 title: 'Shipment Registered Successfully 🚀',
-                description: `Bility No: ${values.bility_number} saved to database.`
+                description: `Registration #: ${regNum} | Bility No: ${values.bility_number} saved to database.`
             });
-            
-            form.reset(generateDefaultValues());
+
+            // Show the generated registration number in the form (read-only)
+            form.reset({ ...generateDefaultValues(), register_number: regNum });
             fetchShipments();
 
         } catch (error: any) {
@@ -290,7 +323,14 @@ export default function AddShipment() {
                     {/* 1. Registration Number, Bility Number, Bility Date, Departure City */}
                     <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
                         <FormField control={form.control} name='register_number' render={({ field }) => (
-                            <FormItem><FormLabel>Registration Number</FormLabel><FormControl><Input placeholder='REG-001' {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem>
+                                <FormLabel>Registration Number</FormLabel>
+                                <FormControl>
+                                    <Input placeholder='Auto-generated' {...field} readOnly disabled={isFetchingRegNum} />
+                                </FormControl>
+                                {isFetchingRegNum && <div className="text-xs text-gray-400">Generating registration number...</div>}
+                                <FormMessage />
+                            </FormItem>
                         )} />
                         <FormField control={form.control} name='bility_number' render={({ field }) => (
                             <FormItem><FormLabel>Bility Number</FormLabel><FormControl><Input placeholder='BL-001' {...field} /></FormControl><FormMessage /></FormItem>
