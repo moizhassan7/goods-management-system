@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
-// Zod schema for TripShipmentLog (client sends IDs; API maps to names)
 const TripShipmentLogSchema = z.object({
   serial_number: z.number().int().min(1),
   bilty_number: z.string().optional().default(''),
@@ -12,11 +11,9 @@ const TripShipmentLogSchema = z.object({
   item_id: z.number().int().min(1, 'Item is required'),
   quantity: z.number().int().min(1),
   delivery_charges: z.number().min(0),
-  // Only required when receiver_id === 1 (walk-in)
   walk_in_receiver_name: z.string().optional(),
 });
 
-// Zod schema for the main TripLog
 const TripLogSchema = z.object({
   vehicle_id: z.number().int().min(1, 'Vehicle is required'),
   driver_name: z.string().min(1, 'Driver name is required'),
@@ -27,14 +24,12 @@ const TripLogSchema = z.object({
   arrival_time: z.string().min(1, 'Arrival time is required'),
   departure_time: z.string().min(1, 'Departure time is required'),
   total_fare_collected: z.number().min(0),
+  delivery_cut_percentage: z.number().min(0).max(100),
   delivery_cut: z.number().min(0),
-  commission: z.number().min(0),
-  arrears: z.number().min(0),
   cuts: z.number().optional().default(0),
-  munsihna_reward: z.number().optional().default(0),
-  distant_charges: z.number().optional().default(0),
   accountant_charges: z.number().min(0).optional().default(0),
   received_amount: z.number().min(0),
+  fare_is_paid: z.boolean().default(false),
   note: z.string().optional(),
   shipmentLogs: z.array(TripShipmentLogSchema).min(1, 'At least one shipment log is required'),
 });
@@ -46,14 +41,11 @@ export async function POST(request: NextRequest) {
 
     // Server-side calculation for data integrity
     const totalFare = validatedData.shipmentLogs.reduce((sum, log) => sum + log.delivery_charges, 0);
+    const deliveryCut = (totalFare * validatedData.delivery_cut_percentage) / 100;
 
     const calculatedReceivedAmount = totalFare
-      - validatedData.delivery_cut
-      - validatedData.commission
-      - validatedData.arrears
+      - deliveryCut
       - (validatedData.cuts || 0)
-      - (validatedData.munsihna_reward || 0)
-      - (validatedData.distant_charges || 0)
       - (validatedData.accountant_charges || 0);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -63,25 +55,24 @@ export async function POST(request: NextRequest) {
           driver_name: validatedData.driver_name,
           driver_mobile: validatedData.driver_mobile,
           station_name: validatedData.station_name,
-          // Map city_id to city name for storage compatibility
           city: (await tx.city.findUnique({ where: { id: validatedData.city_id }, select: { name: true } }))?.name || 'Unknown',
           date: new Date(validatedData.date),
           arrival_time: validatedData.arrival_time,
           departure_time: validatedData.departure_time,
           total_fare_collected: totalFare,
-          delivery_cut: validatedData.delivery_cut,
-          commission: validatedData.commission,
-          arrears: validatedData.arrears,
+          delivery_cut_percentage: validatedData.delivery_cut_percentage,
+          delivery_cut: deliveryCut,
+          commission: 0, // No longer used
+          arrears: 0, // No longer used
           cuts: validatedData.cuts,
-          munsihna_reward: validatedData.munsihna_reward,
-          distant_charges: validatedData.distant_charges,
+          munsihna_reward: 0, // No longer used
+          distant_charges: 0, // No longer used
           accountant_charges: validatedData.accountant_charges,
           received_amount: calculatedReceivedAmount,
           note: validatedData.note,
         },
       });
 
-      // Map receiver_id and item_id to names/descriptions for storage
       const [parties, items] = await Promise.all([
         tx.party.findMany({ select: { id: true, name: true } }),
         tx.itemCatalog.findMany({ select: { id: true, item_description: true } }),
@@ -131,7 +122,7 @@ export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
     const vehicleIdParam = url.searchParams.get('vehicle_id');
-    const dateParam = url.searchParams.get('date'); // expected format: YYYY-MM-DD
+    const dateParam = url.searchParams.get('date');
 
     const where: any = {};
     if (vehicleIdParam) where.vehicle_id = parseInt(vehicleIdParam, 10);

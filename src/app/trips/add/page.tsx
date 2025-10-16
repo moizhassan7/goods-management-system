@@ -1,5 +1,3 @@
-// components/AddTrip.tsx
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -7,31 +5,14 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { v4 as uuidv4 } from 'uuid';
-import { toast as sonnerToast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
-} from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-// Mock toast hook to match your setup
-export function useToast() {
-  return {
-    toast: {
-      success: (toast: { title?: string, description?: string }) => {
-        sonnerToast.success(toast.title, { description: toast.description });
-      },
-      error: (toast: { title?: string, description?: string }) => {
-        sonnerToast.error(toast.title, { description: toast.description });
-      },
-    },
-  };
-}
 
 const TripShipmentLogSchema = z.object({
   id: z.string().optional(),
@@ -42,6 +23,7 @@ const TripShipmentLogSchema = z.object({
   quantity: z.number().int().min(1),
   delivery_charges: z.number().min(0),
   walk_in_receiver_name: z.string().optional(),
+  total_charges: z.number().min(0),
 });
 
 const TripLogFormSchema = z.object({
@@ -54,14 +36,12 @@ const TripLogFormSchema = z.object({
   arrival_time: z.string().min(1, 'Arrival time is required'),
   departure_time: z.string().min(1, 'Departure time is required'),
   total_fare_collected: z.number().min(0),
+  delivery_cut_percentage: z.number().min(0).max(100),
   delivery_cut: z.number().min(0),
-  commission: z.number().min(0),
-  arrears: z.number().min(0),
   cuts: z.number().min(0).optional().default(0),
-  munsihna_reward: z.number().min(0).optional().default(0),
-  distant_charges: z.number().min(0).optional().default(0),
   accountant_charges: z.number().min(0).optional().default(0),
   received_amount: z.number().min(0),
+  fare_is_paid: z.boolean().default(false),
   note: z.string().optional(),
   shipmentLogs: z.array(TripShipmentLogSchema).min(1, { message: "You must add at least one shipment log." }),
 });
@@ -84,7 +64,24 @@ interface DropdownData {
   shipments: DropdownItem[];
 }
 
+interface ShipmentBilty {
+  register_number: string;
+  bility_number: string;
+  receiver_id: number;
+  receiver_name: string;
+  item_id: number;
+  item_description: string;
+  quantity: number;
+  delivery_charges: number;
+  total_charges: number;
+}
+
 const today = new Date().toISOString().substring(0, 10);
+
+// Percentage options from 4% to 10.5%
+const percentageOptions = [
+  4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 10.5
+];
 
 const generateDefaultValues = (): TripLogFormValues => ({
   vehicle_id: 0,
@@ -96,18 +93,14 @@ const generateDefaultValues = (): TripLogFormValues => ({
   arrival_time: '',
   departure_time: '',
   total_fare_collected: 0.00,
+  delivery_cut_percentage: 5.0,
   delivery_cut: 0.00,
-  commission: 0.00,
-  arrears: 0.00,
   cuts: 0.00,
-  munsihna_reward: 0.00,
-  distant_charges: 0.00,
   accountant_charges: 0.00,
   received_amount: 0.00,
+  fare_is_paid: false,
   note: '',
-  shipmentLogs: [
-    { id: uuidv4(), serial_number: 1, bilty_number: '', receiver_id: 0, item_id: 0, quantity: 1, delivery_charges: 0.00 }
-  ],
+  shipmentLogs: [],
 });
 
 const findNameById = (data: DropdownData | null, listName: keyof DropdownData, id: number | null | undefined): string => {
@@ -115,36 +108,36 @@ const findNameById = (data: DropdownData | null, listName: keyof DropdownData, i
   const list = data[listName] as DropdownItem[];
   const item = list.find(item => item.id === id);
   if (listName === 'vehicles') return item?.vehicleNumber || 'Unknown Vehicle';
+  if (listName === 'items') return item?.item_description || 'Unknown Item';
   return item?.name || 'Unknown';
 };
 
 export default function AddTrip() {
-  const { toast } = useToast();
   const [data, setData] = useState<DropdownData | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [loadingShipments, setLoadingShipments] = useState(false);
+  const [nextSerialNumber, setNextSerialNumber] = useState(1);
 
   const form = useForm<TripLogFormValues>({
     resolver: zodResolver(TripLogFormSchema) as any,
     defaultValues: generateDefaultValues(),
-    mode: 'onChange', // Validate on change to enable submit button
+    mode: 'onChange',
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "shipmentLogs",
   });
 
-  const watchedFinancialFields = form.watch([
-    'delivery_cut',
-    'commission',
-    'arrears',
-    'cuts',
-    'munsihna_reward',
-    'distant_charges',
-    'accountant_charges'
-  ]);
+  const watchedVehicleId = form.watch('vehicle_id');
+  const watchedDate = form.watch('date');
+  const watchedDeliveryCutPercentage = form.watch('delivery_cut_percentage');
+  const watchedDeliveryCut = form.watch('delivery_cut');
+  const watchedCuts = form.watch('cuts');
+  const watchedAccountantCharges = form.watch('accountant_charges');
   const watchedShipmentLogs = form.watch('shipmentLogs');
 
+  // Load initial dropdown data
   useEffect(() => {
     async function fetchInitialData() {
       try {
@@ -154,7 +147,6 @@ export default function AddTrip() {
         setData(lists);
       } catch (error: any) {
         console.error("Data fetch error:", error);
-        toast.error({ title: 'Error Loading Data', description: error.message || 'Could not fetch lists.' });
       } finally {
         setIsLoadingData(false);
       }
@@ -162,35 +154,86 @@ export default function AddTrip() {
     fetchInitialData();
   }, []);
 
-  const addShipmentLog = () => {
-    const shipmentLogs = form.getValues('shipmentLogs');
-    const nextSerial = shipmentLogs.length > 0 ? Math.max(...shipmentLogs.map(s => s.serial_number)) + 1 : 1;
-    append({ id: uuidv4(), serial_number: nextSerial, bilty_number: '', receiver_id: 0, item_id: 0, quantity: 1, delivery_charges: 0.00 });
-  };
+  // Fetch next serial number on mount
+  useEffect(() => {
+    async function fetchNextSerial() {
+      try {
+        const response = await fetch('/api/trips/next-serial');
+        if (response.ok) {
+          const { nextSerial } = await response.json();
+          setNextSerialNumber(nextSerial);
+        }
+      } catch (error) {
+        console.error('Error fetching next serial:', error);
+      }
+    }
+    fetchNextSerial();
+  }, []);
 
+  // Load shipments when vehicle and date are selected
+  useEffect(() => {
+    async function loadShipmentsForVehicleAndDate() {
+      if (!watchedVehicleId || watchedVehicleId === 0 || !watchedDate) {
+        replace([]);
+        return;
+      }
+
+      setLoadingShipments(true);
+      try {
+        const response = await fetch(
+          `/api/shipments/by-vehicle-date?vehicle_id=${watchedVehicleId}&date=${watchedDate}`
+        );
+        
+        if (!response.ok) throw new Error('Failed to load shipments');
+        
+        const shipments: ShipmentBilty[] = await response.json();
+        
+        const mappedLogs = shipments.map((shipment, index) => ({
+          id: uuidv4(),
+          serial_number: index + 1,
+          bilty_number: shipment.bility_number,
+          receiver_id: shipment.receiver_id,
+          item_id: shipment.item_id,
+          quantity: shipment.quantity,
+          delivery_charges: shipment.delivery_charges,
+          walk_in_receiver_name: shipment.receiver_id === 1 ? shipment.receiver_name : undefined,
+          total_charges: shipment.total_charges,
+        }));
+        
+        replace(mappedLogs);
+      } catch (error: any) {
+        console.error('Error loading shipments:', error);
+        replace([]);
+      } finally {
+        setLoadingShipments(false);
+      }
+    }
+
+    loadShipmentsForVehicleAndDate();
+  }, [watchedVehicleId, watchedDate, replace]);
+
+  // Calculate total fare from shipment logs
   const totalFareFromLogs = useMemo(() => {
-    return watchedShipmentLogs.reduce((sum, log) => sum + (Number(log.delivery_charges) || 0), 0);
+    return watchedShipmentLogs.reduce((sum, log) => sum + (Number(log.total_charges) || 0), 0);
   }, [watchedShipmentLogs]);
 
+  // Auto-calculate delivery cut and received amount
   useEffect(() => {
     form.setValue('total_fare_collected', totalFareFromLogs);
 
-    const [
-      delivery_cut, commission, arrears, cuts, munsihna_reward, distant_charges, accountant_charges
-    ] = watchedFinancialFields.map(val => Number(val) || 0);
+    // Calculate delivery cut based on percentage
+    const deliveryCut = (totalFareFromLogs * watchedDeliveryCutPercentage) / 100;
+    form.setValue('delivery_cut', Number(deliveryCut.toFixed(2)));
 
-    const calculatedReceivedAmount = totalFareFromLogs
-        - delivery_cut
-        - commission
-        - arrears
-        - cuts
-        - munsihna_reward
-        - distant_charges
-        - accountant_charges;
+    // Use the latest values for delivery_cut, cuts, and accountant_charges
+    const delivery_cut = Number(form.getValues('delivery_cut')) || 0;
+    const cuts = Number(form.getValues('cuts')) || 0;
+    const accountant_charges = Number(form.getValues('accountant_charges')) || 0;
 
+    const calculatedReceivedAmount = totalFareFromLogs - delivery_cut - cuts - accountant_charges;
     form.setValue('received_amount', calculatedReceivedAmount > 0 ? calculatedReceivedAmount : 0);
 
-  }, [totalFareFromLogs, watchedFinancialFields, form]);
+  }, [totalFareFromLogs, watchedDeliveryCutPercentage, watchedDeliveryCut, watchedCuts, watchedAccountantCharges, form]);
 
   async function handleDirectSave(values: TripLogFormValues) {
     try {
@@ -205,16 +248,15 @@ export default function AddTrip() {
         throw new Error(errorData.message || 'Failed to register trip log.');
       }
 
-      toast.success({
-        title: 'Trip Log Registered Successfully 🚀',
-        description: `Trip for vehicle ${findNameById(data, 'vehicles', values.vehicle_id)} saved.`
-      });
-
+      alert(`Trip Log #${nextSerialNumber} Registered Successfully 🚀`);
+      
+      // Increment serial number and reset form
+      setNextSerialNumber(prev => prev + 1);
       form.reset(generateDefaultValues());
 
     } catch (error: any) {
       console.error('Submission Error:', error);
-      toast.error({ title: 'Error Registering Trip Log ⚠️', description: error.message });
+      alert(`Error: ${error.message}`);
     }
   }
 
@@ -228,25 +270,64 @@ export default function AddTrip() {
 
   return (
     <div className='p-6 max-w-6xl mx-auto bg-gray-50 min-h-screen'>
-      <h2 className='text-3xl font-bold mb-6 text-gray-800 border-b pb-2'>New Trip Log</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className='text-3xl font-bold text-gray-800 border-b pb-2'>New Trip Log</h2>
+        <div className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg">
+          <span className="text-sm font-medium">Serial Number:</span>
+          <span className="text-2xl font-bold ml-2">#{nextSerialNumber}</span>
+        </div>
+      </div>
+      
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(handleDirectSave)}
-          className='space-y-8 p-8 rounded-lg shadow-md border bg-white'
-        >
+        <div className='space-y-8 p-8 rounded-lg shadow-md border bg-white'>
           {/* Vehicle and Driver Details */}
           <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
             <FormField control={form.control} name='vehicle_id' render={({ field }) => (
-              <FormItem><FormLabel>Vehicle Number</FormLabel><Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''}><FormControl><SelectTrigger><SelectValue placeholder="Select Vehicle" /></SelectTrigger></FormControl><SelectContent>{data?.vehicles.map(vehicle => (<SelectItem key={vehicle.id} value={String(vehicle.id)}>{vehicle.vehicleNumber}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>
+              <FormItem>
+                <FormLabel>Vehicle Number *</FormLabel>
+                <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Vehicle" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {data?.vehicles.map(vehicle => (
+                      <SelectItem key={vehicle.id} value={String(vehicle.id)}>
+                        {vehicle.vehicleNumber}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
             )} />
             <FormField control={form.control} name='driver_name' render={({ field }) => (
-              <FormItem><FormLabel>Driver Name</FormLabel><FormControl><Input placeholder='Driver Name' {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem>
+                <FormLabel>Driver Name</FormLabel>
+                <FormControl>
+                  <Input placeholder='Driver Name' {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )} />
             <FormField control={form.control} name='driver_mobile' render={({ field }) => (
-              <FormItem><FormLabel>Driver Mobile</FormLabel><FormControl><Input placeholder='0300-1234567' {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem>
+                <FormLabel>Driver Mobile</FormLabel>
+                <FormControl>
+                  <Input placeholder='0300-1234567' {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )} />
             <FormField control={form.control} name='station_name' render={({ field }) => (
-              <FormItem><FormLabel>Station Name</FormLabel><FormControl><Input placeholder='Station Name' {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem>
+                <FormLabel>Station Name</FormLabel>
+                <FormControl>
+                  <Input placeholder='Station Name' {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )} />
           </div>
 
@@ -273,121 +354,190 @@ export default function AddTrip() {
               </FormItem>
             )} />
             <FormField control={form.control} name='date' render={({ field }) => (
-              <FormItem><FormLabel>Date</FormLabel><FormControl><Input type='date' {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem>
+                <FormLabel>Date *</FormLabel>
+                <FormControl>
+                  <Input type='date' {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )} />
             <FormField control={form.control} name='arrival_time' render={({ field }) => (
-              <FormItem><FormLabel>Arrival Time</FormLabel><FormControl><Input type='time' {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem>
+                <FormLabel>Arrival Time</FormLabel>
+                <FormControl>
+                  <Input type='time' {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )} />
             <FormField control={form.control} name='departure_time' render={({ field }) => (
-              <FormItem><FormLabel>Departure Time</FormLabel><FormControl><Input type='time' {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem>
+                <FormLabel>Departure Time</FormLabel>
+                <FormControl>
+                  <Input type='time' {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )} />
           </div>
 
           {/* Shipment Logs Table */}
           <div>
-            <h3 className='text-lg font-semibold mb-2'>Shipment Logs</h3>
-            <Table>
-              <TableHeader><TableRow><TableHead>Sr. #</TableHead><TableHead>Bilty #</TableHead><TableHead>Receiver</TableHead><TableHead>Item Details</TableHead><TableHead>Qty</TableHead><TableHead>Charges</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {fields.map((field, index) => (
-                  <TableRow key={field.id}>
-                    <TableCell><Input type='number' {...form.register(`shipmentLogs.${index}.serial_number`, { valueAsNumber: true })} /></TableCell>
-                    <TableCell><Input placeholder='Bilty Number' {...form.register(`shipmentLogs.${index}.bilty_number`)} /></TableCell>
-                    <TableCell>
-                      <FormField
-                        control={form.control}
-                        name={`shipmentLogs.${index}.receiver_id` as const}
-                        render={({ field }) => (
-                          <FormItem>
-                            <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select Receiver" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {data?.parties?.map((party) => (
-                                  <SelectItem key={party.id} value={String(party.id)}>
-                                    {party.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </TableCell>
-                    {/* Walk-in receiver name input (id === 1) */}
-                    {form.watch(`shipmentLogs.${index}.receiver_id`) === 1 && (
-                      <TableCell colSpan={1}>
-                        <FormItem>
-                          <FormLabel>Walk-in Receiver Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder='Enter receiver name' {...form.register(`shipmentLogs.${index}.walk_in_receiver_name` as const)} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      </TableCell>
-                    )}
-                    <TableCell>
-                      <FormField
-                        control={form.control}
-                        name={`shipmentLogs.${index}.item_id` as const}
-                        render={({ field }) => (
-                          <FormItem>
-                            <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select Item" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {data?.items?.map((item) => (
-                                  <SelectItem key={item.id} value={String(item.id)}>
-                                    {item.item_description}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </TableCell>
-                    <TableCell><Input type='number' {...form.register(`shipmentLogs.${index}.quantity`, { valueAsNumber: true })} /></TableCell>
-                    <TableCell><Input type='number' step='0.01' {...form.register(`shipmentLogs.${index}.delivery_charges`, { valueAsNumber: true })} /></TableCell>
-                    <TableCell><Button type='button' variant='destructive' size="sm" onClick={() => remove(index)}>X</Button></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <Button type='button' onClick={addShipmentLog} className='mt-4' variant="outline">Add Shipment</Button>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className='text-lg font-semibold'>Shipment Details (Bilty Cart)</h3>
+              {loadingShipments && <span className="text-blue-600 text-sm">Loading shipments...</span>}
+            </div>
+            
+            {fields.length === 0 ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-4 text-center">
+                <p className="text-yellow-800">Please select a vehicle and date to load shipment details.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="border border-gray-300 px-4 py-2 text-left">Sr. #</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left">Bilty #</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left">Receiver</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left">Item Details</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left">Qty</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left">Total Charges (Rs.)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fields.map((field, index) => (
+                      <tr key={field.id} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-4 py-2 font-medium">{form.watch(`shipmentLogs.${index}.serial_number`)}</td>
+                        <td className="border border-gray-300 px-4 py-2 font-mono">{form.watch(`shipmentLogs.${index}.bilty_number`)}</td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          {form.watch(`shipmentLogs.${index}.receiver_id`) === 1 
+                            ? form.watch(`shipmentLogs.${index}.walk_in_receiver_name`) || 'Walk-in'
+                            : findNameById(data, 'parties', form.watch(`shipmentLogs.${index}.receiver_id`))}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2">{findNameById(data, 'items', form.watch(`shipmentLogs.${index}.item_id`))}</td>
+                        <td className="border border-gray-300 px-4 py-2">{form.watch(`shipmentLogs.${index}.quantity`)}</td>
+                        <td className="border border-gray-300 px-4 py-2 font-semibold">{Number(form.watch(`shipmentLogs.${index}.total_charges`)).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-100 font-bold">
+                      <td colSpan={5} className="border border-gray-300 px-4 py-2 text-right">Total Fare Collected:</td>
+                      <td className="border border-gray-300 px-4 py-2">Rs. {totalFareFromLogs.toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
             <FormMessage>{form.formState.errors.shipmentLogs?.root?.message || form.formState.errors.shipmentLogs?.message}</FormMessage>
           </div>
 
           {/* Financial Details */}
           <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-            <FormField control={form.control} name='total_fare_collected' render={({ field }) => (<FormItem><FormLabel>Total Delivery Charges</FormLabel><FormControl><Input type='number' {...field} readOnly className="bg-gray-100" /></FormControl></FormItem>)} />
-            <FormField control={form.control} name='delivery_cut' render={({ field }) => (<FormItem><FormLabel>Delivery</FormLabel><FormControl><Input type='number' step='0.01' {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>)} />
-            <FormField control={form.control} name='commission' render={({ field }) => (<FormItem><FormLabel>Commission</FormLabel><FormControl><Input type='number' step='0.01' {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>)} />
-            <FormField control={form.control} name='arrears' render={({ field }) => (<FormItem><FormLabel>Arrears</FormLabel><FormControl><Input type='number' step='0.01' {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>)} />
-            <FormField control={form.control} name='cuts' render={({ field }) => (<FormItem><FormLabel>Cuts</FormLabel><FormControl><Input type='number' step='0.01' {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>)} />
-            <FormField control={form.control} name='munsihna_reward' render={({ field }) => (<FormItem><FormLabel>Reward</FormLabel><FormControl><Input type='number' step='0.01' {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>)} />
-            <FormField control={form.control} name='distant_charges' render={({ field }) => (<FormItem><FormLabel>Distant Charges</FormLabel><FormControl><Input type='number' step='0.01' {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>)} />
-            <FormField control={form.control} name='accountant_charges' render={({ field }) => (<FormItem><FormLabel>Munsihna Charges</FormLabel><FormControl><Input type='number' step='0.01' {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>)} />
-          </div>
+            <FormField control={form.control} name='total_fare_collected' render={({ field }) => (
+              <FormItem>
+                <FormLabel>Total Fare Collected</FormLabel>
+                <FormControl>
+                  <Input type='number' {...field} readOnly className="bg-gray-100 font-bold" />
+                </FormControl>
+              </FormItem>
+            )} />
             
-          {/* Final Amount & Note */}
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-8 items-end'>
-            <FormField control={form.control} name='note' render={({ field }) => (<FormItem><FormLabel>Note</FormLabel><FormControl><Textarea placeholder='Additional notes...' {...field} rows={3} /></FormControl></FormItem>)} />
-            <FormField control={form.control} name='received_amount' render={({ field }) => (<FormItem><FormLabel className="text-lg font-bold">Final Received Amount</FormLabel><FormControl><Input type='number' {...field} readOnly className="bg-green-100 text-green-800 text-xl font-bold" /></FormControl></FormItem>)} />
+            <FormField control={form.control} name='delivery_cut_percentage' render={({ field }) => (
+              <FormItem>
+                <FormLabel>Delivery Cut %</FormLabel>
+                <Select onValueChange={(val) => field.onChange(parseFloat(val))} value={String(field.value)}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select %" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {percentageOptions.map(percent => (
+                      <SelectItem key={percent} value={String(percent)}>
+                        {percent}%
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name='delivery_cut' render={({ field }) => (
+              <FormItem>
+                <FormLabel>Delivery Cut Amount</FormLabel>
+                <FormControl>
+                  <Input type='number' {...field} readOnly className="bg-blue-50 font-semibold" />
+                </FormControl>
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name='cuts' render={({ field }) => (
+              <FormItem>
+                <FormLabel>Other Cuts</FormLabel>
+                <FormControl>
+                  <Input type='number' step='0.01' {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
+                </FormControl>
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name='accountant_charges' render={({ field }) => (
+              <FormItem>
+                <FormLabel>Munsihna Charges</FormLabel>
+                <FormControl>
+                  <Input type='number' step='0.01' {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
+                </FormControl>
+              </FormItem>
+            )} />
           </div>
 
-          <Button type='submit' className='w-full text-lg' disabled={form.formState.isSubmitting || !form.formState.isValid}>
+          {/* Fare Payment Status & Final Amount */}
+          <div className='grid grid-cols-1 md:grid-cols-3 gap-8 items-end'>
+            <FormField control={form.control} name='note' render={({ field }) => (
+              <FormItem>
+                <FormLabel>Note</FormLabel>
+                <FormControl>
+                  <Textarea placeholder='Additional notes...' {...field} rows={3} />
+                </FormControl>
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name='fare_is_paid' render={({ field }) => (
+              <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 bg-gray-50">
+                <FormControl>
+                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="text-base font-semibold cursor-pointer">
+                    Fare is Paid
+                  </FormLabel>
+                  <FormDescription>
+                    Check if the fare has been paid
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name='received_amount' render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-lg font-bold">Final Received Amount</FormLabel>
+                <FormControl>
+                  <Input type='number' {...field} readOnly className="bg-green-100 text-green-800 text-xl font-bold" />
+                </FormControl>
+              </FormItem>
+            )} />
+          </div>
+
+          <Button 
+            type='button' 
+            onClick={form.handleSubmit(handleDirectSave)}
+            className='w-full text-lg' 
+            disabled={form.formState.isSubmitting || !form.formState.isValid}
+          >
             {form.formState.isSubmitting ? 'Saving...' : 'Save Trip Log'}
           </Button>
-        </form>
+        </div>
       </Form>
     </div>
   );
