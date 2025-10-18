@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle2, XCircle, AlertCircle, Loader2, Calendar } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useLoading } from '@/contexts/LoadingContext';
+// Removed: import { useLoading } from '@/contexts/LoadingContext';
 
 // --- Data Interfaces ---
 interface Delivery {
@@ -36,19 +36,24 @@ interface Notification {
 // --- Component ---
 
 export default function DeliveryApprovalPage() {
-    // --- State Initialization ---
-    const { useLoading: setGlobalLoading } = useLoading();
+    // Removed: const { isLoading: isGlobalLoading, setLoading: setGlobalLoading } = useLoading();
+
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
     const [approvedDeliveries, setApprovedDeliveries] = useState<Delivery[]>([]);
-    // Default to today's date for the report
+    
+    // Using local states exclusively
+    const [isPendingLoading, setIsPendingLoading] = useState(true); 
+    const [isReportLoading, setIsReportLoading] = useState(false); 
+    
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [actionLoading, setActionLoading] = useState<number | null>(null);
     const [notification, setNotification] = useState<Notification | null>(null);
 
+
     // --- Utility Functions ---
     const formatCurrency = (amount?: number) => {
         if (amount === undefined || amount === null) return 'Rs. 0.00';
-        return `Rs. ${amount.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `Rs. ${Number(amount).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     const calculateTotal = (delivery: Delivery) => {
@@ -60,14 +65,13 @@ export default function DeliveryApprovalPage() {
     // Calculate total sums for the approved table report
     const approvedTotals = useMemo(() => {
         return approvedDeliveries.reduce((acc, delivery) => {
-            acc.totalExpenses += delivery.total_expenses || 0;
-            acc.totalCharges += delivery.total_delivery_charges || 0;
+            acc.totalExpenses += Number(delivery.total_expenses || 0);
+            acc.totalCharges += Number(delivery.total_delivery_charges || 0);
             acc.grandTotal += calculateTotal(delivery);
             return acc;
         }, { totalExpenses: 0, totalCharges: 0, grandTotal: 0 });
     }, [approvedDeliveries]);
 
-    // **FIXED HOOK ERROR:** This must be called unconditionally before any early returns.
     const totalPendingCount = useMemo(() => deliveries.length, [deliveries]);
 
     // --- Notification Logic ---
@@ -78,8 +82,8 @@ export default function DeliveryApprovalPage() {
 
     // --- Data Fetching: Pending Approvals (for the top table) ---
     const fetchPendingApprovals = useCallback(async () => {
-        setGlobalLoading(true);
-        useLoading();
+        // Removed: setGlobalLoading(true);
+        setIsPendingLoading(true); // START LOCAL LOADING
         setNotification(null);
         try {
             const response = await fetch('/api/deliveries/pending-approvals');
@@ -97,17 +101,16 @@ export default function DeliveryApprovalPage() {
             console.error('Error fetching pending approvals:', error);
             showNotification('error', 'Network Error', 'A network connection issue occurred while fetching pending deliveries.');
         } finally {
-            useLoading(false);
-            setGlobalLoading(false);
+            setIsPendingLoading(false); // END LOCAL LOADING
+            // Removed: setGlobalLoading(false);
         }
-    }, [setGlobalLoading]);
+    }, []); // Empty dependency array stabilizes the function, preventing the loop
 
     // --- Data Fetching: Approved Deliveries by Date (for the bottom table) ---
     const fetchApprovedByDate = useCallback(async (date: string) => {
-        setApprovedLoading(true);
+        setIsReportLoading(true); 
         setApprovedDeliveries([]); 
         try {
-            // Assumes a new API route: /api/deliveries/approved?date=YYYY-MM-DD
             const response = await fetch(`/api/deliveries/approved?date=${date}`);
             if (response.ok) {
                 const data = await response.json();
@@ -120,7 +123,7 @@ export default function DeliveryApprovalPage() {
             console.error('Error fetching approved deliveries:', error);
             showNotification('error', 'Network Error', 'A network error occurred while generating the report.');
         } finally {
-            setApprovedLoading(false);
+            setIsReportLoading(false); 
         }
     }, []);
 
@@ -138,7 +141,6 @@ export default function DeliveryApprovalPage() {
         setActionLoading(deliveryId);
         setNotification(null); 
         
-        // Find the delivery that is about to be processed to update the second table locally
         const processedDelivery = deliveries.find(d => d.delivery_id === deliveryId);
 
         try {
@@ -182,7 +184,8 @@ export default function DeliveryApprovalPage() {
     };
     
     // --- Loading UI (Conditional Early Return) ---
-    if (loading) {
+    // Now controlled by the local state `isPendingLoading`
+    if (isPendingLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-100">
                 <div className="text-center p-8 bg-white rounded-xl shadow-lg">
@@ -435,7 +438,7 @@ export default function DeliveryApprovalPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                        {approvedLoading ? (
+                        {isReportLoading ? (
                             <div className="text-center py-12">
                                 <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-blue-600" />
                                 <p className="text-gray-600 font-medium">Loading approved transactions for {selectedDate}...</p>

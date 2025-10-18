@@ -1,3 +1,5 @@
+// moizhassan7/goods-management-system/goods-management-system-c8ccf18c4f6ffb7e0457c336e1ed1f56cf93b02b/src/app/shipments/report/page.tsx
+
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -6,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // ADDED IMPORTS
 
 type City = { id: number; name: string };
 type Vehicle = { id: number; vehicleNumber: string };
@@ -84,110 +87,148 @@ export default function ShipmentsReportPage() {
     <div className='p-6 max-w-6xl mx-auto'>
       <h2 className='text-3xl font-bold mb-6 text-gray-800 border-b pb-2'>Shipments Report</h2>
 
-      <div className='grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6'>
-        <div>
-          <div className='grid gap-2'>
-            <Label>Start Date</Label>
-            <Input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </div>
-        </div>
-        <div>
-          <div className='grid gap-2'>
-            <Label>End Date</Label>
-            <Input type='date' value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          </div>
-        </div>
-        <div>
-          <div className='grid gap-2'>
-            <Label>Departure City</Label>
-            <Select value={departureCityId ? String(departureCityId) : 'all'} onValueChange={(v) => setDepartureCityId(v === 'all' ? 0 : parseInt(v))}>
-              <SelectTrigger>
-                <SelectValue placeholder='All' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>All</SelectItem>
-                {cities.map(c => (
-                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div>
-          <div className='grid gap-2'>
-            <Label>To City</Label>
-            <Select value={toCityId ? String(toCityId) : 'all'} onValueChange={(v) => setToCityId(v === 'all' ? 0 : parseInt(v))}>
-              <SelectTrigger>
-                <SelectValue placeholder='All' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>All</SelectItem>
-                {cities.map(c => (
-                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div>
-          <div className='grid gap-2'>
-            <Label>Vehicle</Label>
-            <Select value={vehicleId ? String(vehicleId) : 'all'} onValueChange={(v) => setVehicleId(v === 'all' ? 0 : parseInt(v))}>
-              <SelectTrigger>
-                <SelectValue placeholder='All' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>All</SelectItem>
-                {vehicles.map(v => (
-                  <SelectItem key={v.id} value={String(v.id)}>{v.vehicleNumber}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className='flex items-end'>
-          <Button className='w-full' onClick={fetchReport} disabled={loading}>
-            {loading ? 'Loading...' : 'Load Report'}
-          </Button>
-        </div>
-      </div>
+      {/* FILTERS CARD - New Structure */}
+      <Card className='shadow-lg mb-8'>
+        <CardHeader>
+            <CardTitle className='text-xl text-blue-800'>Report Filters</CardTitle>
+            <CardDescription>Select criteria and load the report data.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div className='grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4'>
+                <div>
+                <div className='grid gap-2'>
+                    <Label>Start Date</Label>
+                    <Input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                </div>
+                </div>
+                <div>
+                <div className='grid gap-2'>
+                    <Label>End Date</Label>
+                    <Input type='date' value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                </div>
+                </div>
+                <div>
+                <div className='grid gap-2'>
+                    <Label>Departure City</Label>
+                    <Select value={departureCityId ? String(departureCityId) : 'all'} onValueChange={(v) => setDepartureCityId(v === 'all' ? 0 : parseInt(v))}>
+                    <SelectTrigger>
+                        <SelectValue placeholder='All' />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value='all'>All</SelectItem>
+                        {cities.map(c => (
+                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                    </Select>
+                </div>
+                </div>
+                <div>
+                <div className='grid gap-2'>
+                    <Label>To City</Label>
+                    <Select value={toCityId ? String(toCityId) : 'all'} onValueChange={(v) => setToCityId(v === 'all' ? 0 : parseInt(v))}>
+                    <SelectTrigger>
+                        <SelectValue placeholder='All' />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value='all'>All</SelectItem>
+                        {cities.map(c => (
+                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                    </Select>
+                </div>
+                </div>
+                <div>
+                <div className='grid gap-2'>
+                    <Label>Vehicle</Label>
+                    <Select value={vehicleId ? String(vehicleId) : 'all'} onValueChange={(v) => setVehicleId(v === 'all' ? 0 : parseInt(v))}>
+                    <SelectTrigger>
+                        <SelectValue placeholder='All' />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value='all'>All</SelectItem>
+                        {vehicles.map(v => (
+                        <SelectItem key={v.id} value={String(v.id)}>{v.vehicleNumber}</SelectItem>
+                        ))}
+                    </SelectContent>
+                    </Select>
+                </div>
+                </div>
+                <div className='flex items-end'>
+                    <Button className='w-full' onClick={fetchReport} disabled={loading}>
+                        {loading ? 'Loading...' : 'Load Report'}
+                    </Button>
+                </div>
+            </div>
+        </CardContent>
+      </Card>
+
 
       {!loading && shipments.length > 0 && (
         <div className='space-y-6'>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Shipment ID</TableHead>
-                <TableHead>Bilty #</TableHead>
-                <TableHead>Sender</TableHead>
-                <TableHead>Receiver</TableHead>
-                <TableHead>From</TableHead>
-                <TableHead>To</TableHead>
-                <TableHead>Vehicle</TableHead>
-                <TableHead>Total Charges</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {shipments.map((shipment) => (
-                <TableRow key={shipment.register_number}>
-                  <TableCell>{shipment.register_number}</TableCell>
-                  <TableCell>{shipment.bility_number}</TableCell>
-                  <TableCell>{shipment.sender.name}</TableCell>
-                  <TableCell>{shipment.receiver.name}</TableCell>
-                  <TableCell>{shipment.departureCity.name}</TableCell>
-                  <TableCell>{shipment.toCity?.name || '-'}</TableCell>
-                  <TableCell>{shipment.vehicle.vehicleNumber}</TableCell>
-                  <TableCell>{Number(shipment.total_charges).toFixed(2)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {/* RESULTS TABLE CARD - New Structure */}
+          <Card className='shadow-lg'>
+            <CardHeader>
+                <CardTitle className='text-xl text-gray-800'>Shipment Details ({shipments.length} Records)</CardTitle>
+            </CardHeader>
+            <CardContent className='p-0'>
+                <div className='overflow-x-auto'>
+                    <Table>
+                        <TableHeader>
+                        <TableRow>
+                            <TableHead>Shipment ID</TableHead>
+                            <TableHead>Bilty #</TableHead>
+                            <TableHead>Sender</TableHead>
+                            <TableHead>Receiver</TableHead>
+                            <TableHead>From</TableHead>
+                            <TableHead>To</TableHead>
+                            <TableHead>Vehicle</TableHead>
+                            <TableHead>Total Charges</TableHead>
+                        </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                        {shipments.map((shipment) => (
+                            <TableRow key={shipment.register_number}>
+                            <TableCell>{shipment.register_number}</TableCell>
+                            <TableCell>{shipment.bility_number}</TableCell>
+                            <TableCell>{shipment.sender.name}</TableCell>
+                            <TableCell>{shipment.receiver.name}</TableCell>
+                            <TableCell>{shipment.departureCity.name}</TableCell>
+                            <TableCell>{shipment.toCity?.name || '-'}</TableCell>
+                            <TableCell>{shipment.vehicle.vehicleNumber}</TableCell>
+                            <TableCell>{Number(shipment.total_charges).toFixed(2)}</TableCell>
+                            </TableRow>
+                        ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+          </Card>
 
-          <div className='grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded bg-white'>
-            <div><div className='text-gray-500'>Total Shipments</div><div className='font-semibold'>{totals.totalShipments}</div></div>
-            <div><div className='text-gray-500'>Total Charges</div><div className='font-semibold'>{totals.totalCharges.toFixed(2)}</div></div>
-            <div><div className='text-gray-500'>Total Quantity</div><div className='font-semibold'>{totals.totalQuantity}</div></div>
-          </div>
+
+          {/* TOTALS CARD - New Structure */}
+          <Card className='bg-blue-50 border-blue-200 shadow-xl'>
+            <CardHeader>
+                <CardTitle className='text-lg text-blue-800'>Report Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                    <div>
+                        <div className='text-gray-600'>Total Shipments</div>
+                        <div className='font-extrabold text-2xl text-blue-900'>{totals.totalShipments}</div>
+                    </div>
+                    <div>
+                        <div className='text-gray-600'>Total Charges Collected</div>
+                        <div className='font-extrabold text-2xl text-green-700'>Rs. {totals.totalCharges.toFixed(2)}</div>
+                    </div>
+                    <div>
+                        <div className='text-gray-600'>Total Quantity Shipped</div>
+                        <div className='font-extrabold text-2xl text-orange-700'>{totals.totalQuantity}</div>
+                    </div>
+                </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -197,3 +238,5 @@ export default function ShipmentsReportPage() {
     </div>
   );
 }
+
+// END OF FILE

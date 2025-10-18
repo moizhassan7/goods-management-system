@@ -19,6 +19,12 @@ import {
     Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow 
 } from '@/components/ui/table'; 
 
+// Import the necessary i18n hook
+import { useTranslation } from '@/lib/i18n';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+
+// --- Toast/Utility Setup ---
 export interface Toast {
     id: string;
     title?: string;
@@ -47,8 +53,6 @@ export function useToast() {
     };
 }
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
 const WALK_IN_CUSTOMER_ID = 1; 
 
 const formatCurrency = (amount: number) => {
@@ -67,7 +71,7 @@ const GoodsDetailSchema = z.object({
 });
 
 const ShipmentFormSchema = z.object({
-    register_number: z.string().optional(), // Will be set after POST response
+    register_number: z.string().optional(), 
     bility_number: z.string().min(1, 'Lading number required').max(50), 
     bility_date: z.string().min(1, 'Bility date is required'), 
     departure_city_id: z.coerce.number().int().min(1, 'Departure city is required'),
@@ -88,6 +92,8 @@ const ShipmentFormSchema = z.object({
     total_amount: z.coerce.number().min(0.01, 'Total Amount must be greater than zero'),
     remarks: z.string().max(255).optional(),
 }).superRefine((data, ctx) => {
+    // Note: The validation messages here remain English for client-side technical validation,
+    // but the UI labels/placeholders use the translated text.
     if (data.sender_id === WALK_IN_CUSTOMER_ID && (!data.walk_in_sender_name || data.walk_in_sender_name.trim().length < 2)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Name is required for the Walk-in Sender.', path: ['walk_in_sender_name'] });
     }
@@ -167,6 +173,7 @@ const findNameById = (data: DropdownData | null, listName: keyof DropdownData, i
 
 export default function AddShipment() {
     const { toast } = useToast();
+    const { t } = useTranslation(); // <-- Using the translation hook
     const [data, setData] = useState<DropdownData | null>(null);
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [shipments, setShipments] = useState<ShipmentData[]>([]);
@@ -246,6 +253,7 @@ export default function AddShipment() {
             fetchShipments(); 
         }
         fetchInitialData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); 
 
     async function handleDirectSave(values: ShipmentFormValues) {
@@ -283,7 +291,7 @@ export default function AddShipment() {
             const regNum = result.register_number;
 
             toast.success({ 
-                title: 'Shipment Registered Successfully 🚀',
+                title: t('shipment_save_button'), // Use translation key for success message title
                 description: `Registration #: ${regNum} | Bility No: ${values.bility_number} saved to database.`
             });
 
@@ -293,14 +301,14 @@ export default function AddShipment() {
 
         } catch (error: any) {
             console.error('Submission Error:', error);
-            toast.error({ title: 'Error Registering Shipment ⚠️', description: error.message });
+            toast.error({ title: t('shipment_saving_button'), description: error.message }); // Use translation key for error message title
         }
     }
 
     if (isLoadingData) {
         return (
             <div className='p-6 max-w-4xl mx-auto text-center'>
-                <p className="text-xl text-indigo-600">Loading essential data for the form...</p>
+                <p className="text-xl text-indigo-600">{t('loading_initial_data')}</p>
             </div>
         );
     }
@@ -313,7 +321,7 @@ export default function AddShipment() {
 
     return (
         <div className='p-6 max-w-6xl mx-auto bg-gray-50 min-h-screen'>
-            <h2 className='text-3xl font-extrabold mb-8 text-gray-900 border-b pb-2'>New Shipment Registration</h2>
+            <h2 className='text-3xl font-extrabold mb-8 text-gray-900 border-b pb-2'>{t('shipment_register_title')}</h2>
             
             <Form {...form}>
                 <form 
@@ -324,23 +332,23 @@ export default function AddShipment() {
                     <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
                         <FormField control={form.control} name='register_number' render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Registration Number</FormLabel>
+                                <FormLabel>{t('shipment_reg_num_label')}</FormLabel>
                                 <FormControl>
-                                    <Input placeholder='Auto-generated' {...field} readOnly disabled={isFetchingRegNum} />
+                                    <Input placeholder={t('shipment_reg_num_placeholder')} {...field} readOnly disabled={isFetchingRegNum} />
                                 </FormControl>
-                                {isFetchingRegNum && <div className="text-xs text-gray-400">Generating registration number...</div>}
+                                {isFetchingRegNum && <div className="text-xs text-gray-400">{t('shipment_reg_num_loading')}</div>}
                                 <FormMessage />
                             </FormItem>
                         )} />
                         <FormField control={form.control} name='bility_number' render={({ field }) => (
-                            <FormItem><FormLabel>Bility Number</FormLabel><FormControl><Input placeholder='BL-001' {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>{t('shipment_bility_num_label')}</FormLabel><FormControl><Input placeholder={t('shipment_bility_num_placeholder')} {...field} /></FormControl><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name='bility_date' render={({ field }) => (
-                            <FormItem><FormLabel>Bility Date</FormLabel><FormControl><Input type='date' {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>{t('shipment_bility_date_label')}</FormLabel><FormControl><Input type='date' {...field} /></FormControl><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name='departure_city_id' render={({ field }) => (
-                            <FormItem><FormLabel>Departure City</FormLabel><Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''} disabled={itemIsLoading}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select City" /></SelectTrigger></FormControl>
+                            <FormItem><FormLabel>{t('shipment_departure_city_label')}</FormLabel><Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''} disabled={itemIsLoading}>
+                                <FormControl><SelectTrigger><SelectValue placeholder={t('shipment_departure_city_placeholder')} /></SelectTrigger></FormControl>
                                 <SelectContent>{data?.cities.map(city => (<SelectItem key={city.id} value={String(city.id)}>{city.name}</SelectItem>))}</SelectContent>
                             </Select><FormMessage /></FormItem>
                         )} />
@@ -350,11 +358,11 @@ export default function AddShipment() {
                     <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
                         <FormField control={form.control} name='forwarding_agency_id' render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Forwarding Agency</FormLabel>
+                                <FormLabel>{t('shipment_agency_label')}</FormLabel>
                                 <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''} disabled={itemIsLoading}>
                                     <FormControl>
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Select Agency" />
+                                            <SelectValue placeholder={t('shipment_agency_placeholder')} />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
@@ -370,11 +378,11 @@ export default function AddShipment() {
                         )} />
                         <FormField control={form.control} name='vehicle_number_id' render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Vehicle Number</FormLabel>
+                                <FormLabel>{t('shipment_vehicle_label')}</FormLabel>
                                 <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''} disabled={itemIsLoading}>
                                     <FormControl>
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Select Vehicle" />
+                                            <SelectValue placeholder={t('shipment_vehicle_placeholder')} />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
@@ -390,11 +398,11 @@ export default function AddShipment() {
                         )} />
                         <FormField control={form.control} name={`goods_details.0.quantity`} render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Quantity</FormLabel>
+                                <FormLabel>{t('shipment_quantity_label')}</FormLabel>
                                 <FormControl>
                                     <Input 
                                         type='number' 
-                                        placeholder='1' 
+                                        placeholder={t('shipment_quantity_placeholder')}
                                         {...field} 
                                         min={1} 
                                         onChange={(e) => field.onChange(e.target.valueAsNumber)} 
@@ -405,11 +413,11 @@ export default function AddShipment() {
                         )} />
                         <FormField control={form.control} name={`goods_details.0.item_id`} render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Item Type</FormLabel>
+                                <FormLabel>{t('shipment_item_type_label')}</FormLabel>
                                 <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''} disabled={itemIsLoading}>
                                     <FormControl>
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Select Item" />
+                                            <SelectValue placeholder={t('shipment_item_type_placeholder')} />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
@@ -430,14 +438,14 @@ export default function AddShipment() {
                     {/* 4. Sender, Receiver */}
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                         <FormField control={form.control} name='sender_id' render={({ field }) => (
-                            <FormItem><FormLabel>Sender</FormLabel><Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''} disabled={itemIsLoading}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select Sender" /></SelectTrigger></FormControl>
+                            <FormItem><FormLabel>{t('shipment_sender_label')}</FormLabel><Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''} disabled={itemIsLoading}>
+                                <FormControl><SelectTrigger><SelectValue placeholder={t('shipment_sender_placeholder')} /></SelectTrigger></FormControl>
                                 <SelectContent>{data?.parties.map(party => (<SelectItem key={party.id} value={String(party.id)}>{party.name}</SelectItem>))}</SelectContent>
                             </Select><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name='receiver_id' render={({ field }) => (
-                            <FormItem><FormLabel>Receiver</FormLabel><Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''} disabled={itemIsLoading}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select Receiver" /></SelectTrigger></FormControl>
+                            <FormItem><FormLabel>{t('shipment_receiver_label')}</FormLabel><Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''} disabled={itemIsLoading}>
+                                <FormControl><SelectTrigger><SelectValue placeholder={t('shipment_receiver_placeholder')} /></SelectTrigger></FormControl>
                                 <SelectContent>{data?.parties.map(party => (<SelectItem key={party.id} value={String(party.id)}>{party.name}</SelectItem>))}</SelectContent>
                             </Select><FormMessage /></FormItem>
                         )} />
@@ -447,10 +455,10 @@ export default function AddShipment() {
                     {(isSenderWalkIn || isReceiverWalkIn) && (
                         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                             {isSenderWalkIn && <FormField control={form.control} name='walk_in_sender_name' render={({ field }) => (
-                                <FormItem><FormLabel>Walk-in Sender Name</FormLabel><FormControl><Input placeholder='Enter name' {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>{t('shipment_walk_in_sender_label')}</FormLabel><FormControl><Input placeholder={t('shipment_walk_in_placeholder')} {...field} /></FormControl><FormMessage /></FormItem>
                             )} />}
                             {isReceiverWalkIn && <FormField control={form.control} name='walk_in_receiver_name' render={({ field }) => (
-                                <FormItem><FormLabel>Walk-in Receiver Name</FormLabel><FormControl><Input placeholder='Enter name' {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>{t('shipment_walk_in_receiver_label')}</FormLabel><FormControl><Input placeholder={t('shipment_walk_in_placeholder')} {...field} /></FormControl><FormMessage /></FormItem>
                             )} />}
                         </div>
                     )}
@@ -459,11 +467,11 @@ export default function AddShipment() {
                     <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
                         <FormField control={form.control} name='to_city_id' render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Destination City</FormLabel>
+                                <FormLabel>{t('shipment_dest_city_label')}</FormLabel>
                                 <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''} disabled={itemIsLoading}>
                                     <FormControl>
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Select Destination" />
+                                            <SelectValue placeholder={t('shipment_dest_city_placeholder')} />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
@@ -480,11 +488,11 @@ export default function AddShipment() {
                         
                         <FormField control={form.control} name='total_delivery_charges' render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Delivery Charges</FormLabel>
+                                <FormLabel>{t('shipment_delivery_charges_label')}</FormLabel>
                                 <FormControl>
                                     <Input 
                                         type='number' 
-                                        placeholder='0.00' 
+                                        placeholder={t('shipment_delivery_charges_placeholder')} 
                                         {...field} 
                                         step='0.01' 
                                         min='0' 
@@ -498,11 +506,11 @@ export default function AddShipment() {
 
                         <FormField control={form.control} name='total_amount' render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Total Amount</FormLabel>
+                                <FormLabel>{t('shipment_total_amount_label')}</FormLabel>
                                 <FormControl>
                                     <Input 
                                         type='number' 
-                                        placeholder='0.00' 
+                                        placeholder={t('shipment_total_amount_placeholder')} 
                                         {...field} 
                                         step='0.01' 
                                         min='0.01' 
@@ -517,7 +525,7 @@ export default function AddShipment() {
 
                     {/* 8. Remarks */}
                     <FormField control={form.control} name='remarks' render={({ field }) => (
-                        <FormItem><FormLabel>Remarks</FormLabel><FormControl><Textarea placeholder='Additional notes...' {...field} rows={3} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>{t('shipment_remarks_label')}</FormLabel><FormControl><Textarea placeholder={t('shipment_remarks_placeholder')} {...field} rows={3} /></FormControl><FormMessage /></FormItem>
                     )} />
 
 
@@ -526,14 +534,14 @@ export default function AddShipment() {
                         className='w-full bg-green-700 hover:bg-green-800 py-4 text-lg font-bold'
                         disabled={itemIsLoading || !isFormValid || manualTotalAmount <= 0}
                     >
-                        {form.formState.isSubmitting ? 'Saving...' : 'Save Shipment'} 
+                        {form.formState.isSubmitting ? t('shipment_saving_button') : t('shipment_save_button')}
                     </Button>
                 </form>
             </Form>
 
             {/* Shipments Table */}
             <div className='mt-12 p-8 rounded-xl shadow-2xl border bg-white'>
-                <h2 className='text-2xl font-extrabold mb-6'>Saved Shipments</h2>
+                <h2 className='text-2xl font-extrabold mb-6'>{t('shipment_section_saved_title')}</h2>
                 {isLoadingShipments ? (
                     <p className="text-center text-gray-500">Loading...</p>
                 ) : shipments.length === 0 ? (
@@ -541,22 +549,21 @@ export default function AddShipment() {
                 ) : (
                     <div className='overflow-x-auto'>
                         <Table>
-                            <TableCaption>All registered shipments</TableCaption>
+                            <TableCaption>{t('shipment_table_caption')}</TableCaption>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Reg No</TableHead>
-                                    <TableHead>Bility No</TableHead>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Departure</TableHead>
-                                    <TableHead>Agency</TableHead>
-                                    <TableHead>Vehicle</TableHead>
-                                    <TableHead>Sender</TableHead>
-                                    <TableHead>Receiver</TableHead>
-                                    <TableHead>Destination</TableHead>
-                                    <TableHead>Item Type</TableHead>
-                                    <TableHead>Quantity</TableHead>
-                                    {/* <TableHead className='text-right'>Delivery Charges</TableHead> */}
-                                    <TableHead className='text-right'>Total Amount</TableHead>
+                                    <TableHead>{t('shipment_table_reg_no')}</TableHead>
+                                    <TableHead>{t('shipment_table_bility_no')}</TableHead>
+                                    <TableHead>{t('shipment_table_date')}</TableHead>
+                                    <TableHead>{t('shipment_table_departure')}</TableHead>
+                                    <TableHead>{t('shipment_table_agency')}</TableHead>
+                                    <TableHead>{t('shipment_table_vehicle')}</TableHead>
+                                    <TableHead>{t('shipment_table_sender')}</TableHead>
+                                    <TableHead>{t('shipment_table_receiver')}</TableHead>
+                                    <TableHead>{t('shipment_table_destination')}</TableHead>
+                                    <TableHead>{t('shipment_table_item_type')}</TableHead>
+                                    <TableHead>{t('shipment_table_quantity')}</TableHead>
+                                    <TableHead className='text-right'>{t('shipment_table_total_amount')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -593,7 +600,6 @@ export default function AddShipment() {
                                                 : 'N/A'
                                             }
                                         </TableCell>
-                                        {/* <TableCell className='text-right'>{formatCurrency(shipment.total_delivery_charges)}</TableCell> */}
                                         <TableCell className='text-right font-bold text-green-700'>
                                             {formatCurrency(shipment.total_charges)}
                                         </TableCell>

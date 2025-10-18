@@ -521,7 +521,7 @@ export default function AddTrip() {
 
             <FormField control={form.control} name='received_amount' render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-lg font-bold">Final Received Amount</FormLabel>
+                <FormLabel className="text-lg font-bold">Final Payable Amount</FormLabel>
                 <FormControl>
                   <Input type='number' {...field} readOnly className="bg-green-100 text-green-800 text-xl font-bold" />
                 </FormControl>
