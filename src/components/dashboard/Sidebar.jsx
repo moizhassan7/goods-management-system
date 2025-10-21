@@ -4,8 +4,12 @@ import {
     Truck, FileText, MapPin, Users, Package,
     ChevronDown, ChevronUp, ArrowRight, Home,
     Building, Car, Box, ListChecks, Package2, DollarSign, UserCog, ClipboardList, CheckCircle, 
-    ChevronLeft, ChevronRight 
+    ChevronLeft, ChevronRight, Globe // <-- ADDED: Globe icon
 } from 'lucide-react';
+// <-- ADDED IMPORTS FOR TRANSLATION AND TOGGLE
+import { useTranslation } from '@/lib/i18n';
+import { ToggleGroup } from '@/components/ui/toggle-group'; 
+import { ToggleGroupItem } from '@/components/ui/toggle-group'; 
 
 // --- Color Palette Variables ---
 const BG_DEEP = 'bg-[#03045e]'; // Deep Navy/Indigo
@@ -14,120 +18,6 @@ const ACCENT_BG = 'bg-[#023e8a]';
 const TEXT_PRIMARY = 'text-white';
 const TEXT_SECONDARY = 'text-gray-300';
 const HOVER_BG = 'hover:bg-[#023e8a]/30'; 
-
-const sidebarNavSections = [
-    { name: 'Dashboard', href: '/', icon: Home, },
-    {
-        name: 'Shipment Operations',
-        icon: Truck,
-        links: [ 
-            { name: 'Register New Shipment', href: '/shipments/add', icon: Package },
-            { name: 'View/Search Shipments', href: '/shipments/view', icon: FileText },
-            { name: 'Shipments Report', href: '/shipments/report', icon: FileText },
-        ]
-    },
-    {
-        name: 'Delivery Management',
-        icon: Package2,
-        links: [
-            { name: 'Record New Delivery', href: '/deliveries/add', icon: Package2 },
-            { name: 'Delivery Approvals', href: '/deliveries/approval', icon: CheckCircle }, 
-            { name: 'View Delivery Records', href: '/deliveries/view', icon: FileText },
-            { name: 'Delivery Expenses Report', href: '/deliveries/report', icon: FileText },
-        ]
-    },
-    {
-        name: 'Trip & Vehicle Logs',
-        icon: Car,
-        links: [
-            { name: 'Add Trip Log', href: '/trips/add', icon: Truck },
-            { name: 'Trip Log Report', href: '/trips/report', icon: FileText },
-            { name: 'Vehicle Financial Ledgers', href: '/vehicles/ledgers', icon: DollarSign }, 
-        ]
-    },
-    {
-        name: 'Labour Management',
-        icon: UserCog,
-        subSections: [
-            {
-                name: 'Labour Persons',
-                icon: Users,
-                links: [
-                    { name: 'Add Person', href: '/labour-persons/add' },
-                    { name: 'View Persons', href: '/labour-persons/view' },
-                    { name: 'Person Report', href: '/labour-persons/report' },
-                ]
-            },
-            {
-                name: 'Assignments',
-                icon: ClipboardList,
-                links: [
-                    { name: 'Assign Shipments', href: '/labour-assignments/add' },
-                    { name: 'View & Settle Assignments', href: '/labour-settlements', icon: DollarSign }, 
-                    { name: 'Assignments Report', href: '/labour-assignments/report' },
-                ]
-            },
-        ]
-    },
-    {
-        name: 'Master Data',
-        icon: ListChecks,
-        subSections: [
-            { 
-                name: 'Parties (Sender/Receiver)', 
-                icon: Users, 
-                links: [
-                    { name: 'Add Party', href: '/parties/add' },
-                    { name: 'View Parties', href: '/parties/view' },
-                    { name: 'Parties Report', href: '/parties/report' },
-                ] 
-            },
-            { 
-                name: 'Vehicles', 
-                icon: Car, 
-                links: [
-                    { name: 'Add Vehicle', href: '/vehicles/add' },
-                    { name: 'View Vehicles', href: '/vehicles/view' },
-                    { name: 'Vehicles Report', href: '/vehicles/report' },
-                ] 
-            },
-            { 
-                name: 'Cities', 
-                icon: MapPin, 
-                links: [
-                    { name: 'Add City', href: '/cities/add' },
-                    { name: 'View Cities', href: '/cities/view' },
-                    { name: 'Cities Report', href: '/cities/report' },
-                ] 
-            },
-            { 
-                name: 'Agencies', 
-                icon: Building, 
-                links: [
-                    { name: 'Add Agency', href: '/agency/add' },
-                    { name: 'View Agencies', href: '/agency/view' },
-                    { name: 'Agency Report', href: '/agency/report' },
-                ] 
-            },
-            { 
-                name: 'Items', 
-                icon: Box, 
-                links: [
-                    { name: 'Add Item Type', href: '/items/add' },
-                    { name: 'Items Report', href: '/items/report' },
-                ] 
-            },
-             {
-                name: 'Returns',
-                icon: Package2,
-                links: [
-                    { name: 'Create Return', href: '/returns' },
-                    { name: 'Returns Report', href: '/returns/report' },
-                ]
-             }
-        ]
-    }
-];
 
 // Single Link Component
 const SidebarLink = ({ link, isSubItem = false, isNestedSubItem = false, isCollapsed }) => {
@@ -258,10 +148,170 @@ const SidebarNestedList = ({ subSection, isCollapsed }) => {
 const Sidebar = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const transitionClass = 'transition-all duration-300 ease-in-out';
+    const { t, locale, setLocale } = useTranslation(); // <-- UPDATED
     
     // Adjusted width to 'w-72' (18rem) for expanded state to fit the company name
     const sidebarWidth = isCollapsed ? 'w-20' : 'w-72'; 
     const ToggleIcon = isCollapsed ? ChevronRight : ChevronLeft;
+
+    // NEW: Language Selector Component
+    const LanguageSelector = ({ isCollapsed }) => (
+        <div className={`mt-4 pt-4 border-t border-[#023e8a]/30 ${isCollapsed ? 'p-0' : 'p-2'}`}>
+            {!isCollapsed && <p className={`text-sm font-semibold mb-2 ${TEXT_PRIMARY} flex items-center gap-2`}>
+                <Globe className={`w-4 h-4 shrink-0 text-[${ACCENT_COLOR}]`} />
+                {t('language_selector')}
+            </p>}
+            <ToggleGroup 
+                type="single" 
+                value={locale} 
+                onValueChange={(value) => {
+                    if (value) {
+                        setLocale(value);
+                    }
+                }}
+                className={isCollapsed ? 'flex justify-center' : 'flex'}
+                size={isCollapsed ? 'sm' : 'default'}
+                variant='outline'
+            >
+                <ToggleGroupItem value="en" aria-label="Toggle English" className={`flex-1 ${isCollapsed ? 'px-2 py-0' : ''}`}>
+                    {isCollapsed ? 'EN' : t('language_english')}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="ur" aria-label="Toggle Urdu" className={`flex-1 ${isCollapsed ? 'px-2 py-0' : ''}`}>
+                    {isCollapsed ? 'UR' : t('language_urdu')}
+                </ToggleGroupItem>
+            </ToggleGroup>
+        </div>
+    );
+
+
+    // Mapped Nav Sections using Translation Keys
+    const sidebarNavSections = [
+        { name: t('nav_dashboard'), href: '/', icon: Home, translationKey: 'nav_dashboard' },
+        {
+            name: t('nav_shipment_operations'),
+            icon: Truck,
+            translationKey: 'nav_shipment_operations',
+            links: [ 
+                { name: t('nav_register_new_shipment'), href: '/shipments/add', icon: Package, translationKey: 'nav_register_new_shipment' },
+                { name: t('nav_view_search_shipments'), href: '/shipments/view', icon: FileText, translationKey: 'nav_view_search_shipments' },
+                { name: t('nav_shipments_report'), href: '/shipments/report', icon: FileText, translationKey: 'nav_shipments_report' },
+            ]
+        },
+        {
+            name: t('nav_delivery_management'),
+            icon: Package2,
+            translationKey: 'nav_delivery_management',
+            links: [
+                { name: t('nav_record_new_delivery'), href: '/deliveries/add', icon: Package2, translationKey: 'nav_record_new_delivery' },
+                { name: t('nav_delivery_approvals'), href: '/deliveries/approval', icon: CheckCircle, translationKey: 'nav_delivery_approvals' }, 
+                { name: t('nav_view_delivery_records'), href: '/deliveries/view', icon: FileText, translationKey: 'nav_view_delivery_records' },
+                { name: t('nav_delivery_expenses_report'), href: '/deliveries/report', icon: FileText, translationKey: 'nav_delivery_expenses_report' },
+                { name: 'Combined Expense Report', href: '/deliveries/expense-report', icon: DollarSign }, 
+            ]
+        },
+        {
+            name: t('nav_trip_vehicle_logs'),
+            icon: Car,
+            translationKey: 'nav_trip_vehicle_logs',
+            links: [
+                { name: t('nav_add_trip_log'), href: '/trips/add', icon: Truck, translationKey: 'nav_add_trip_log' },
+                { name: t('nav_trip_log_report'), href: '/trips/report', icon: FileText, translationKey: 'nav_trip_log_report' },
+                { name: t('nav_vehicle_financial_ledgers'), href: '/vehicles/ledgers', icon: DollarSign, translationKey: 'nav_vehicle_financial_ledgers' }, 
+            ]
+        },
+        {
+            name: t('nav_labour_management'),
+            icon: UserCog,
+            translationKey: 'nav_labour_management',
+            subSections: [
+                {
+                    name: t('nav_labour_persons'),
+                    icon: Users,
+                    translationKey: 'nav_labour_persons',
+                    links: [
+                        { name: t('nav_add_person'), href: '/labour-persons/add', translationKey: 'nav_add_person' },
+                        { name: t('nav_view_persons'), href: '/labour-persons/view', translationKey: 'nav_view_persons' },
+                        { name: t('nav_person_report'), href: '/labour-persons/report', translationKey: 'nav_person_report' },
+                    ]
+                },
+                {
+                    name: t('nav_assignments'),
+                    icon: ClipboardList,
+                    translationKey: 'nav_assignments',
+                    links: [
+                        { name: t('nav_assign_shipments'), href: '/labour-assignments/add', translationKey: 'nav_assign_shipments' },
+                        { name: t('nav_view_settle_assignments'), href: '/labour-settlements', icon: DollarSign, translationKey: 'nav_view_settle_assignments' }, 
+                        { name: t('nav_assignments_report'), href: '/labour-assignments/report', translationKey: 'nav_assignments_report' },
+                    ]
+                },
+            ]
+        },
+        {
+            name: t('nav_master_data'),
+            icon: ListChecks,
+            translationKey: 'nav_master_data',
+            subSections: [
+                { 
+                    name: t('nav_parties'), 
+                    icon: Users, 
+                    translationKey: 'nav_parties',
+                    links: [
+                        { name: t('nav_add_party'), href: '/parties/add', translationKey: 'nav_add_party' },
+                        { name: t('nav_view_parties'), href: '/parties/view', translationKey: 'nav_view_parties' },
+                        { name: t('nav_parties_report'), href: '/parties/report', translationKey: 'nav_parties_report' },
+                    ] 
+                },
+                { 
+                    name: t('nav_vehicles'), 
+                    icon: Car, 
+                    translationKey: 'nav_vehicles',
+                    links: [
+                        { name: t('nav_add_vehicle'), href: '/vehicles/add', translationKey: 'nav_add_vehicle' },
+                        { name: t('nav_view_vehicles'), href: '/vehicles/view', translationKey: 'nav_view_vehicles' },
+                        { name: t('nav_vehicles_report'), href: '/vehicles/report', translationKey: 'nav_vehicles_report' },
+                    ] 
+                },
+                { 
+                    name: t('nav_cities'), 
+                    icon: MapPin, 
+                    translationKey: 'nav_cities',
+                    links: [
+                        { name: t('nav_add_city'), href: '/cities/add', translationKey: 'nav_add_city' },
+                        { name: t('nav_view_cities'), href: '/cities/view', translationKey: 'nav_view_cities' },
+                        { name: t('nav_cities_report'), href: '/cities/report', translationKey: 'nav_cities_report' },
+                    ] 
+                },
+                { 
+                    name: t('nav_agencies'), 
+                    icon: Building, 
+                    translationKey: 'nav_agencies',
+                    links: [
+                        { name: t('nav_add_agency'), href: '/agency/add', translationKey: 'nav_add_agency' },
+                        { name: t('nav_view_agencies'), href: '/agency/view', translationKey: 'nav_view_agencies' },
+                        { name: t('nav_agency_report'), href: '/agency/report', translationKey: 'nav_agency_report' },
+                    ] 
+                },
+                { 
+                    name: t('nav_items'), 
+                    icon: Box, 
+                    translationKey: 'nav_items',
+                    links: [
+                        { name: t('nav_add_item_type'), href: '/items/add', translationKey: 'nav_add_item_type' },
+                        { name: t('nav_items_report'), href: '/items/report', translationKey: 'nav_items_report' },
+                    ] 
+                },
+                 {
+                    name: t('nav_returns'),
+                    icon: Package2,
+                    translationKey: 'nav_returns',
+                    links: [
+                        { name: t('nav_create_return'), href: '/returns', translationKey: 'nav_create_return' },
+                        { name: t('nav_returns_report'), href: '/returns/report', translationKey: 'nav_returns_report' },
+                    ]
+                 }
+            ]
+        }
+    ];
 
     return (
         <div 
@@ -271,8 +321,6 @@ const Sidebar = () => {
             <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} mb-6 p-2 pb-4 border-b border-[#023e8a]/30`}>
                 
                 {!isCollapsed && (
-                    // Slightly reduced text size to 'text-lg' from 'text-xl' to ensure it fits better, 
-                    // and removed 'overflow-hidden' as the width is now sufficient.
                     <h2 className={`text-lg font-extrabold tracking-wide whitespace-nowrap text-[${ACCENT_COLOR}] w-full `}>
                         Zikria Goods Transports Company
                     </h2>
@@ -284,7 +332,7 @@ const Sidebar = () => {
                 {sidebarNavSections.map((section) => {
                     if (section.href) {
                         return (
-                            <SidebarLink key={section.name} link={section} isCollapsed={isCollapsed} />
+                            <SidebarLink key={section.href} link={section} isCollapsed={isCollapsed} />
                         );
                     }
                     return (
@@ -293,7 +341,9 @@ const Sidebar = () => {
                 })}
             </nav>
 
-            {/* Footer/Toggle Button */}
+            {/* Language Selector and Toggle Button */}
+            <LanguageSelector isCollapsed={isCollapsed} />
+            
             <div className={`mt-4 pt-4 border-t border-[#023e8a]/30 ${isCollapsed ? 'justify-center' : 'justify-end'} flex`}>
                  <button
                     onClick={() => setIsCollapsed(!isCollapsed)}

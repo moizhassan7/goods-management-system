@@ -1,3 +1,5 @@
+// src/app/shipments/view/page.tsx
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -7,6 +9,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Loader2, RefreshCw } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 
@@ -52,6 +55,13 @@ interface ShipmentData {
     receiver: { name: string };
     vehicle: { vehicleNumber: string };
     walk_in_receiver_name: string | null;
+    payment_status?: string | null; // NEW: Payment status field
+}
+
+// NEW: Interface for filter data (Vehicles)
+interface Vehicle {
+    id: number;
+    vehicleNumber: string;
 }
 
 const formatCurrency = (amount: number) => {
@@ -62,21 +72,54 @@ const formatCurrency = (amount: number) => {
     }).format(amount);
 };
 
+// Helper to get start and end date for the current month
+const getCurrentMonthDateRange = () => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    // Format to YYYY-MM-DD
+    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+    return {
+        startDate: formatDate(startOfMonth),
+        endDate: formatDate(endOfMonth),
+    };
+};
+
 export default function ViewShipments() {
     const { toast } = useToast();
     const [shipments, setShipments] = useState<ShipmentData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    
+    // Filter States
+    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [vehicleId, setVehicleId] = useState<number | 'all'>('all');
+    const [startDate, setStartDate] = useState<string>(getCurrentMonthDateRange().startDate);
+    const [endDate, setEndDate] = useState<string>(getCurrentMonthDateRange().endDate);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
-    const fetchShipments = useCallback(async (query = '') => {
+    const fetchShipments = useCallback(async (query = '', currentStartDate: string, currentEndDate: string, currentVehicleId: number | 'all') => {
         setIsLoading(true);
         try {
             const params = new URLSearchParams();
             if (query) {
                 params.append('query', query);
             }
-            // Hitting the dedicated API route
+            // Include date range filters
+            if (currentStartDate) {
+                params.append('startDate', currentStartDate);
+            }
+            if (currentEndDate) {
+                params.append('endDate', currentEndDate);
+            }
+            // Include vehicle filter
+            if (currentVehicleId !== 'all') {
+                params.append('vehicleId', String(currentVehicleId));
+            }
+
             const response = await fetch(`/api/shipments/view-all?${params.toString()}`);
             
             if (!response.ok) {
@@ -98,8 +141,27 @@ export default function ViewShipments() {
         }
     }, []);
 
+    // Load initial data (including filters) on mount
+    useEffect(() => {
+        async function loadFilters() {
+            try {
+                const listsRes = await fetch('/api/lists');
+                const lists = await listsRes.json();
+                setVehicles(lists.vehicles || []);
+            } catch (e) {
+                console.error('Failed to load filter lists', e);
+            }
+        }
+        loadFilters();
+        
+        // Initial fetch: Load current month's shipments
+        const { startDate: initialStart, endDate: initialEnd } = getCurrentMonthDateRange();
+        fetchShipments(debouncedSearchTerm, initialStart, initialEnd, vehicleId);
+        
+        // The dependency array will manage subsequent fetches via debouncedSearchTerm and the button click handler.
+    }, []); // Empty dependency array for component mount only
 
-    // Debounce logic for search
+    // Debounce logic for search (unmodified)
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearchTerm(searchTerm);
@@ -110,25 +172,32 @@ export default function ViewShipments() {
         };
     }, [searchTerm]);
 
-    // Fetch data whenever debouncedSearchTerm changes
+    // Fetch data whenever debouncedSearchTerm changes (other filters remain fixed unless explicitly changed via form/button)
     useEffect(() => {
-        fetchShipments(debouncedSearchTerm);
-    }, [debouncedSearchTerm, fetchShipments]);
+        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId);
+    }, [debouncedSearchTerm, fetchShipments, startDate, endDate, vehicleId]);
+
+
+    const handleFilterLoad = () => {
+        // Force a fetch using current filter states
+        fetchShipments(searchTerm, startDate, endDate, vehicleId);
+    }
 
 
     return (
         <div className='p-6 max-w-[1400px] mx-auto bg-gray-50 min-h-screen'>
             <h2 className='text-3xl font-extrabold mb-8 text-gray-900 border-b pb-2'>All Shipment Records</h2>
 
-            {/* Search and Stats Card */}
+            {/* Search and Filter Card */}
             <Card className='shadow-lg mb-8'>
                 <CardHeader>
                     <CardTitle className='text-xl text-blue-800'>Search & Filter</CardTitle>
-                    <CardDescription>Search by Bilty Number, Party Name, or Receiver Name.</CardDescription>
+                    <CardDescription>Filter shipments by date range, vehicle, or search by Party/Bilty.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className='flex items-center gap-4'>
-                        <div className='relative flex-1'>
+                    <div className='grid grid-cols-1 lg:grid-cols-5 gap-4 items-end'>
+                        {/* 1. Search Bar */}
+                        <div className='lg:col-span-2 relative flex-1'>
                             <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400' />
                             <Input
                                 placeholder='Search Bilty #, or Receiver Name...'
@@ -138,23 +207,52 @@ export default function ViewShipments() {
                                 disabled={isLoading}
                             />
                         </div>
+                        
+                        {/* 2. Date Filters */}
+                        <div className='grid gap-2'>
+                            <label className='text-sm font-medium'>Start Date</label>
+                            <Input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                        </div>
+                        <div className='grid gap-2'>
+                            <label className='text-sm font-medium'>End Date</label>
+                            <Input type='date' value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                        </div>
+
+                        {/* 3. Vehicle Filter */}
+                        <div className='grid gap-2'>
+                            <label className='text-sm font-medium'>Vehicle Number</label>
+                            <Select
+                                value={String(vehicleId)}
+                                onValueChange={(v) => setVehicleId(v === 'all' ? 'all' : parseInt(v))}
+                                disabled={isLoading}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder='All Vehicles' />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value='all'>All Vehicles</SelectItem>
+                                    {vehicles.map((v) => (
+                                        <SelectItem key={v.id} value={String(v.id)}>
+                                            {v.vehicleNumber}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        
+                        {/* 4. Load Button */}
                         <Button
-                            onClick={() => {
-                                setSearchTerm(''); 
-                                fetchShipments('');
-                            }} 
-                            variant='outline'
-                            size='icon'
+                            onClick={handleFilterLoad} 
+                            className='lg:col-span-1 h-9'
                             disabled={isLoading}
-                            title="Refresh Data"
                         >
-                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className='h-4 w-4' />}
+                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : 'Apply Filters'}
                         </Button>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Shipments Table Card */}
+            {/* Shipments Table Card (unmodified below this line) */}
             <Card className='shadow-lg'>
                 <CardHeader>
                     <CardTitle className='text-2xl text-gray-800'>Shipment Details</CardTitle>
@@ -182,7 +280,7 @@ export default function ViewShipments() {
                                         <TableHead>From</TableHead>
                                         <TableHead>To</TableHead>
                                         <TableHead>Vehicle</TableHead>
-                                        <TableHead className='text-right'>Charges</TableHead>
+                                        <TableHead className='text-right'>Payment Status / Charges</TableHead> {/* MODIFIED HEADER */}
                                         <TableHead>Status</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -201,9 +299,15 @@ export default function ViewShipments() {
                                                 <TableCell>{shipment.departureCity.name}</TableCell>
                                                 <TableCell>{shipment.toCity?.name || 'Local'}</TableCell>
                                                 <TableCell>{shipment.vehicle.vehicleNumber}</TableCell>
-                                                <TableCell className='text-right font-bold text-green-700'>
-                                                    {formatCurrency(shipment.total_charges)}
+                                                
+                                                {/* MODIFIED CELL: Show Status or Charges */}
+                                                <TableCell className='text-right font-bold'>
+                                                    {shipment.payment_status === 'ALREADY_PAID' && <span className='px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700'>PAID</span>}
+                                                    {shipment.payment_status === 'FREE' && <span className='px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700'>FREE</span>}
+                                                    {shipment.payment_status === 'PENDING' && <span className='font-bold text-green-700'>{formatCurrency(shipment.total_charges)}</span>}
+                                                    {(!shipment.payment_status || shipment.payment_status === null) && <span className='font-bold text-green-700'>{formatCurrency(shipment.total_charges)}</span>}
                                                 </TableCell>
+                                                
                                                 <TableCell>
                                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${isDelivered ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}`}>
                                                         {isDelivered ? 'DELIVERED' : 'IN TRANSIT'}

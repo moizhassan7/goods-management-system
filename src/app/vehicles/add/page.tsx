@@ -21,11 +21,11 @@ import {
 
 // --- 1. Define the Zod Schema for Validation ---
 const formSchema = z.object({
-  vehicleNumber: z.string().min(5, {
-    message: 'Vehicle number must be at least 5 characters.',
+  vehicleNumber: z.string().min(2, {
+    message: 'Vehicle number must be at least 2 characters.',
   }).max(20, {
     message: 'Vehicle number cannot exceed 20 characters.',
-  }).regex(/^[A-Z0-9-]{5,20}$/, {
+  }).regex(/^[A-Z0-9-]{2,20}$/, {
     message: 'Must contain only letters, numbers, and hyphens.',
   }),
 });

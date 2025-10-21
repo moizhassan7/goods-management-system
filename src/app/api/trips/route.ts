@@ -1,4 +1,4 @@
-// app/api/trips/route.ts
+// src/app/api/trips/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -18,16 +18,15 @@ const TripLogSchema = z.object({
   vehicle_id: z.number().int().min(1, 'Vehicle is required'),
   driver_name: z.string().min(1, 'Driver name is required'),
   driver_mobile: z.string().min(1, 'Driver mobile is required'),
-  station_name: z.string().min(1, 'Station name is required'),
+  // MODIFIED: Changed validation field to forwarding_agency_id
+  forwarding_agency_id: z.number().int().min(1, 'Agency is required'),
   city_id: z.number().int().min(1, 'City is required'),
   date: z.string().min(1, 'Date is required'),
-  arrival_time: z.string().min(1, 'Arrival time is required'),
-  departure_time: z.string().min(1, 'Departure time is required'),
   total_fare_collected: z.number().min(0),
   delivery_cut_percentage: z.number().min(0).max(100),
   delivery_cut: z.number().min(0),
   cuts: z.number().optional().default(0),
-  accountant_charges: z.number().min(0).optional().default(0),
+  accountant_charges: z.number().optional().default(0),
   received_amount: z.number().min(0),
   fare_is_paid: z.boolean().default(false),
   note: z.string().optional(),
@@ -49,16 +48,30 @@ export async function POST(request: NextRequest) {
       - (validatedData.accountant_charges || 0);
 
     const result = await prisma.$transaction(async (tx) => {
+      
+      // NEW: Fetch City Name and Agency Name before creating the log
+      const [city, agency] = await Promise.all([
+          tx.city.findUnique({ where: { id: validatedData.city_id }, select: { name: true } }),
+          tx.agency.findUnique({ where: { id: validatedData.forwarding_agency_id }, select: { name: true } })
+      ]);
+      
+      const cityName = city?.name || 'Unknown City';
+      const agencyName = agency?.name || 'Unknown Agency';
+
       const tripLog = await tx.tripLog.create({
         data: {
           vehicle_id: validatedData.vehicle_id,
           driver_name: validatedData.driver_name,
           driver_mobile: validatedData.driver_mobile,
-          station_name: validatedData.station_name,
-          city: (await tx.city.findUnique({ where: { id: validatedData.city_id }, select: { name: true } }))?.name || 'Unknown',
+          // MODIFIED: Use fetched agency name for station_name
+          station_name: agencyName, 
+          city: cityName,
           date: new Date(validatedData.date),
-          arrival_time: validatedData.arrival_time,
-          departure_time: validatedData.departure_time,
+          
+          // Hardcoded time values (since input fields were removed)
+          arrival_time: '00:00',
+          departure_time: '00:00',
+          
           total_fare_collected: totalFare,
           delivery_cut_percentage: validatedData.delivery_cut_percentage,
           delivery_cut: deliveryCut,

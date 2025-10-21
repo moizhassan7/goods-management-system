@@ -6,17 +6,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast as sonnerToast } from 'sonner';
 
+// Import the translation hook
+import { useTranslation } from '@/lib/i18n';
+
 // Shadcn UI Components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
-    Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,
+    Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
 import { 
-    Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow 
-} from '@/components/ui/table';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+    Card, CardContent, CardDescription, CardHeader, CardTitle 
+} from '@/components/ui/card';
 
 export interface Toast {
     id: string;
@@ -61,8 +63,10 @@ const DeliveryFormSchema = z.object({
     // Receiver details
     receiver_name: z.string().min(2, 'Receiver name is required'),
     receiver_phone: z.string().min(10, 'Phone number is required'),
-    receiver_cnic: z.string().min(13, 'CNIC is required'),
-    receiver_address: z.string().min(10, 'Address is required'),
+    // MODIFIED: CNIC is now optional (min length requirement removed)
+    receiver_cnic: z.string().max(15, 'CNIC cannot exceed 15 characters'),
+    // MODIFIED: Address is now optional (min length requirement removed)
+    receiver_address: z.string(),
     
     delivery_notes: z.string().optional(),
 });
@@ -110,11 +114,15 @@ const generateDefaultValues = (): DeliveryFormValues => ({
 
 export default function AddDelivery() {
     const { toast } = useToast();
+    const { t } = useTranslation(); // <-- ADDED: Translation Hook
+    
     const [shipmentData, setShipmentData] = useState<ShipmentData | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<DeliveryFormValues>({
+        // NOTE: Zod messages remain English as they are for validation structure,
+        // but can be dynamically overridden or localized in an advanced implementation.
         resolver: zodResolver(DeliveryFormSchema),
         defaultValues: generateDefaultValues(),
         mode: 'onChange',
@@ -134,7 +142,7 @@ export default function AddDelivery() {
 
     const searchShipment = async (bilityNumber: string) => {
         if (!bilityNumber.trim()) {
-            toast.error({ title: 'Error', description: 'Please enter a bility number to search.' });
+            toast.error({ title: t('delivery_search_card_title'), description: t('delivery_bility_number_placeholder') });
             return;
         }
 
@@ -142,43 +150,39 @@ export default function AddDelivery() {
         try {
             const response = await fetch(`/api/shipments?bility_number=${bilityNumber}`);
             if (!response.ok) {
-                // If response is not ok, but not a 404, throw a generic error
                 if (response.status !== 404) {
                     throw new Error('Failed to search shipment');
                 }
             }
             const shipment = await response.json();
             
-            // The API search by query returns an array, but searching by exact bility_number 
-            // from the frontend form should probably return a single object or null/empty array
             const foundShipment = Array.isArray(shipment) ? shipment[0] : shipment;
 
             if (foundShipment) {
                 setShipmentData(foundShipment);
                 toast.success({ 
-                    title: 'Shipment Found', 
+                    title: t('delivery_search_button'), 
                     description: `Found shipment for bility number: ${bilityNumber}` 
                 });
             } else {
                 setShipmentData(null);
                 toast.error({ 
-                    title: 'Shipment Not Found', 
-                    description: `No shipment found with bility number: ${bilityNumber}` 
+                    title: t('delivery_search_button'), 
+                    description: t('shipment_bility_num_placeholder') 
                 });
             }
         } catch (error: any) {
             console.error("Search error:", error);
             setShipmentData(null);
-            toast.error({ title: 'Search Error', description: error.message || 'Could not search for shipment.' });
+            toast.error({ title: t('delivery_search_button'), description: error.message || 'Could not search for shipment.' });
         } finally {
             setIsSearching(false);
         }
     };
 
     const handleSubmit = async (values: DeliveryFormValues) => {
-        // Ensure that the register_number (which is the shipment_id) is used
         if (!shipmentData || !shipmentData.register_number) {
-            toast.error({ title: 'Error', description: 'Please search and select a valid shipment first.' });
+            toast.error({ title: t('delivery_record_button'), description: 'Please search and select a valid shipment first.' });
             return;
         }
 
@@ -186,9 +190,7 @@ export default function AddDelivery() {
         try {
             const payload = {
                 ...values,
-                // Use the register_number as the shipment_id for the delivery
                 shipment_id: shipmentData.register_number, 
-                // delivery_date is already correctly formatted in values
             };
 
             const response = await fetch('/api/deliveries', {
@@ -203,7 +205,7 @@ export default function AddDelivery() {
             }
             
             toast.success({ 
-                title: 'Delivery Recorded Successfully 🚀',
+                title: t('delivery_record_button'),
                 description: `Delivery for bility ${values.bility_number} has been recorded.`
             });
             
@@ -212,7 +214,7 @@ export default function AddDelivery() {
 
         } catch (error: any) {
             console.error('Submission Error:', error);
-            toast.error({ title: 'Error Recording Delivery ⚠️', description: error.message });
+            toast.error({ title: t('delivery_recording_button'), description: error.message });
         } finally {
             setIsSubmitting(false);
         }
@@ -225,7 +227,7 @@ export default function AddDelivery() {
 
     return (
         <div className='p-6 max-w-6xl mx-auto bg-gray-50 min-h-screen'>
-            <h2 className='text-3xl font-extrabold mb-8 text-gray-900 border-b pb-2'>Delivery Record</h2>
+            <h2 className='text-3xl font-extrabold mb-8 text-gray-900 border-b pb-2'>{t('delivery_page_title')}</h2>
             
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6'>
@@ -233,8 +235,8 @@ export default function AddDelivery() {
                     {/* Search Section */}
                     <Card className='p-6 shadow-lg'>
                         <CardHeader>
-                            <CardTitle className='text-xl text-blue-800'>Search Shipment</CardTitle>
-                            <CardDescription>Enter the bility number to find the shipment details</CardDescription>
+                            <CardTitle className='text-xl text-blue-800'>{t('delivery_search_card_title')}</CardTitle>
+                            <CardDescription>{t('delivery_search_card_description')}</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
@@ -243,9 +245,9 @@ export default function AddDelivery() {
                                     name='bility_number' 
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Bility Number</FormLabel>
+                                            <FormLabel>{t('delivery_bility_number_label')}</FormLabel>
                                             <FormControl>
-                                                <Input placeholder='BL-001' {...field} />
+                                                <Input placeholder={t('delivery_bility_number_placeholder')} {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -258,7 +260,7 @@ export default function AddDelivery() {
                                         disabled={isSearching}
                                         className='w-full bg-blue-600 hover:bg-blue-700'
                                     >
-                                        {isSearching ? 'Searching...' : 'Search Shipment'}
+                                        {isSearching ? t('delivery_searching_button') : t('delivery_search_button')}
                                     </Button>
                                 </div>
                             </div>
@@ -269,38 +271,37 @@ export default function AddDelivery() {
                     {shipmentData && (
                         <Card className='p-6 shadow-lg border-green-200 bg-green-50'>
                             <CardHeader>
-                                <CardTitle className='text-xl text-green-800'>Shipment Details</CardTitle>
+                                <CardTitle className='text-xl text-green-800'>{t('delivery_details_card_title')}</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
                                     <div>
-                                        <label className='text-sm font-medium text-gray-600'>Register Number</label>
+                                        <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_reg_num')}</label>
                                         <p className='text-lg font-semibold'>{shipmentData.register_number}</p>
                                     </div>
                                     <div>
-                                        <label className='text-sm font-medium text-gray-600'>Bility Date</label>
+                                        <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_bility_date')}</label>
                                         <p className='text-lg font-semibold'>
-                                            {/* FIX: Explicitly parse date with time to prevent "Invalid Date" errors */}
                                             {new Date(shipmentData.bility_date + 'T00:00:00').toLocaleDateString()}
                                         </p>
                                     </div>
                                     <div>
-                                    <label className='text-sm font-medium text-gray-600'>Total Amount</label>
+                                    <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_total_amount')}</label>
                                         <p className='text-lg font-semibold text-green-600'>
                                             {/* FIX: Ensure total_charges is converted to string before Number() to handle Prisma Decimal type reliably */}
                                             **${Number(shipmentData.total_charges.toString()).toFixed(2)}**
                                         </p>
                                     </div>
                                     <div>
-                                        <label className='text-sm font-medium text-gray-600'>From</label>
+                                        <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_from')}</label>
                                         <p className='text-lg'>{shipmentData.departureCity?.name || 'N/A'}</p>
                                     </div>
                                     <div>
-                                        <label className='text-sm font-medium text-gray-600'>To</label>
+                                        <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_to')}</label>
                                         <p className='text-lg'>{shipmentData.toCity?.name || 'Local'}</p>
                                     </div>
                                     <div>
-                                        <label className='text-sm font-medium text-gray-600'>Sender</label>
+                                        <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_sender')}</label>
                                         <p className='text-lg'>
                                             {shipmentData.walk_in_sender_name || shipmentData.sender?.name || 'N/A'}
                                         </p>
@@ -317,7 +318,7 @@ export default function AddDelivery() {
                             {/* Delivery Details */}
                             <Card className='p-6 shadow-lg'>
                                 <CardHeader>
-                                    <CardTitle className='text-xl text-purple-800'>Delivery Details</CardTitle>
+                                    <CardTitle className='text-xl text-purple-800'>{t('delivery_details_card_delivery_title')}</CardTitle>
                                 </CardHeader>
                                 <CardContent className='space-y-4'>
                                     <FormField 
@@ -325,7 +326,7 @@ export default function AddDelivery() {
                                         name='delivery_date' 
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Delivery Date</FormLabel>
+                                                <FormLabel>{t('delivery_date_label')}</FormLabel>
                                                 <FormControl>
                                                     <Input type='date' {...field} />
                                                 </FormControl>
@@ -336,18 +337,18 @@ export default function AddDelivery() {
 
                                     {/* Expense Fields */}
                                     <div className='space-y-4'>
-                                        <h4 className='font-semibold text-gray-700'>Delivery Expenses</h4>
+                                        <h4 className='font-semibold text-gray-700'>{t('delivery_expenses_heading')}</h4>
                                         
                                         <FormField 
                                             control={form.control} 
                                             name='station_expense' 
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Station Expense</FormLabel>
+                                                    <FormLabel>{t('delivery_station_expense_label')}</FormLabel>
                                                     <FormControl>
                                                         <Input 
                                                             type='number' 
-                                                            placeholder='0.00' 
+                                                            placeholder={t('shipment_delivery_charges_placeholder')} 
                                                             {...field} 
                                                             step='0.01' 
                                                             min='0' 
@@ -364,11 +365,11 @@ export default function AddDelivery() {
                                             name='bility_expense' 
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Bility Expense</FormLabel>
+                                                    <FormLabel>{t('delivery_bility_expense_label')}</FormLabel>
                                                     <FormControl>
                                                         <Input 
                                                             type='number' 
-                                                            placeholder='0.00' 
+                                                            placeholder={t('shipment_delivery_charges_placeholder')} 
                                                             {...field} 
                                                             step='0.01' 
                                                             min='0' 
@@ -385,11 +386,11 @@ export default function AddDelivery() {
                                             name='station_labour' 
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Station Labour</FormLabel>
+                                                    <FormLabel>{t('delivery_station_labour_label')}</FormLabel>
                                                     <FormControl>
                                                         <Input 
                                                             type='number' 
-                                                            placeholder='0.00' 
+                                                            placeholder={t('shipment_delivery_charges_placeholder')} 
                                                             {...field} 
                                                             step='0.01' 
                                                             min='0' 
@@ -406,11 +407,11 @@ export default function AddDelivery() {
                                             name='cart_labour' 
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Cart Labour</FormLabel>
+                                                    <FormLabel>{t('delivery_cart_labour_label')}</FormLabel>
                                                     <FormControl>
                                                         <Input 
                                                             type='number' 
-                                                            placeholder='0.00' 
+                                                            placeholder={t('shipment_delivery_charges_placeholder')} 
                                                             {...field} 
                                                             step='0.01' 
                                                             min='0' 
@@ -427,11 +428,11 @@ export default function AddDelivery() {
                                             name='total_expenses' 
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Total Expenses</FormLabel>
+                                                    <FormLabel>{t('delivery_total_expenses_label')}</FormLabel>
                                                     <FormControl>
                                                         <Input 
                                                             type='number' 
-                                                            placeholder='0.00' 
+                                                            placeholder={t('shipment_delivery_charges_placeholder')} 
                                                             {...field} 
                                                             step='0.01' 
                                                             min='0' 
@@ -450,7 +451,7 @@ export default function AddDelivery() {
                             {/* Receiver Details */}
                             <Card className='p-6 shadow-lg'>
                                 <CardHeader>
-                                    <CardTitle className='text-xl text-orange-800'>Receiver Details</CardTitle>
+                                    <CardTitle className='text-xl text-orange-800'>{t('delivery_receiver_details_title')}</CardTitle>
                                 </CardHeader>
                                 <CardContent className='space-y-4'>
                                     <FormField 
@@ -458,9 +459,9 @@ export default function AddDelivery() {
                                         name='receiver_name' 
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Receiver Name</FormLabel>
+                                                <FormLabel>{t('delivery_receiver_name_label')}</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder='Full name' {...field} />
+                                                    <Input placeholder={t('delivery_receiver_name_placeholder')} {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -472,9 +473,9 @@ export default function AddDelivery() {
                                         name='receiver_phone' 
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Phone Number</FormLabel>
+                                                <FormLabel>{t('delivery_phone_label')}</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder='+92XXXXXXXXXX' {...field} />
+                                                    <Input placeholder={t('delivery_phone_placeholder')} {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -486,24 +487,24 @@ export default function AddDelivery() {
                                         name='receiver_cnic' 
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>CNIC</FormLabel>
+                                                <FormLabel>{t('delivery_cnic_label')}</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder='12345-1234567-1' {...field} />
+                                                    <Input placeholder={t('delivery_cnic_placeholder')} {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )} 
                                     />
 
-                                    <FormField 
+                                    {/* <FormField 
                                         control={form.control} 
                                         name='receiver_address' 
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Address</FormLabel>
+                                                <FormLabel>{t('delivery_address_label')}</FormLabel>
                                                 <FormControl>
                                                     <Textarea 
-                                                        placeholder='Complete delivery address...' 
+                                                        placeholder={t('delivery_address_placeholder')} 
                                                         {...field} 
                                                         rows={4}
                                                     />
@@ -511,17 +512,17 @@ export default function AddDelivery() {
                                                 <FormMessage />
                                             </FormItem>
                                         )} 
-                                    />
+                                    /> */}
 
                                     <FormField 
                                         control={form.control} 
                                         name='delivery_notes' 
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Delivery Notes</FormLabel>
+                                                <FormLabel>{t('delivery_notes_label')}</FormLabel>
                                                 <FormControl>
                                                     <Textarea 
-                                                        placeholder='Additional notes about the delivery...' 
+                                                        placeholder={t('delivery_notes_placeholder')} 
                                                         {...field} 
                                                         rows={3}
                                                     />
@@ -542,7 +543,7 @@ export default function AddDelivery() {
                             className='w-full bg-green-700 hover:bg-green-800 py-4 text-lg font-bold'
                             disabled={isSubmitting}
                         >
-                            {isSubmitting ? 'Recording Delivery...' : 'Record Delivery'} 
+                            {isSubmitting ? t('delivery_recording_button') : t('delivery_record_button')} 
                         </Button>
                     )}
                 </form>

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
       },
     });
     const nextCount = countForMonth + 1;
-    const register_number = `${year}${month}-${nextCount.toString().padStart(3, '0')}`;
+    const register_number = `${year}${month}-${nextCount.toString().padStart(4, '0')}`;
     return NextResponse.json({ register_number }, { status: 200 });
   } catch (error) {
     console.error('Error generating next register number:', error);

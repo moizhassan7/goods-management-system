@@ -1,4 +1,4 @@
-// moizhassan7/goods-management-system/goods-management-system-c8ccf18c4f6ffb7e0457c336e1ed1f56cf93b02b/src/app/shipments/report/page.tsx
+// src/app/shipments/report/page.tsx
 
 "use client";
 
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // ADDED IMPORTS
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; 
 
 type City = { id: number; name: string };
 type Vehicle = { id: number; vehicleNumber: string };
@@ -24,7 +24,18 @@ type Shipment = {
   receiver: { name: string };
   vehicle: { vehicleNumber: string };
   goodsDetails: { quantity: number; charges: number }[];
+  payment_status?: string | null; // NEW: Payment status field
 };
+
+// Helper function for currency formatting (reuse logic)
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-PK', {
+        style: 'currency',
+        currency: 'PKR',
+        minimumFractionDigits: 2,
+    }).format(amount);
+};
+
 
 export default function ShipmentsReportPage() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
@@ -75,9 +86,14 @@ export default function ShipmentsReportPage() {
     if (!Array.isArray(shipments)) return { totalShipments: 0, totalCharges: 0, totalQuantity: 0 };
     return shipments.reduce((acc, shipment) => {
       const totalQuantity = shipment.goodsDetails.reduce((sum, gd) => sum + gd.quantity, 0);
+      
+      // Only include charges if the shipment is PENDING or status is missing
+      const chargeAmount = (shipment.payment_status === 'PENDING' || !shipment.payment_status) 
+        ? Number(shipment.total_charges || 0) : 0;
+
       return {
         totalShipments: acc.totalShipments + 1,
-        totalCharges: acc.totalCharges + Number(shipment.total_charges || 0),
+        totalCharges: acc.totalCharges + chargeAmount, // Sum only charges for PENDING
         totalQuantity: acc.totalQuantity + totalQuantity,
       };
     }, { totalShipments: 0, totalCharges: 0, totalQuantity: 0 });
@@ -176,30 +192,35 @@ export default function ShipmentsReportPage() {
                 <div className='overflow-x-auto'>
                     <Table>
                         <TableHeader>
-                        <TableRow>
-                            <TableHead>Shipment ID</TableHead>
-                            <TableHead>Bilty #</TableHead>
-                            <TableHead>Sender</TableHead>
-                            <TableHead>Receiver</TableHead>
-                            <TableHead>From</TableHead>
-                            <TableHead>To</TableHead>
-                            <TableHead>Vehicle</TableHead>
-                            <TableHead>Total Charges</TableHead>
-                        </TableRow>
+                            <TableRow>
+                                <TableHead>Shipment ID</TableHead>
+                                <TableHead>Bilty #</TableHead>
+                                <TableHead>Sender</TableHead>
+                                <TableHead>Receiver</TableHead>
+                                <TableHead>From</TableHead>
+                                <TableHead>To</TableHead>
+                                <TableHead>Vehicle</TableHead>
+                                <TableHead className='text-right'>Payment Status / Charges</TableHead> {/* MODIFIED HEADER */}
+                            </TableRow>
                         </TableHeader>
                         <TableBody>
-                        {shipments.map((shipment) => (
-                            <TableRow key={shipment.register_number}>
-                            <TableCell>{shipment.register_number}</TableCell>
-                            <TableCell>{shipment.bility_number}</TableCell>
-                            <TableCell>{shipment.sender.name}</TableCell>
-                            <TableCell>{shipment.receiver.name}</TableCell>
-                            <TableCell>{shipment.departureCity.name}</TableCell>
-                            <TableCell>{shipment.toCity?.name || '-'}</TableCell>
-                            <TableCell>{shipment.vehicle.vehicleNumber}</TableCell>
-                            <TableCell>{Number(shipment.total_charges).toFixed(2)}</TableCell>
-                            </TableRow>
-                        ))}
+                            {shipments.map((shipment) => (
+                                <TableRow key={shipment.register_number}>
+                                    <TableCell>{shipment.register_number}</TableCell>
+                                    <TableCell>{shipment.bility_number}</TableCell>
+                                    <TableCell>{shipment.sender.name}</TableCell>
+                                    <TableCell>{shipment.receiver.name}</TableCell>
+                                    <TableCell>{shipment.departureCity.name}</TableCell>
+                                    <TableCell>{shipment.toCity?.name || '-'}</TableCell>
+                                    <TableCell>{shipment.vehicle.vehicleNumber}</TableCell>
+                                    {/* MODIFIED CELL: Display Status or Charges */}
+                                    <TableCell className='text-right font-bold'>
+                                        {shipment.payment_status === 'ALREADY_PAID' && <span className='px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700'>PAID</span>}
+                                        {shipment.payment_status === 'FREE' && <span className='px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700'>FREE</span>}
+                                        {(shipment.payment_status === 'PENDING' || !shipment.payment_status) && <span className='font-bold text-green-700'>{formatCurrency(shipment.total_charges)}</span>}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
                         </TableBody>
                     </Table>
                 </div>
@@ -219,8 +240,8 @@ export default function ShipmentsReportPage() {
                         <div className='font-extrabold text-2xl text-blue-900'>{totals.totalShipments}</div>
                     </div>
                     <div>
-                        <div className='text-gray-600'>Total Charges Collected</div>
-                        <div className='font-extrabold text-2xl text-green-700'>Rs. {totals.totalCharges.toFixed(2)}</div>
+                        <div className='text-gray-600'>Total Charges (Due/Received)</div>
+                        <div className='font-extrabold text-2xl text-green-700'>{formatCurrency(totals.totalCharges)}</div>
                     </div>
                     <div>
                         <div className='text-gray-600'>Total Quantity Shipped</div>
@@ -238,5 +259,3 @@ export default function ShipmentsReportPage() {
     </div>
   );
 }
-
-// END OF FILE

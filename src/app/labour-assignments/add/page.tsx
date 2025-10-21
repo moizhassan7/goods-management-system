@@ -225,7 +225,7 @@ export default function AssignShipments() {
                                 )}
                             />
 
-                            <FormField
+                            {/* <FormField
                                 control={form.control}
                                 name='due_date'
                                 render={({ field }) => (
@@ -237,7 +237,7 @@ export default function AssignShipments() {
                                         <FormMessage />
                                     </FormItem>
                                 )}
-                            />
+                            /> */}
 
                             <FormField
                                 control={form.control}

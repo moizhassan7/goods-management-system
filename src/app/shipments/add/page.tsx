@@ -12,6 +12,7 @@ import { toast as sonnerToast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox'; // ADDED
 import {
     Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
@@ -89,17 +90,30 @@ const ShipmentFormSchema = z.object({
     walk_in_receiver_name: z.string().optional(),
     
     total_delivery_charges: z.coerce.number().optional().default(0),
-    total_amount: z.coerce.number().min(0.01, 'Total Amount must be greater than zero'),
+    total_amount: z.coerce.number().min(0, 'Total Amount must be greater than zero'),
+
+    // NEW PAYMENT STATUS FIELDS
+    is_already_paid: z.boolean().default(false),
+    is_free_of_cost: z.boolean().default(false),
+    
     remarks: z.string().max(255).optional(),
 }).superRefine((data, ctx) => {
-    // Note: The validation messages here remain English for client-side technical validation,
-    // but the UI labels/placeholders use the translated text.
+    // Validation for Walk-in
     if (data.sender_id === WALK_IN_CUSTOMER_ID && (!data.walk_in_sender_name || data.walk_in_sender_name.trim().length < 2)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Name is required for the Walk-in Sender.', path: ['walk_in_sender_name'] });
     }
     if (data.receiver_id === WALK_IN_CUSTOMER_ID && (!data.walk_in_receiver_name || data.walk_in_receiver_name.trim().length < 2)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Name is required for the Walk-in Receiver.', path: ['walk_in_receiver_name'] });
       }
+    
+    // NEW: Validation for payment status conflict
+    if (data.is_already_paid && data.is_free_of_cost) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Shipment cannot be both Already Paid and Free of Cost.',
+            path: ['is_free_of_cost'], // Path points to one of the conflicting fields
+        });
+    }
 });
 
 type ShipmentFormValues = z.infer<typeof ShipmentFormSchema>;
@@ -137,6 +151,8 @@ interface ShipmentData {
     walk_in_receiver_name?: string;
     created_at: string;
     goodsDetails?: { quantity: number; itemCatalog?: { item_description?: string } | null }[];
+    // NEW: Add field to ShipmentData for displaying status
+    payment_status?: string | null; 
 }
 
 const today = new Date().toISOString().substring(0, 10);
@@ -158,6 +174,9 @@ const generateDefaultValues = (): ShipmentFormValues => ({
     walk_in_receiver_name: '',
     total_delivery_charges: 0.00,
     total_amount: 0.00,
+    // NEW: Default payment status fields
+    is_already_paid: false,
+    is_free_of_cost: false,
     remarks: '',
 });
 
@@ -173,7 +192,7 @@ const findNameById = (data: DropdownData | null, listName: keyof DropdownData, i
 
 export default function AddShipment() {
     const { toast } = useToast();
-    const { t } = useTranslation(); // <-- Using the translation hook
+    const { t } = useTranslation(); 
     const [data, setData] = useState<DropdownData | null>(null);
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [shipments, setShipments] = useState<ShipmentData[]>([]);
@@ -210,6 +229,16 @@ export default function AddShipment() {
     const senderId = form.watch("sender_id");
     const receiverId = form.watch("receiver_id");
     const bilityDate = form.watch("bility_date");
+    const isAlreadyPaid = form.watch("is_already_paid"); // NEW
+    const isFreeOfCost = form.watch("is_free_of_cost"); // NEW
+    
+    // Determine the status string to send to the API/DB
+    const paymentStatusToSend = useMemo(() => {
+        if (isFreeOfCost) return 'FREE';
+        if (isAlreadyPaid) return 'ALREADY_PAID';
+        return 'PENDING'; // Default for normal, billable shipments
+    }, [isAlreadyPaid, isFreeOfCost]);
+
 
     // Fetch next registration number when bility_date changes
     useEffect(() => {
@@ -268,14 +297,20 @@ export default function AddShipment() {
                 vehicle_number_id: Number(values.vehicle_number_id),
                 sender_id: Number(values.sender_id),
                 receiver_id: Number(values.receiver_id),
+                
+                // NEW: Include the calculated payment status
+                payment_status: paymentStatusToSend,
+                
                 goods_details: values.goods_details.map(detail => ({
                     item_id: Number(detail.item_id),
                     quantity: Number(detail.quantity),
                 }))
             };
 
-            // Remove register_number from payload, let backend generate it
+            // Remove internal form fields not mapped to the DB
             delete payloadToSend.register_number;
+            delete payloadToSend.is_already_paid;
+            delete payloadToSend.is_free_of_cost;
 
             const response = await fetch('/api/shipments', {
                 method: 'POST',
@@ -291,17 +326,17 @@ export default function AddShipment() {
             const regNum = result.register_number;
 
             toast.success({ 
-                title: t('shipment_save_button'), // Use translation key for success message title
+                title: t('shipment_save_button'), 
                 description: `Registration #: ${regNum} | Bility No: ${values.bility_number} saved to database.`
             });
 
-            // Show the generated registration number in the form (read-only)
+            // Reset form
             form.reset({ ...generateDefaultValues(), register_number: regNum });
             fetchShipments();
 
         } catch (error: any) {
             console.error('Submission Error:', error);
-            toast.error({ title: t('shipment_saving_button'), description: error.message }); // Use translation key for error message title
+            toast.error({ title: t('shipment_saving_button'), description: error.message }); 
         }
     }
 
@@ -494,7 +529,7 @@ export default function AddShipment() {
                                         type='number' 
                                         placeholder={t('shipment_delivery_charges_placeholder')} 
                                         {...field} 
-                                        step='0.01' 
+                                        step='0' 
                                         min='0' 
                                         onChange={(e) => field.onChange(e.target.valueAsNumber)} 
                                         className='text-lg font-semibold text-blue-800 border-blue-300 focus:border-blue-500'
@@ -512,8 +547,8 @@ export default function AddShipment() {
                                         type='number' 
                                         placeholder={t('shipment_total_amount_placeholder')} 
                                         {...field} 
-                                        step='0.01' 
-                                        min='0.01' 
+                                        step='0' 
+                                        min='0' 
                                         onChange={(e) => field.onChange(e.target.valueAsNumber)} 
                                         className='text-lg font-semibold text-green-800 border-green-300 focus:border-green-500'
                                     />
@@ -521,6 +556,52 @@ export default function AddShipment() {
                                 <FormMessage />
                             </FormItem>
                         )} />
+                    </div>
+                    
+                    {/* NEW: Payment Status Checkboxes */}
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t'>
+                        <FormField
+                            control={form.control}
+                            name='is_already_paid'
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 bg-yellow-50">
+                                    <FormControl>
+                                        <Checkbox 
+                                            checked={field.value} 
+                                            onCheckedChange={field.onChange} 
+                                            disabled={isFreeOfCost} // Disable if Free is checked
+                                        />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel className="text-base font-semibold cursor-pointer">
+                                            Is Already Paid (Cash Received)
+                                        </FormLabel>
+                                        <FormMessage />
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name='is_free_of_cost'
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 bg-gray-100">
+                                    <FormControl>
+                                        <Checkbox 
+                                            checked={field.value} 
+                                            onCheckedChange={field.onChange} 
+                                            disabled={isAlreadyPaid} // Disable if Paid is checked
+                                        />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel className="text-base font-semibold cursor-pointer">
+                                            Is Free of Cost
+                                        </FormLabel>
+                                        <FormMessage />
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
                     </div>
 
                     {/* 8. Remarks */}
@@ -563,7 +644,7 @@ export default function AddShipment() {
                                     <TableHead>{t('shipment_table_destination')}</TableHead>
                                     <TableHead>{t('shipment_table_item_type')}</TableHead>
                                     <TableHead>{t('shipment_table_quantity')}</TableHead>
-                                    <TableHead className='text-right'>{t('shipment_table_total_amount')}</TableHead>
+                                    <TableHead className='text-right'>Payment Status</TableHead>{/* MODIFIED */}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -600,8 +681,13 @@ export default function AddShipment() {
                                                 : 'N/A'
                                             }
                                         </TableCell>
-                                        <TableCell className='text-right font-bold text-green-700'>
-                                            {formatCurrency(shipment.total_charges)}
+                                        <TableCell className='text-right font-bold'>
+                                            {/* MODIFIED: Display Payment Status */}
+                                            {shipment.payment_status === 'ALREADY_PAID' && <span className='text-green-600'>PAID</span>}
+                                            {shipment.payment_status === 'FREE' && <span className='text-blue-600'>FREE</span>}
+                                            {shipment.payment_status === 'PENDING' && <span className='text-red-600'>{formatCurrency(shipment.total_charges)}</span>}
+                                            {/* Fallback if no status, default to amount */}
+                                            {!shipment.payment_status && formatCurrency(shipment.total_charges)} 
                                         </TableCell>
                                     </TableRow>
                                 ))}

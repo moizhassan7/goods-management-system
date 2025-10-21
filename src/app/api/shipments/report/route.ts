@@ -1,6 +1,11 @@
+// src/app/api/shipments/report/route.ts
+
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+
+// NOTE: This prefix MUST match the one used in src/app/api/shipments/route.ts
+const PAYMENT_STATUS_PREFIX = "PAYMENT_STATUS:"; 
 
 /**
  * Handles GET requests to retrieve a filtered list of Shipment records for reporting.
@@ -62,15 +67,27 @@ export async function GET(request: NextRequest) {
         orderBy: { bility_date: 'desc' },
     });
     
-    // Convert Decimal types to number and Date objects to ISO strings for the JSON response
+    // Helper function to extract payment status from remarks
+    const extractPaymentStatus = (remarks: string | null): string | null => {
+        if (remarks && remarks.startsWith(PAYMENT_STATUS_PREFIX)) {
+            // Extracts ALREADY_PAID or FREE from "PAYMENT_STATUS:STATUS_HERE other notes..."
+            return remarks.split(' ')[0].replace(PAYMENT_STATUS_PREFIX, '');
+        }
+        return 'PENDING'; // Default status if no special tag found
+    };
+
+    // Convert Decimal types to number, Date objects to ISO strings, and add payment status
     const formattedShipments = shipments.map(s => ({
         ...s,
         // Convert Decimal to Number for frontend consumption
         total_charges: Number(s.total_charges),
         total_delivery_charges: Number(s.total_delivery_charges),
         
-        // Convert Date objects to ISO string
+        // Convert Date object to ISO string
         bility_date: s.bility_date.toISOString(),
+        
+        // NEW: Add the extracted payment status
+        payment_status: extractPaymentStatus(s.remarks),
         
         // Ensure goodsDetails are also formatted correctly (if they contain Decimals)
         goodsDetails: s.goodsDetails.map(gd => ({

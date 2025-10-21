@@ -5,7 +5,7 @@ import { Prisma } from '@prisma/client';
 // Type definition for the expected request body
 interface PartyRequest {
   name: string;
-  contactInfo: string;
+  contactInfo?: string;
   openingBalance: string; // Received as a string from the client form
 }
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     const cleanContactInfo = contactInfo?.trim();
 
     // 1. Basic Validation
-    if (!cleanName || cleanName.length < 2 || !cleanContactInfo || cleanContactInfo.length < 5) {
+    if (!cleanName || cleanName.length < 2 ) {
       return NextResponse.json(
         { message: 'Name and Contact Info must be valid strings.' },
         { status: 400 }

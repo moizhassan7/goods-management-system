@@ -18,8 +18,8 @@ interface DeliveryRequestPayload {
     // Receiver details
     receiver_name: string;
     receiver_phone: string;
-    receiver_cnic: string;
-    receiver_address: string;
+    receiver_cnic?: string;
+    receiver_address?: string;
     
     delivery_notes?: string;
 }
@@ -76,8 +76,8 @@ export async function POST(request: Request) {
                 
                 receiver_name: payload.receiver_name,
                 receiver_phone: payload.receiver_phone,
-                receiver_cnic: payload.receiver_cnic,
-                receiver_address: payload.receiver_address,
+                receiver_cnic: payload.receiver_cnic || "",
+                receiver_address: payload.receiver_address || "",
                 
                 delivery_notes: payload.delivery_notes,
                 delivery_status: 'DELIVERED'

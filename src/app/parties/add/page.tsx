@@ -23,10 +23,8 @@ const formSchema = z.object({
   name: z.string().min(3, {
     message: 'Party name must be at least 3 characters.',
   }).max(100),
-  
-  contactInfo: z.string().min(10, {
-    message: 'Contact Info (e.g., phone or address) is required.',
-  }).max(100),
+  // Make the contact info optional but validate if provided
+  contactInfo: z.string().max(200).optional(),
   
   // Validate that the balance is a string that looks like a decimal number (positive or negative)
   openingBalance: z.string().regex(/^-?\d+(\.\d{1,2})?$/, {

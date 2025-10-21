@@ -1,3 +1,5 @@
+// src/app/trips/add/page.tsx
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -30,12 +32,12 @@ const TripLogFormSchema = z.object({
   vehicle_id: z.number().min(1, 'Vehicle is required'),
   driver_name: z.string().min(1, 'Driver name is required'),
   driver_mobile: z.string().min(1, 'Driver mobile is required'),
-  station_name: z.string().min(1, 'Station name is required'),
+  // MODIFIED: Changed station_name to forwarding_agency_id
+  forwarding_agency_id: z.number().int().min(1, 'Agency is required'),
   city_id: z.number().int().min(1, 'City is required'),
   date: z.string().min(1, 'Date is required'),
-  arrival_time: z.string().min(1, 'Arrival time is required'),
-  departure_time: z.string().min(1, 'Departure time is required'),
   total_fare_collected: z.number().min(0),
+  // ... (omitted cut fields)
   delivery_cut_percentage: z.number().min(0).max(100),
   delivery_cut: z.number().min(0),
   cuts: z.number().min(0).optional().default(0),
@@ -57,7 +59,7 @@ interface DropdownItem {
 
 interface DropdownData {
   cities: DropdownItem[];
-  agencies: DropdownItem[];
+  agencies: DropdownItem[]; // Added for use in the new field
   vehicles: DropdownItem[];
   parties: DropdownItem[];
   items: DropdownItem[];
@@ -78,20 +80,14 @@ interface ShipmentBilty {
 
 const today = new Date().toISOString().substring(0, 10);
 
-// Percentage options from 4% to 10.5%
-const percentageOptions = [
-  4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 10.5
-];
-
 const generateDefaultValues = (): TripLogFormValues => ({
   vehicle_id: 0,
   driver_name: '',
   driver_mobile: '',
-  station_name: '',
+  // MODIFIED: Changed station_name to forwarding_agency_id
+  forwarding_agency_id: 0,
   city_id: 0,
   date: today,
-  arrival_time: '',
-  departure_time: '',
   total_fare_collected: 0.00,
   delivery_cut_percentage: 5.0,
   delivery_cut: 0.00,
@@ -111,6 +107,11 @@ const findNameById = (data: DropdownData | null, listName: keyof DropdownData, i
   if (listName === 'items') return item?.item_description || 'Unknown Item';
   return item?.name || 'Unknown';
 };
+
+// Percentage options from 4% to 10.5%
+const percentageOptions = [
+  4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 10.5
+];
 
 export default function AddTrip() {
   const [data, setData] = useState<DropdownData | null>(null);
@@ -237,10 +238,18 @@ export default function AddTrip() {
 
   async function handleDirectSave(values: TripLogFormValues) {
     try {
+      // NOTE: We rely on the API to look up the Agency Name from forwarding_agency_id
+      const payloadToSend = {
+          ...values,
+          // Placeholder values for non-input time fields
+          arrival_time: '00:00', 
+          departure_time: '00:00',
+      }
+      
       const response = await fetch('/api/trips', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
+        body: JSON.stringify(payloadToSend),
       });
 
       if (!response.ok) {
@@ -320,19 +329,32 @@ export default function AddTrip() {
                 <FormMessage />
               </FormItem>
             )} />
-            <FormField control={form.control} name='station_name' render={({ field }) => (
+            {/* MODIFIED: Replaced original station_name input with forwarding_agency_id dropdown */}
+            <FormField control={form.control} name='forwarding_agency_id' render={({ field }) => (
               <FormItem>
-                <FormLabel>Station Name</FormLabel>
-                <FormControl>
-                  <Input placeholder='Station Name' {...field} />
-                </FormControl>
+                <FormLabel>Forwarding Agency (Station)</FormLabel>
+                <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value ? String(field.value) : ''}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Agency" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {data?.agencies?.map((agency) => (
+                      <SelectItem key={agency.id} value={String(agency.id)}>
+                        {agency.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )} />
           </div>
 
           {/* Location and Time */}
-          <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
+          {/* Fields adjusted to only include City and Date */}
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <FormField control={form.control} name='city_id' render={({ field }) => (
               <FormItem>
                 <FormLabel>City</FormLabel>
@@ -358,24 +380,6 @@ export default function AddTrip() {
                 <FormLabel>Date *</FormLabel>
                 <FormControl>
                   <Input type='date' {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name='arrival_time' render={({ field }) => (
-              <FormItem>
-                <FormLabel>Arrival Time</FormLabel>
-                <FormControl>
-                  <Input type='time' {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name='departure_time' render={({ field }) => (
-              <FormItem>
-                <FormLabel>Departure Time</FormLabel>
-                <FormControl>
-                  <Input type='time' {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -438,7 +442,7 @@ export default function AddTrip() {
               <FormItem>
                 <FormLabel>Total Fare Collected</FormLabel>
                 <FormControl>
-                  <Input type='number' {...field} readOnly className="bg-gray-100 font-bold" />
+                  <Input type='number' {...field} value={field.value.toFixed(0)} readOnly className="bg-gray-100 font-bold" />
                 </FormControl>
               </FormItem>
             )} />
@@ -468,7 +472,7 @@ export default function AddTrip() {
               <FormItem>
                 <FormLabel>Delivery Cut Amount</FormLabel>
                 <FormControl>
-                  <Input type='number' {...field} readOnly className="bg-blue-50 font-semibold" />
+                  <Input type='number' {...field} value={field.value.toFixed(0)} readOnly className="bg-blue-50 font-semibold" />
                 </FormControl>
               </FormItem>
             )} />
@@ -523,7 +527,7 @@ export default function AddTrip() {
               <FormItem>
                 <FormLabel className="text-lg font-bold">Final Payable Amount</FormLabel>
                 <FormControl>
-                  <Input type='number' {...field} readOnly className="bg-green-100 text-green-800 text-xl font-bold" />
+                  <Input type='number' {...field} value={field.value.toFixed(0)} readOnly className="bg-green-100 text-green-800 text-xl font-bold" />
                 </FormControl>
               </FormItem>
             )} />

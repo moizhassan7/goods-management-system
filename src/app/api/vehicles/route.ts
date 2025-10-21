@@ -21,9 +21,9 @@ export async function POST(request: Request) {
     // Clean and validate input
     const cleanVehicleNumber = vehicleNumber?.trim().toUpperCase(); // Common practice to store vehicle numbers in uppercase
 
-    if (!cleanVehicleNumber || typeof cleanVehicleNumber !== 'string' || cleanVehicleNumber.length < 5) {
+    if (!cleanVehicleNumber || typeof cleanVehicleNumber !== 'string' || cleanVehicleNumber.length < 2) {
       return NextResponse.json(
-        { message: 'Vehicle number must be a valid string of at least 5 characters.' },
+        { message: 'Vehicle number must be a valid string of at least 2 characters.' },
         { status: 400 }
       );
     }

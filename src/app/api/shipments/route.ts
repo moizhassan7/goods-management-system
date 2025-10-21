@@ -1,3 +1,5 @@
+// src/app/api/shipments/route.ts
+
 import { NextResponse } from 'next/server';
 
 // FIX: Use the correctly imported Prisma client 'prisma'
@@ -29,10 +31,16 @@ interface ShipmentRequestPayload {
 
     remarks?: string;
     goods_details: GoodsDetailPayload[];
+    
+    // NEW: Field to store the payment status
+    payment_status?: 'PENDING' | 'ALREADY_PAID' | 'FREE';
 }
 
+// Prefix to embed payment status in the remarks field (simulating a DB field)
+const PAYMENT_STATUS_PREFIX = "PAYMENT_STATUS:"; 
+
 /**
- * Handles POST requests to register a new Shipment, its Goods_Details, and associated Transactions.
+ * Handles POST requests to register a new Shipment.
  * Endpoint: /api/shipments
  */
 export async function POST(request: Request) {
@@ -45,14 +53,12 @@ export async function POST(request: Request) {
         }
 
         // --- Auto-generate register_number ---
-        // Format: YYYYMM-XXX (XXX = count for the month, padded)
         const bilityDate = new Date(payload.bility_date);
         const year = bilityDate.getFullYear();
         const month = (bilityDate.getMonth() + 1).toString().padStart(2, '0');
         const monthStart = new Date(year, bilityDate.getMonth(), 1);
         const monthEnd = new Date(year, bilityDate.getMonth() + 1, 0, 23, 59, 59, 999);
 
-        // Count existing shipments for this month
         const countForMonth = await prisma.shipment.count({
             where: {
                 bility_date: {
@@ -67,17 +73,19 @@ export async function POST(request: Request) {
         const finalBillAmount = new Prisma.Decimal(payload.total_amount);
         const totalDeliveryCharges = new Prisma.Decimal(payload.total_delivery_charges);
 
+        // Prepare remarks field to include payment status for persistence
+        let finalRemarks = payload.remarks || '';
+        if (payload.payment_status) {
+            finalRemarks = `${PAYMENT_STATUS_PREFIX}${payload.payment_status} ${finalRemarks}`;
+        }
+
+
         // Convert goods details charges
         const goodsDetailsForCreate = payload.goods_details.map(detail => ({
             item_name_id: detail.item_id, // Map item_id from form to item_name_id in database
             quantity: detail.quantity,
-            // The 'charges' field still exists in your schema.prisma
             charges: new Prisma.Decimal(0),
-
-            // Set delivery_charges to 0 since we're using total_delivery_charges now
             delivery_charges: new Prisma.Decimal(0),
-
-            // DO NOT include deliverability_charges or extra_charges here.
         }));
 
         // 2. Begin Atomic Transaction
@@ -98,10 +106,9 @@ export async function POST(request: Request) {
                     walk_in_receiver_name: payload.walk_in_receiver_name,
 
                     total_charges: finalBillAmount,
-                    // This field MUST be in your schema.prisma
                     total_delivery_charges: totalDeliveryCharges,
 
-                    remarks: payload.remarks,
+                    remarks: finalRemarks, // Store status in remarks
 
                     goodsDetails: {
                         createMany: {
@@ -112,17 +119,20 @@ export async function POST(request: Request) {
             }),
 
             // B) Create the Transaction record (Credit: Sender pays the company)
-            prisma.transaction.create({
-                data: {
-                    transaction_date: new Date(),
-                    party_type: 'SENDER',
-                    party_ref_id: payload.sender_id,
-                    shipment_id: register_number,
-                    credit_amount: finalBillAmount,
-                    debit_amount: new Prisma.Decimal(0),
-                    description: `Shipment Bill for Bility #${payload.bility_number}. Sender: ${payload.walk_in_sender_name || `Party ID: ${payload.sender_id}`}.`,
-                },
-            }),
+            // If ALREADY_PAID or FREE, skip transaction creation as no payment is logged now.
+            ...(payload.payment_status !== 'ALREADY_PAID' && payload.payment_status !== 'FREE' ? [
+                prisma.transaction.create({
+                    data: {
+                        transaction_date: new Date(),
+                        party_type: 'SENDER',
+                        party_ref_id: payload.sender_id,
+                        shipment_id: register_number,
+                        credit_amount: finalBillAmount,
+                        debit_amount: new Prisma.Decimal(0),
+                        description: `Shipment Bill for Bility #${payload.bility_number}. Sender: ${payload.walk_in_sender_name || `Party ID: ${payload.sender_id}`}.`,
+                    },
+                }),
+            ] : []),
         ]);
 
         // 3. Return success
@@ -208,7 +218,20 @@ export async function GET(request: Request) {
             });
         }
 
-        return NextResponse.json(shipments, { status: 200 });
+        // Helper function to extract payment status from remarks
+        const extractPaymentStatus = (remarks: string | null): string | null => {
+            if (remarks && remarks.startsWith(PAYMENT_STATUS_PREFIX)) {
+                return remarks.split(' ')[0].replace(PAYMENT_STATUS_PREFIX, '');
+            }
+            return 'PENDING';
+        };
+
+
+        return NextResponse.json(shipments.map(s => ({
+            ...s,
+            // Attach the extracted payment status
+            payment_status: extractPaymentStatus(s.remarks),
+        })), { status: 200 });
     } catch (error) {
         console.error('Error fetching shipments:', error);
         return NextResponse.json(
