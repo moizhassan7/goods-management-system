@@ -162,6 +162,21 @@ enum ReturnStatus {
   COMPLETED
   CANCELLED
 }
+enum Role {
+  OPERATOR
+  ADMIN
+  SUPERADMIN
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String   // Store HASHED password here
+  role      Role     @default(OPERATOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+// [NEW CODE END]
 
 enum ApprovalStatus {
   PENDING

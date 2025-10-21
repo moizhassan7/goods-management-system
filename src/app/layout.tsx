@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+// [NEW IMPORTS]
+import { AuthProvider } from '@/contexts/AuthContext';
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import LayoutContent from '@/components/layout/LayoutContent';
-// FIX: Ensure this import points to the renamed .tsx file
 import { I18nProvider } from '@/lib/i18n'; 
 
 const geistSans = Geist({
@@ -28,19 +29,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // We keep lang="en" and dir="ltr" here. We will create a small client component
-    // to dynamically set these attributes later if necessary, but this allows the provider to load.
     <html lang="en" dir="ltr"> 
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning={true}
       >
-        <LoadingProvider>
-          {/* Wrap the content with I18nProvider */}
-          <I18nProvider>
-            <LayoutContent>{children}</LayoutContent>
-          </I18nProvider>
-        </LoadingProvider>
+        {/* WRAP WITH AUTH PROVIDER */}
+        <AuthProvider> 
+            <LoadingProvider>
+                <I18nProvider>
+                    <LayoutContent>{children}</LayoutContent>
+                </I18nProvider>
+            </LoadingProvider>
+        </AuthProvider>
       </body>
     </html>
   );

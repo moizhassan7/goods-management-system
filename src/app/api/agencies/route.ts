@@ -1,8 +1,7 @@
-// app/api/agencies/route.ts
-
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 import { Prisma } from '@prisma/client'; 
+import { authenticate, UserRole, Permissions } from '@/lib/auth';
 
 // Type definition for the expected request body
 interface AgencyRequest {
@@ -15,6 +14,21 @@ interface AgencyRequest {
  */
 export async function POST(request: Request) {
   try {
+    // --- RBAC CHECK: Requires ADMIN or SUPERADMIN ---
+    const authResult = await authenticate(request, Permissions.MASTER_DATA_WRITE);
+    
+    // Check if unauthorized and ensure a response exists before returning
+    if (!authResult.authorized) {
+      console.log('Unauthorized attempt to add agency.');
+      // Ensure we have a valid response object to return
+      if (authResult.response) {
+        return authResult.response;
+      }
+      // Fallback for an unexpected null response from authenticate (prevents type error)
+      return NextResponse.json({ message: 'Forbidden' }, { status: 403 }); 
+    }
+    // --- END RBAC CHECK ---
+
     const { name }: AgencyRequest = await request.json(); 
     
     // Clean and validate input
@@ -27,7 +41,6 @@ export async function POST(request: Request) {
       );
     }
     
-    // The error is fixed here by re-generating the Prisma client
     const newAgency = await prisma.agency.create({ 
       data: { name: agencyName },
     });
@@ -54,11 +67,27 @@ export async function POST(request: Request) {
   }
 }
 
-/** Handles GET requests to fetch all Agency records.
+/** * Handles GET requests to fetch all Agency records.
  * Endpoint: /api/agencies
+ * * NOTE: The 'request: Request' parameter is required for middleware like 'authenticate' 
+ * to function correctly, even if the request isn't directly used for data.
  */
-export async function GET() {
+export async function GET(request: Request) { // <-- FIX: Added 'request: Request' argument
   try {
+    // --- RBAC CHECK: Requires OPERATOR, ADMIN or SUPERADMIN for viewing ---
+    const authResult = await authenticate(request, Permissions.REPORTS_VIEW);
+    
+    // Check if unauthorized and ensure a response exists before returning
+    if (!authResult.authorized) {
+        // Return 403. Ensure we have a valid response object to return
+        if (authResult.response) {
+            return authResult.response; 
+        }
+        // Fallback for an unexpected null response from authenticate (prevents type error)
+        return NextResponse.json({ message: 'Forbidden' }, { status: 403 }); 
+    }
+    // --- END RBAC CHECK ---
+    
     const agencies = await prisma.agency.findMany();
     return NextResponse.json(agencies, { status: 200 });
   } catch (error) {
