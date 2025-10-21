@@ -1,9 +1,340 @@
+// generator client {
+//   provider = "prisma-client-js"
+// }
+
+// datasource db {
+//   provider = "mysql"
+//   url      = env("DATABASE_URL")
+// }
+
+// // -------------------------------------------------------------------
+// // --- SUPPORTING MODELS ---
+// // -------------------------------------------------------------------
+
+// model City {
+//   id                 Int        @id @default(autoincrement())
+//   name               String     @unique @db.VarChar(50)
+//   createdAt          DateTime   @default(now())
+//   updatedAt          DateTime   @updatedAt
+//   departingShipments Shipment[] @relation("DepartureCity")
+//   arrivingShipments  Shipment[] @relation("ArrivalCity")
+// }
+
+// model Agency {
+//   id        Int        @id @default(autoincrement())
+//   name      String     @unique @db.VarChar(100)
+//   shipments Shipment[]
+// }
+
+// model Vehicle {
+//   id            Int        @id @default(autoincrement())
+//   vehicleNumber String     @unique @db.VarChar(50)
+//   shipments     Shipment[]
+//   tripLogs      TripLog[]
+//   vehicleTransactions VehicleTransaction[]
+// }
+
+// model Party {
+//   id              Int        @id @default(autoincrement())
+//   name            String     @db.VarChar(100)
+//   contactInfo     String     @db.VarChar(100)
+//   opening_balance Decimal    @db.Decimal(10, 2)
+//   sentShipments   Shipment[] @relation("SenderParty")
+//   receivedShipments Shipment[] @relation("ReceiverParty")
+// }
+
+// model ItemCatalog {
+//   id               Int            @id @default(autoincrement())
+//   item_description String         @unique @db.VarChar(100)
+//   createdAt        DateTime       @default(now()) @db.DateTime(6)
+//   updatedAt        DateTime       @updatedAt @db.DateTime(6)
+//   goodsDetails     GoodsDetails[]
+// }
+
+// // -------------------------------------------------------------------
+// // --- CORE MODELS ---
+// // -------------------------------------------------------------------
+
+
+
+// model GoodsDetails {
+//   good_detail_id Int       @id @default(autoincrement())
+//   shipment_id    String    @db.VarChar(50)
+//   shipment       Shipment  @relation(fields: [shipment_id], references: [register_number], onDelete: Cascade)
+//   item_name_id   Int
+//   itemCatalog    ItemCatalog @relation(fields: [item_name_id], references: [id])
+//   quantity       Int
+//   charges        Decimal   @default(0.00) @db.Decimal(10, 2)
+//   delivery_charges Decimal @default(0.00) @db.Decimal(10, 2)
+//   returnItems    ReturnItem[]
+//   createdAt      DateTime  @default(now()) @db.DateTime(6)
+//   updatedAt      DateTime  @updatedAt @db.DateTime(6)
+
+//   @@map("Goods_Details")
+// }
+
+// model Transaction {
+//   transaction_id   Int       @id @default(autoincrement())
+//   transaction_date DateTime  @default(now()) @db.DateTime(6)
+//   party_type       String    @db.VarChar(20)
+//   party_ref_id     Int
+//   shipment_id      String    @db.VarChar(50)
+//   shipment         Shipment  @relation(fields: [shipment_id], references: [register_number])
+//   credit_amount    Decimal   @db.Decimal(10, 2)
+//   debit_amount     Decimal   @db.Decimal(10, 2)
+//   description      String?   @db.VarChar(255)
+//   createdAt        DateTime  @default(now()) @db.DateTime(6)
+//   updatedAt        DateTime  @updatedAt @db.DateTime(6)
+
+//   @@map("Transactions")
+// }
+
+// model Shipment {
+//   register_number    String @id @db.VarChar(50)
+//   bility_number      String @unique @db.VarChar(50)
+//   bility_date        DateTime @db.Date
+//   departure_city_id  Int
+//   departureCity      City   @relation("DepartureCity", fields: [departure_city_id], references: [id])
+//   to_city_id         Int?
+//   toCity             City?  @relation("ArrivalCity", fields: [to_city_id], references: [id])
+//   forwarding_agency_id Int
+//   forwardingAgency   Agency @relation(fields: [forwarding_agency_id], references: [id])
+//   vehicle_number_id  Int
+//   vehicle            Vehicle @relation(fields: [vehicle_number_id], references: [id])
+//   sender_id          Int
+//   sender             Party  @relation("SenderParty", fields: [sender_id], references: [id])
+//   receiver_id        Int
+//   receiver           Party  @relation("ReceiverParty", fields: [receiver_id], references: [id])
+//   walk_in_sender_name   String? @db.VarChar(100)
+//   walk_in_receiver_name String? @db.VarChar(100)
+//   total_charges        Decimal @db.Decimal(10, 2)
+//   delivery_date        DateTime? @db.Date
+//   remarks              String? @db.Text
+//   total_delivery_charges Decimal @default(0.00) @db.Decimal(10, 2)
+//   goodsDetails       GoodsDetails[]
+//   transactions       Transaction[]
+//   deliveries         Delivery[]
+//   returns            ReturnShipment[]
+//   vehicleTransactions VehicleTransaction[]
+//   createdAt          DateTime @default(now()) @db.DateTime(6)
+//   updatedAt          DateTime @updatedAt @db.DateTime(6)
+//   labourAssignments  LabourAssignment[]
+// }
+
+// // -------------------------------------------------------------------
+// // --- RETURNS/REVERSE LOGISTICS MODELS ---
+// // -------------------------------------------------------------------
+
+// model ReturnShipment {
+//   id                  Int      @id @default(autoincrement())
+//   original_shipment_id String
+//   originalShipment    Shipment @relation(fields: [original_shipment_id], references: [register_number], onDelete: Cascade)
+//   return_date         DateTime @default(now())
+//   reason              String   @db.VarChar(255)
+//   status             ReturnStatus @default(PENDING)
+//   action_taken        String?  @db.VarChar(255)
+//   resolution_date     DateTime?
+//   comments            String?  @db.Text
+//   returnItems         ReturnItem[]
+//   createdAt          DateTime @default(now()) @db.DateTime(6)
+//   updatedAt          DateTime @updatedAt @db.DateTime(6)
+
+//   @@map("Return_Shipment")
+// }
+
+// model ReturnItem {
+//   id                Int           @id @default(autoincrement())
+//   return_shipment_id Int
+//   returnShipment    ReturnShipment @relation(fields: [return_shipment_id], references: [id], onDelete: Cascade)
+//   goods_detail_id   Int
+//   goodsDetail       GoodsDetails   @relation(fields: [goods_detail_id], references: [good_detail_id], onDelete: Cascade)
+//   quantity_returned Int
+//   condition         String        @db.VarChar(50)
+//   createdAt         DateTime      @default(now()) @db.DateTime(6)
+//   updatedAt         DateTime      @updatedAt @db.DateTime(6)
+
+//   @@map("Return_Items")
+// }
+
+// enum ReturnStatus {
+//   PENDING
+//   IN_TRANSIT
+//   COMPLETED
+//   CANCELLED
+// }
+// enum Role {
+//   OPERATOR
+//   ADMIN
+//   SUPERADMIN
+// }
+
+// model User {
+//   id        Int      @id @default(autoincrement())
+//   username  String   @unique
+//   password  String   // Store HASHED password here
+//   role      Role     @default(OPERATOR)
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+// }
+// // [NEW CODE END]
+
+// enum ApprovalStatus {
+//   PENDING
+//   APPROVED
+//   REJECTED
+//   APPROVED_BY_ADMIN
+// }
+
+// // -------------------------------------------------------------------
+// // --- VEHICLE TRIP / FINANCIAL LOG MODELS ---
+// // -------------------------------------------------------------------
+
+// model TripLog {
+//   id                   Int      @id @default(autoincrement())
+//   vehicle_id           Int
+//   vehicle              Vehicle  @relation(fields: [vehicle_id], references: [id])
+//   driver_name          String   @db.VarChar(100)
+//   driver_mobile        String   @db.VarChar(20)
+//   station_name         String   @db.VarChar(100)
+//   city                 String   @db.VarChar(50)
+//   date                 DateTime @db.Date
+//   arrival_time         String   @db.VarChar(10)
+//   departure_time       String   @db.VarChar(10)
+//   total_fare_collected Decimal  @db.Decimal(10, 2)
+//   delivery_cut         Decimal  @db.Decimal(10, 2)
+//   commission           Decimal  @db.Decimal(10, 2)
+//   arrears              Decimal  @db.Decimal(10, 2)
+//   cuts                 Decimal  @default(0.00) @db.Decimal(10, 2)
+//   munsihna_reward      Decimal  @default(0.00) @db.Decimal(10, 2)
+//   distant_charges      Decimal  @default(0.00) @db.Decimal(10, 2)
+//   accountant_charges   Decimal  @default(0.00) @db.Decimal(10, 2)
+//   received_amount      Decimal  @db.Decimal(10, 2)
+//   fare_is_paid         Boolean  @default(false)
+//   note                 String?  @db.Text
+//   shipmentLogs         TripShipmentLog[]
+//   vehicleTransactions  VehicleTransaction[]
+//   createdAt            DateTime @default(now()) @db.DateTime(6)
+//   updatedAt            DateTime @updatedAt @db.DateTime(6)
+//   delivery_cut_percentage Decimal @default(0.00) @db.Decimal(5, 2)
+
+//   @@map("Trip_Log")
+// }
+
+// model TripShipmentLog {
+//   id               Int      @id @default(autoincrement())
+//   trip_log_id      Int
+//   tripLog          TripLog  @relation(fields: [trip_log_id], references: [id])
+//   bilty_number     String   @db.VarChar(50)
+//   serial_number    Int
+//   receiver_name    String   @db.VarChar(100)
+//   item_details     String   @db.VarChar(255)
+//   quantity         Int
+//   delivery_charges Decimal  @db.Decimal(10, 2)
+//   createdAt        DateTime @default(now()) @db.DateTime(6)
+
+//   @@unique([trip_log_id, bilty_number])
+//   @@map("Trip_Shipment_Log")
+// }
+
+// // -------------------------------------------------------------------
+// // --- DELIVERY MODEL ---
+// // -------------------------------------------------------------------
+
+// model Delivery {
+//   delivery_id        Int       @id @default(autoincrement())
+//   shipment_id        String    @db.VarChar(50)
+//   shipment           Shipment  @relation(fields: [shipment_id], references: [register_number])
+//   delivery_date      DateTime  @db.Date
+//   delivery_time      DateTime? @db.Time(0)
+//   station_expense    Decimal   @default(0.00) @db.Decimal(10, 2)
+//   bility_expense     Decimal   @default(0.00) @db.Decimal(10, 2)
+//   station_labour     Decimal   @default(0.00) @db.Decimal(10, 2)
+//   cart_labour        Decimal   @default(0.00) @db.Decimal(10, 2)
+//   total_expenses     Decimal   @default(0.00) @db.Decimal(10, 2)
+//   receiver_name      String    @db.VarChar(100)
+//   receiver_phone     String    @db.VarChar(20)
+//   receiver_cnic      String    @db.VarChar(15)
+//   receiver_address   String    @db.Text
+//   delivery_notes     String?   @db.Text
+//   delivery_status    String    @default("DELIVERED") @db.VarChar(20)
+//   approval_status    ApprovalStatus @default(PENDING)
+//   approved_by        String?   @db.VarChar(100)
+//   approved_at        DateTime?
+//   createdAt          DateTime  @default(now()) @db.DateTime(6)
+//   updatedAt          DateTime  @updatedAt @db.DateTime(6)
+
+//   @@map("Delivery")
+// }
+
+// // -------------------------------------------------------------------
+// // --- VEHICLE TRANSACTION MODEL ---
+// // -------------------------------------------------------------------
+
+// model VehicleTransaction {
+//   id               Int       @id @default(autoincrement())
+//   vehicle_id       Int
+//   vehicle          Vehicle   @relation(fields: [vehicle_id], references: [id])
+//   shipment_id      String?   @db.VarChar(50)
+//   shipment         Shipment? @relation(fields: [shipment_id], references: [register_number])
+//   trip_id          Int?
+//   trip             TripLog?  @relation(fields: [trip_id], references: [id])
+//   transaction_date DateTime  @default(now()) @db.DateTime(6)
+//   credit_amount    Decimal   @db.Decimal(10, 2)
+//   debit_amount     Decimal   @db.Decimal(10, 2)
+//   description      String?   @db.VarChar(255)
+//   createdAt        DateTime  @default(now()) @db.DateTime(6)
+//   updatedAt        DateTime  @updatedAt @db.DateTime(6)
+
+//   @@map("Vehicle_Transactions")
+// }
+
+// // Labour Person Model
+// model LabourPerson {
+//   id           Int                @id @default(autoincrement())
+//   name         String             @db.VarChar(100)
+//   contact_info String             @db.VarChar(100)
+//   assignments  LabourAssignment[]
+//   createdAt    DateTime           @default(now()) @db.DateTime(6)
+//   updatedAt    DateTime           @updatedAt @db.DateTime(6)
+
+//   @@map("Labour_Person")
+// }
+
+// // Labour Assignment Model
+// model LabourAssignment {
+//   id               Int                   @id @default(autoincrement())
+//   labour_person_id Int
+//   labourPerson     LabourPerson          @relation(fields: [labour_person_id], references: [id])
+//   shipment_id      String                @db.VarChar(50)
+//   shipment         Shipment              @relation(fields: [shipment_id], references: [register_number])
+//   assigned_date    DateTime              @default(now()) @db.DateTime(6)
+//   due_date         DateTime?             @db.Date
+//   status           LabourAssignmentStatus @default(ASSIGNED)
+//   delivered_date   DateTime?             @db.DateTime(6)
+//   collected_amount Decimal?              @db.Decimal(10, 2)
+//   settled_date     DateTime?             @db.DateTime(6)
+//   notes            String?               @db.Text
+//   createdAt        DateTime              @default(now()) @db.DateTime(6)
+//   updatedAt        DateTime              @updatedAt @db.DateTime(6)
+
+//   @@map("Labour_Assignment")
+// }
+
+// // Labour Assignment Status Enum
+// enum LabourAssignmentStatus {
+//   ASSIGNED
+//   DELIVERED
+//   COLLECTED
+//   SETTLED
+// }
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
+  // Ensure your .env file has DATABASE_URL set to your Neon Postgres connection string
   url      = env("DATABASE_URL")
 }
 
@@ -12,10 +343,10 @@ datasource db {
 // -------------------------------------------------------------------
 
 model City {
-  id                 Int        @id @default(autoincrement())
-  name               String     @unique @db.VarChar(50)
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  id                Int      @id @default(autoincrement())
+  name              String   @unique @db.VarChar(50)
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
   departingShipments Shipment[] @relation("DepartureCity")
   arrivingShipments  Shipment[] @relation("ArrivalCity")
 }
@@ -27,10 +358,10 @@ model Agency {
 }
 
 model Vehicle {
-  id            Int        @id @default(autoincrement())
-  vehicleNumber String     @unique @db.VarChar(50)
-  shipments     Shipment[]
-  tripLogs      TripLog[]
+  id                Int                  @id @default(autoincrement())
+  vehicleNumber     String               @unique @db.VarChar(50)
+  shipments         Shipment[]
+  tripLogs          TripLog[]
   vehicleTransactions VehicleTransaction[]
 }
 
@@ -46,8 +377,8 @@ model Party {
 model ItemCatalog {
   id               Int            @id @default(autoincrement())
   item_description String         @unique @db.VarChar(100)
-  createdAt        DateTime       @default(now()) @db.DateTime(6)
-  updatedAt        DateTime       @updatedAt @db.DateTime(6)
+  createdAt        DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime       @updatedAt @db.Timestamptz(6)
   goodsDetails     GoodsDetails[]
 }
 
@@ -55,70 +386,68 @@ model ItemCatalog {
 // --- CORE MODELS ---
 // -------------------------------------------------------------------
 
-
-
 model GoodsDetails {
-  good_detail_id Int       @id @default(autoincrement())
-  shipment_id    String    @db.VarChar(50)
-  shipment       Shipment  @relation(fields: [shipment_id], references: [register_number], onDelete: Cascade)
-  item_name_id   Int
-  itemCatalog    ItemCatalog @relation(fields: [item_name_id], references: [id])
-  quantity       Int
-  charges        Decimal   @default(0.00) @db.Decimal(10, 2)
-  delivery_charges Decimal @default(0.00) @db.Decimal(10, 2)
-  returnItems    ReturnItem[]
-  createdAt      DateTime  @default(now()) @db.DateTime(6)
-  updatedAt      DateTime  @updatedAt @db.DateTime(6)
+  good_detail_id   Int          @id @default(autoincrement())
+  shipment_id      String       @db.VarChar(50)
+  shipment         Shipment     @relation(fields: [shipment_id], references: [register_number], onDelete: Cascade)
+  item_name_id     Int
+  itemCatalog      ItemCatalog  @relation(fields: [item_name_id], references: [id])
+  quantity         Int
+  charges          Decimal      @default(0.00) @db.Decimal(10, 2)
+  delivery_charges Decimal      @default(0.00) @db.Decimal(10, 2)
+  returnItems      ReturnItem[]
+  createdAt        DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime     @updatedAt @db.Timestamptz(6)
 
   @@map("Goods_Details")
 }
 
 model Transaction {
-  transaction_id   Int       @id @default(autoincrement())
-  transaction_date DateTime  @default(now()) @db.DateTime(6)
-  party_type       String    @db.VarChar(20)
+  transaction_id   Int      @id @default(autoincrement())
+  transaction_date DateTime @default(now()) @db.Timestamptz(6)
+  party_type       String   @db.VarChar(20)
   party_ref_id     Int
-  shipment_id      String    @db.VarChar(50)
-  shipment         Shipment  @relation(fields: [shipment_id], references: [register_number])
-  credit_amount    Decimal   @db.Decimal(10, 2)
-  debit_amount     Decimal   @db.Decimal(10, 2)
-  description      String?   @db.VarChar(255)
-  createdAt        DateTime  @default(now()) @db.DateTime(6)
-  updatedAt        DateTime  @updatedAt @db.DateTime(6)
+  shipment_id      String   @db.VarChar(50)
+  shipment         Shipment @relation(fields: [shipment_id], references: [register_number])
+  credit_amount    Decimal  @db.Decimal(10, 2)
+  debit_amount     Decimal  @db.Decimal(10, 2)
+  description      String?  @db.VarChar(255)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
 
   @@map("Transactions")
 }
 
 model Shipment {
-  register_number    String @id @db.VarChar(50)
-  bility_number      String @unique @db.VarChar(50)
-  bility_date        DateTime @db.Date
-  departure_city_id  Int
-  departureCity      City   @relation("DepartureCity", fields: [departure_city_id], references: [id])
-  to_city_id         Int?
-  toCity             City?  @relation("ArrivalCity", fields: [to_city_id], references: [id])
-  forwarding_agency_id Int
-  forwardingAgency   Agency @relation(fields: [forwarding_agency_id], references: [id])
-  vehicle_number_id  Int
-  vehicle            Vehicle @relation(fields: [vehicle_number_id], references: [id])
-  sender_id          Int
-  sender             Party  @relation("SenderParty", fields: [sender_id], references: [id])
-  receiver_id        Int
-  receiver           Party  @relation("ReceiverParty", fields: [receiver_id], references: [id])
-  walk_in_sender_name   String? @db.VarChar(100)
-  walk_in_receiver_name String? @db.VarChar(100)
-  total_charges        Decimal @db.Decimal(10, 2)
-  delivery_date        DateTime? @db.Date
-  remarks              String? @db.Text
-  total_delivery_charges Decimal @default(0.00) @db.Decimal(10, 2)
-  goodsDetails       GoodsDetails[]
-  transactions       Transaction[]
-  deliveries         Delivery[]
-  returns            ReturnShipment[]
-  vehicleTransactions VehicleTransaction[]
-  createdAt          DateTime @default(now()) @db.DateTime(6)
-  updatedAt          DateTime @updatedAt @db.DateTime(6)
-  labourAssignments  LabourAssignment[]
+  register_number       String       @id @db.VarChar(50)
+  bility_number         String       @unique @db.VarChar(50)
+  bility_date           DateTime     @db.Date
+  departure_city_id     Int
+  departureCity         City         @relation("DepartureCity", fields: [departure_city_id], references: [id])
+  to_city_id            Int?
+  toCity                City?        @relation("ArrivalCity", fields: [to_city_id], references: [id], onDelete: SetNull)
+  forwarding_agency_id  Int
+  forwardingAgency      Agency       @relation(fields: [forwarding_agency_id], references: [id])
+  vehicle_number_id     Int
+  vehicle               Vehicle      @relation(fields: [vehicle_number_id], references: [id])
+  sender_id             Int
+  sender                Party        @relation("SenderParty", fields: [sender_id], references: [id])
+  receiver_id           Int
+  receiver              Party        @relation("ReceiverParty", fields: [receiver_id], references: [id])
+  walk_in_sender_name   String?      @db.VarChar(100)
+  walk_in_receiver_name String?      @db.VarChar(100)
+  total_charges         Decimal      @db.Decimal(10, 2)
+  delivery_date         DateTime?    @db.Date
+  remarks               String?      @db.Text
+  total_delivery_charges Decimal     @default(0.00) @db.Decimal(10, 2)
+  goodsDetails          GoodsDetails[]
+  transactions          Transaction[]
+  deliveries            Delivery[]
+  returns               ReturnShipment[]
+  vehicleTransactions   VehicleTransaction[]
+  createdAt             DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime     @updatedAt @db.Timestamptz(6)
+  labourAssignments     LabourAssignment[]
 }
 
 // -------------------------------------------------------------------
@@ -126,63 +455,47 @@ model Shipment {
 // -------------------------------------------------------------------
 
 model ReturnShipment {
-  id                  Int      @id @default(autoincrement())
+  id                   Int          @id @default(autoincrement())
   original_shipment_id String
-  originalShipment    Shipment @relation(fields: [original_shipment_id], references: [register_number], onDelete: Cascade)
-  return_date         DateTime @default(now())
-  reason              String   @db.VarChar(255)
-  status             ReturnStatus @default(PENDING)
-  action_taken        String?  @db.VarChar(255)
-  resolution_date     DateTime?
-  comments            String?  @db.Text
-  returnItems         ReturnItem[]
-  createdAt          DateTime @default(now()) @db.DateTime(6)
-  updatedAt          DateTime @updatedAt @db.DateTime(6)
+  originalShipment     Shipment     @relation(fields: [original_shipment_id], references: [register_number], onDelete: Cascade)
+  return_date          DateTime     @default(now()) @db.Timestamptz(3)
+  reason               String       @db.VarChar(255)
+  status               ReturnStatus @default(PENDING)
+  action_taken         String?      @db.VarChar(255)
+  resolution_date      DateTime?    @db.Timestamptz(3)
+  comments             String?      @db.Text
+  returnItems          ReturnItem[]
+  createdAt            DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime     @updatedAt @db.Timestamptz(6)
 
   @@map("Return_Shipment")
 }
 
 model ReturnItem {
-  id                Int           @id @default(autoincrement())
+  id                 Int          @id @default(autoincrement())
   return_shipment_id Int
-  returnShipment    ReturnShipment @relation(fields: [return_shipment_id], references: [id], onDelete: Cascade)
-  goods_detail_id   Int
-  goodsDetail       GoodsDetails   @relation(fields: [goods_detail_id], references: [good_detail_id], onDelete: Cascade)
-  quantity_returned Int
-  condition         String        @db.VarChar(50)
-  createdAt         DateTime      @default(now()) @db.DateTime(6)
-  updatedAt         DateTime      @updatedAt @db.DateTime(6)
+  returnShipment     ReturnShipment @relation(fields: [return_shipment_id], references: [id], onDelete: Cascade)
+  goods_detail_id    Int
+  goodsDetail        GoodsDetails @relation(fields: [goods_detail_id], references: [good_detail_id], onDelete: Cascade)
+  quantity_returned  Int
+  condition          String       @db.VarChar(50)
+  createdAt          DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime     @updatedAt @db.Timestamptz(6)
 
   @@map("Return_Items")
 }
 
-enum ReturnStatus {
-  PENDING
-  IN_TRANSIT
-  COMPLETED
-  CANCELLED
-}
-enum Role {
-  OPERATOR
-  ADMIN
-  SUPERADMIN
-}
+// -------------------------------------------------------------------
+// --- USER/AUTH MODELS ---
+// -------------------------------------------------------------------
 
 model User {
   id        Int      @id @default(autoincrement())
   username  String   @unique
   password  String   // Store HASHED password here
   role      Role     @default(OPERATOR)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-// [NEW CODE END]
-
-enum ApprovalStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  APPROVED_BY_ADMIN
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 }
 
 // -------------------------------------------------------------------
@@ -190,31 +503,31 @@ enum ApprovalStatus {
 // -------------------------------------------------------------------
 
 model TripLog {
-  id                   Int      @id @default(autoincrement())
-  vehicle_id           Int
-  vehicle              Vehicle  @relation(fields: [vehicle_id], references: [id])
-  driver_name          String   @db.VarChar(100)
-  driver_mobile        String   @db.VarChar(20)
-  station_name         String   @db.VarChar(100)
-  city                 String   @db.VarChar(50)
-  date                 DateTime @db.Date
-  arrival_time         String   @db.VarChar(10)
-  departure_time       String   @db.VarChar(10)
-  total_fare_collected Decimal  @db.Decimal(10, 2)
-  delivery_cut         Decimal  @db.Decimal(10, 2)
-  commission           Decimal  @db.Decimal(10, 2)
-  arrears              Decimal  @db.Decimal(10, 2)
-  cuts                 Decimal  @default(0.00) @db.Decimal(10, 2)
-  munsihna_reward      Decimal  @default(0.00) @db.Decimal(10, 2)
-  distant_charges      Decimal  @default(0.00) @db.Decimal(10, 2)
-  accountant_charges   Decimal  @default(0.00) @db.Decimal(10, 2)
-  received_amount      Decimal  @db.Decimal(10, 2)
-  fare_is_paid         Boolean  @default(false)
-  note                 String?  @db.Text
-  shipmentLogs         TripShipmentLog[]
-  vehicleTransactions  VehicleTransaction[]
-  createdAt            DateTime @default(now()) @db.DateTime(6)
-  updatedAt            DateTime @updatedAt @db.DateTime(6)
+  id                    Int      @id @default(autoincrement())
+  vehicle_id            Int
+  vehicle               Vehicle  @relation(fields: [vehicle_id], references: [id])
+  driver_name           String   @db.VarChar(100)
+  driver_mobile         String   @db.VarChar(20)
+  station_name          String   @db.VarChar(100)
+  city                  String   @db.VarChar(50)
+  date                  DateTime @db.Date
+  arrival_time          String   @db.VarChar(10)
+  departure_time        String   @db.VarChar(10)
+  total_fare_collected  Decimal  @db.Decimal(10, 2)
+  delivery_cut          Decimal  @db.Decimal(10, 2)
+  commission            Decimal  @db.Decimal(10, 2)
+  arrears               Decimal  @db.Decimal(10, 2)
+  cuts                  Decimal  @default(0.00) @db.Decimal(10, 2)
+  munsihna_reward       Decimal  @default(0.00) @db.Decimal(10, 2)
+  distant_charges       Decimal  @default(0.00) @db.Decimal(10, 2)
+  accountant_charges    Decimal  @default(0.00) @db.Decimal(10, 2)
+  received_amount       Decimal  @db.Decimal(10, 2)
+  fare_is_paid          Boolean  @default(false)
+  note                  String?  @db.Text
+  shipmentLogs          TripShipmentLog[]
+  vehicleTransactions   VehicleTransaction[]
+  createdAt             DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime @updatedAt @db.Timestamptz(6)
   delivery_cut_percentage Decimal @default(0.00) @db.Decimal(5, 2)
 
   @@map("Trip_Log")
@@ -230,7 +543,7 @@ model TripShipmentLog {
   item_details     String   @db.VarChar(255)
   quantity         Int
   delivery_charges Decimal  @db.Decimal(10, 2)
-  createdAt        DateTime @default(now()) @db.DateTime(6)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
 
   @@unique([trip_log_id, bilty_number])
   @@map("Trip_Shipment_Log")
@@ -241,27 +554,27 @@ model TripShipmentLog {
 // -------------------------------------------------------------------
 
 model Delivery {
-  delivery_id        Int       @id @default(autoincrement())
-  shipment_id        String    @db.VarChar(50)
-  shipment           Shipment  @relation(fields: [shipment_id], references: [register_number])
-  delivery_date      DateTime  @db.Date
-  delivery_time      DateTime? @db.Time(0)
-  station_expense    Decimal   @default(0.00) @db.Decimal(10, 2)
-  bility_expense     Decimal   @default(0.00) @db.Decimal(10, 2)
-  station_labour     Decimal   @default(0.00) @db.Decimal(10, 2)
-  cart_labour        Decimal   @default(0.00) @db.Decimal(10, 2)
-  total_expenses     Decimal   @default(0.00) @db.Decimal(10, 2)
-  receiver_name      String    @db.VarChar(100)
-  receiver_phone     String    @db.VarChar(20)
-  receiver_cnic      String    @db.VarChar(15)
-  receiver_address   String    @db.Text
-  delivery_notes     String?   @db.Text
-  delivery_status    String    @default("DELIVERED") @db.VarChar(20)
-  approval_status    ApprovalStatus @default(PENDING)
-  approved_by        String?   @db.VarChar(100)
-  approved_at        DateTime?
-  createdAt          DateTime  @default(now()) @db.DateTime(6)
-  updatedAt          DateTime  @updatedAt @db.DateTime(6)
+  delivery_id     Int            @id @default(autoincrement())
+  shipment_id     String         @db.VarChar(50)
+  shipment        Shipment       @relation(fields: [shipment_id], references: [register_number])
+  delivery_date   DateTime       @db.Date
+  delivery_time   DateTime?      @db.Time(0)
+  station_expense Decimal        @default(0.00) @db.Decimal(10, 2)
+  bility_expense  Decimal        @default(0.00) @db.Decimal(10, 2)
+  station_labour  Decimal        @default(0.00) @db.Decimal(10, 2)
+  cart_labour     Decimal        @default(0.00) @db.Decimal(10, 2)
+  total_expenses  Decimal        @default(0.00) @db.Decimal(10, 2)
+  receiver_name   String         @db.VarChar(100)
+  receiver_phone  String         @db.VarChar(20)
+  receiver_cnic   String         @db.VarChar(15)
+  receiver_address String         @db.Text
+  delivery_notes  String?        @db.Text
+  delivery_status String         @default("DELIVERED") @db.VarChar(20)
+  approval_status ApprovalStatus @default(PENDING)
+  approved_by     String?        @db.VarChar(100)
+  approved_at     DateTime?      @db.Timestamptz(3)
+  createdAt       DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime       @updatedAt @db.Timestamptz(6)
 
   @@map("Delivery")
 }
@@ -271,59 +584,85 @@ model Delivery {
 // -------------------------------------------------------------------
 
 model VehicleTransaction {
-  id               Int       @id @default(autoincrement())
+  id               Int      @id @default(autoincrement())
   vehicle_id       Int
-  vehicle          Vehicle   @relation(fields: [vehicle_id], references: [id])
-  shipment_id      String?   @db.VarChar(50)
-  shipment         Shipment? @relation(fields: [shipment_id], references: [register_number])
+  vehicle          Vehicle  @relation(fields: [vehicle_id], references: [id])
+  shipment_id      String?  @db.VarChar(50)
+  shipment         Shipment? @relation(fields: [shipment_id], references: [register_number], onDelete: SetNull)
   trip_id          Int?
-  trip             TripLog?  @relation(fields: [trip_id], references: [id])
-  transaction_date DateTime  @default(now()) @db.DateTime(6)
-  credit_amount    Decimal   @db.Decimal(10, 2)
-  debit_amount     Decimal   @db.Decimal(10, 2)
-  description      String?   @db.VarChar(255)
-  createdAt        DateTime  @default(now()) @db.DateTime(6)
-  updatedAt        DateTime  @updatedAt @db.DateTime(6)
+  trip             TripLog? @relation(fields: [trip_id], references: [id], onDelete: SetNull)
+  transaction_date DateTime @default(now()) @db.Timestamptz(6)
+  credit_amount    Decimal  @db.Decimal(10, 2)
+  debit_amount     Decimal  @db.Decimal(10, 2)
+  description      String?  @db.VarChar(255)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
 
   @@map("Vehicle_Transactions")
 }
 
-// Labour Person Model
+// -------------------------------------------------------------------
+// --- LABOUR MODELS ---
+// -------------------------------------------------------------------
+
 model LabourPerson {
-  id           Int                @id @default(autoincrement())
-  name         String             @db.VarChar(100)
-  contact_info String             @db.VarChar(100)
-  assignments  LabourAssignment[]
-  createdAt    DateTime           @default(now()) @db.DateTime(6)
-  updatedAt    DateTime           @updatedAt @db.DateTime(6)
+  id            Int                @id @default(autoincrement())
+  name          String             @db.VarChar(100)
+  contact_info  String             @db.VarChar(100)
+  assignments   LabourAssignment[]
+  createdAt     DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime           @updatedAt @db.Timestamptz(6)
 
   @@map("Labour_Person")
 }
 
-// Labour Assignment Model
 model LabourAssignment {
-  id               Int                   @id @default(autoincrement())
+  id               Int                  @id @default(autoincrement())
   labour_person_id Int
-  labourPerson     LabourPerson          @relation(fields: [labour_person_id], references: [id])
-  shipment_id      String                @db.VarChar(50)
-  shipment         Shipment              @relation(fields: [shipment_id], references: [register_number])
-  assigned_date    DateTime              @default(now()) @db.DateTime(6)
-  due_date         DateTime?             @db.Date
+  labourPerson     LabourPerson         @relation(fields: [labour_person_id], references: [id])
+  shipment_id      String               @db.VarChar(50)
+  shipment         Shipment             @relation(fields: [shipment_id], references: [register_number])
+  assigned_date    DateTime             @default(now()) @db.Timestamptz(6)
+  due_date         DateTime?            @db.Date
   status           LabourAssignmentStatus @default(ASSIGNED)
-  delivered_date   DateTime?             @db.DateTime(6)
-  collected_amount Decimal?              @db.Decimal(10, 2)
-  settled_date     DateTime?             @db.DateTime(6)
-  notes            String?               @db.Text
-  createdAt        DateTime              @default(now()) @db.DateTime(6)
-  updatedAt        DateTime              @updatedAt @db.DateTime(6)
+  delivered_date   DateTime?            @db.Timestamptz(6)
+  collected_amount Decimal?             @db.Decimal(10, 2)
+  settled_date     DateTime?            @db.Timestamptz(6)
+  notes            String?              @db.Text
+  createdAt        DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime             @updatedAt @db.Timestamptz(6)
 
   @@map("Labour_Assignment")
 }
 
-// Labour Assignment Status Enum
+// -------------------------------------------------------------------
+// --- ENUM DEFINITIONS ---
+// -------------------------------------------------------------------
+
+enum ReturnStatus {
+  PENDING
+  IN_TRANSIT
+  COMPLETED
+  CANCELLED
+}
+
+enum Role {
+  OPERATOR
+  ADMIN
+  SUPERADMIN
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  APPROVED_BY_ADMIN
+}
+
 enum LabourAssignmentStatus {
   ASSIGNED
   DELIVERED
   COLLECTED
   SETTLED
 }
+
