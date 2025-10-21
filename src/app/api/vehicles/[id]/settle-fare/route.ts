@@ -26,9 +26,11 @@ export async function PATCH(request: NextRequest, { params }: RouteProps) {
     }
 
     try {
-        const { paymentAmount, tripId } = await request.json();
+        // MODIFIED: Accept new fields for custom description and owed amount
+        const { paymentAmount, tripId, owedAmount, paymentDescription } = await request.json(); 
         
         const amountDecimal = new Prisma.Decimal(paymentAmount);
+        const owedDecimal = new Prisma.Decimal(owedAmount); 
 
         if (!tripId || amountDecimal.lte(0)) {
             return NextResponse.json(
@@ -36,6 +38,23 @@ export async function PATCH(request: NextRequest, { params }: RouteProps) {
                 { status: 400 }
             );
         }
+
+        // FIX (Issue 2): Enforce full payment to set the fare as paid.
+        // We check if the payment covers the full owed amount for the current outstanding trip.
+        const isFullPayment = amountDecimal.gte(owedDecimal);
+        
+        if (!isFullPayment) {
+            // Rejects partial payment to prevent premature PAID status update, as requested.
+            return NextResponse.json(
+                { message: 'Payment must cover the full outstanding fare amount to settle the trip.' },
+                { status: 400 }
+            );
+        }
+        
+        // FIX (Issue 1): Use the custom description if provided.
+        const finalDescription = paymentDescription 
+            ? paymentDescription 
+            : `Fare settlement payment for Trip ID #${tripId}`;
 
         const result = await prisma.$transaction(async (tx) => {
             // 1. Create a CREDIT transaction for the vehicle (Company pays the vehicle)
@@ -46,11 +65,12 @@ export async function PATCH(request: NextRequest, { params }: RouteProps) {
                     transaction_date: new Date(),
                     credit_amount: amountDecimal,
                     debit_amount: new Prisma.Decimal(0),
-                    description: `Fare settlement payment for Trip ID #${tripId}`,
+                    description: finalDescription, // Use custom description
                 },
             });
 
             // 2. Update the corresponding TripLog to mark the fare as paid
+            // This is safe because we already verified `isFullPayment` above.
             await tx.tripLog.update({
                 where: { id: tripId },
                 data: {
