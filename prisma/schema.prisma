@@ -167,6 +167,7 @@ enum ApprovalStatus {
   PENDING
   APPROVED
   REJECTED
+  APPROVED_BY_ADMIN
 }
 
 // -------------------------------------------------------------------
