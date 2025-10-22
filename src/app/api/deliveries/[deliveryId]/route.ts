@@ -1,7 +1,5 @@
-// src/app/api/deliveries/[id]/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, ApprovalStatus } from '@prisma/client'; 
 
 const prisma = new PrismaClient();
 
@@ -23,10 +21,12 @@ export async function PATCH(
         const body = await request.json();
         const { action, approvedBy } = body;
 
-        // Validate action
-        if (!action || !['APPROVED', 'REJECTED'].includes(action)) {
+        // MODIFIED: Update validation to include the intermediate status APPROVED_BY_ADMIN
+        const validActions = [ApprovalStatus.APPROVED, ApprovalStatus.REJECTED, ApprovalStatus.APPROVED_BY_ADMIN];
+        
+        if (!action || !validActions.includes(action as ApprovalStatus)) {
             return NextResponse.json(
-                { error: 'Invalid action. Must be APPROVED or REJECTED' },
+                { error: `Invalid action. Must be one of: ${validActions.join(', ')}` },
                 { status: 400 }
             );
         }
@@ -43,10 +43,10 @@ export async function PATCH(
             );
         }
 
-        // Check if already processed
-        if (delivery.approval_status !== 'PENDING') {
-            return NextResponse.json(
-                { error: `Delivery already ${delivery.approval_status.toLowerCase()}` },
+        // Check if already processed and the target action is the same (prevent redundant update, except for PENDING)
+        if (delivery.approval_status !== 'PENDING' && delivery.approval_status === action) {
+             return NextResponse.json(
+                { error: `Delivery is already in the target status: ${delivery.approval_status.toLowerCase()}` },
                 { status: 400 }
             );
         }
@@ -55,14 +55,14 @@ export async function PATCH(
         const updatedDelivery = await prisma.delivery.update({
             where: { delivery_id: deliveryId },
             data: {
-                approval_status: action,
-                approved_by: approvedBy || 'SuperAdmin', // Default to SuperAdmin if not provided
+                approval_status: action as ApprovalStatus, // Use the incoming action as the new status
+                approved_by: approvedBy || 'System', 
                 approved_at: new Date(),
             },
         });
 
         return NextResponse.json({
-            message: `Delivery ${action.toLowerCase()} successfully`,
+            message: `Delivery status updated to ${action.toLowerCase()} successfully`,
             delivery: {
                 delivery_id: updatedDelivery.delivery_id,
                 shipment_id: updatedDelivery.shipment_id,

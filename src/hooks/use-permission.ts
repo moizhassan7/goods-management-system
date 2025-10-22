@@ -5,7 +5,8 @@ import { useAuth, UserRole } from '@/contexts/AuthContext';
 const Permissions = {
     MASTER_DATA_WRITE: [UserRole.ADMIN, UserRole.SUPERADMIN],
     REPORTS_VIEW: [UserRole.ADMIN, UserRole.SUPERADMIN],
-    DELIVERY_APPROVAL: [UserRole.SUPERADMIN],
+   DELIVERY_APPROVAL_ADMIN: [UserRole.ADMIN, UserRole.SUPERADMIN], // MODIFIED
+    DELIVERY_APPROVAL_SUPERADMIN: [UserRole.SUPERADMIN], // NEW
     LABOUR_MANAGEMENT: [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.OPERATOR],
     CORE_OPERATIONS: [UserRole.OPERATOR, UserRole.ADMIN, UserRole.SUPERADMIN],
 };

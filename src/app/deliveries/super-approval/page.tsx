@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,14 +34,14 @@ interface Notification {
 
 // --- Component ---
 
-export default function DeliveryApprovalPage() {
+export default function SuperAdminDeliveryApprovalPage() {
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
     const [approvedDeliveries, setApprovedDeliveries] = useState<Delivery[]>([]);
     
-    // Using local states exclusively
     const [isPendingLoading, setIsPendingLoading] = useState(true); 
     const [isReportLoading, setIsReportLoading] = useState(false); 
     
+    // Set default date for today
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [actionLoading, setActionLoading] = useState<number | null>(null);
     const [notification, setNotification] = useState<Notification | null>(null);
@@ -59,7 +59,6 @@ export default function DeliveryApprovalPage() {
         return Number(expenses) + Number(charges);
     };
     
-    // Calculate total sums for the approved table report
     const approvedTotals = useMemo(() => {
         return approvedDeliveries.reduce((acc, delivery) => {
             acc.totalExpenses += Number(delivery.total_expenses || 0);
@@ -71,54 +70,49 @@ export default function DeliveryApprovalPage() {
 
     const totalPendingCount = useMemo(() => deliveries.length, [deliveries]);
 
-    // --- Notification Logic ---
     const showNotification = (type: NotificationType, title: string, message: string) => {
         setNotification({ type, title, message });
         setTimeout(() => setNotification(null), 7000); 
     };
 
-    // --- Data Fetching: Pending Approvals (for the top table) ---
-    const fetchPendingApprovals = useCallback(async () => {
-        setIsPendingLoading(true); // START LOCAL LOADING
+    // --- Data Fetching: Admin-Approved Pending Approvals (for the top table) ---
+    const fetchAdminApprovedPending = useCallback(async () => {
+        setIsPendingLoading(true);
         setNotification(null);
         try {
-            // Fetching ONLY PENDING deliveries for the Admin's first stage approval
-            const response = await fetch('/api/deliveries/pending-approvals'); 
+            // Fetching deliveries approved by Admin, awaiting SuperAdmin final approval
+            const response = await fetch('/api/deliveries/admin-approved-pending');
             if (response.ok) {
                 const data = await response.json();
                 setDeliveries(data);
                 if (data.length > 0) {
-                    showNotification('info', 'Data Loaded', `${data.length} deliveries require your Admin approval.`); 
+                    showNotification('info', 'Data Loaded', `${data.length} deliveries require your **SuperAdmin** final approval.`);
                 }
             } else {
                 const errorData = await response.json();
-                showNotification('error', 'Fetching Failed', errorData.error || 'Server error while fetching pending deliveries.');
+                showNotification('error', 'Fetching Failed', errorData.error || 'Server error while fetching Admin-approved deliveries.');
             }
         } catch (error) {
-            console.error('Error fetching pending approvals:', error);
-            showNotification('error', 'Network Error', 'A network connection issue occurred while fetching pending deliveries.');
+            console.error('Error fetching admin-approved pending approvals:', error);
+            showNotification('error', 'Network Error', 'A network connection issue occurred.');
         } finally {
-            setIsPendingLoading(false); // END LOCAL LOADING
+            setIsPendingLoading(false);
         }
     }, []);
 
     // --- Data Fetching: Approved Deliveries by Date (for the bottom table) ---
-    // NOTE: This function fetches FINALLY APPROVED deliveries only (ApprovalStatus: APPROVED)
     const fetchApprovedByDate = useCallback(async (date: string) => {
         setIsReportLoading(true); 
         setApprovedDeliveries([]); 
         try {
+            // This API uses the new filtering logic (by approved_at)
             const response = await fetch(`/api/deliveries/approved?date=${date}`);
-            if (response.ok) {
-                const data = await response.json();
-                setApprovedDeliveries(data);
-            } else {
-                const errorData = await response.json();
-                showNotification('error', 'Report Error', errorData.error || 'Failed to fetch approved deliveries for the selected date.');
-            }
-        } catch (error) {
+            if (!response.ok) throw new Error('Failed to fetch approved deliveries.');
+            const data = await response.json();
+            setApprovedDeliveries(data);
+        } catch (error: any) {
             console.error('Error fetching approved deliveries:', error);
-            showNotification('error', 'Network Error', 'A network error occurred while generating the report.');
+            showNotification('error', 'Report Error', error.message || 'Failed to fetch approved deliveries for the selected date.');
         } finally {
             setIsReportLoading(false); 
         }
@@ -126,60 +120,67 @@ export default function DeliveryApprovalPage() {
 
     // --- Effects ---
     useEffect(() => {
-        fetchPendingApprovals();
-    }, [fetchPendingApprovals]);
+        fetchAdminApprovedPending(); 
+    }, [fetchAdminApprovedPending]);
 
     useEffect(() => {
+        // Trigger report load whenever the selected date changes
         fetchApprovedByDate(selectedDate);
     }, [selectedDate, fetchApprovedByDate]); 
 
-    // --- Approval Action Handler ---
+    // --- Approval Action Handler (Final Approval) ---
     const handleApproval = async (deliveryId: number, action: 'APPROVED' | 'REJECTED') => {
         setActionLoading(deliveryId);
         setNotification(null); 
         
         const processedDelivery = deliveries.find(d => d.delivery_id === deliveryId);
 
-        // Determine the NEXT status: APPROVED_BY_ADMIN for success, REJECTED for rejection
-        const nextApprovalStatus = action === 'APPROVED' ? 'APPROVED_BY_ADMIN' : 'REJECTED'; 
+        // Final status is 'APPROVED' on success
+        const nextApprovalStatus = action === 'APPROVED' ? 'APPROVED' : 'REJECTED'; 
 
         try {
             const response = await fetch(`/api/deliveries/${deliveryId}`, { 
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                // Send the determined next status for the API to process
-                body: JSON.stringify({ action: nextApprovalStatus, approvedBy: 'Admin User' }), 
+                // Send the final status, which is now accepted by the API
+                body: JSON.stringify({ action: nextApprovalStatus, approvedBy: 'SuperAdmin User' }),
             });
 
-            if (response.ok) {
-                const result = await response.json();
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Failed to ${action.toLowerCase()} delivery status.`);
+            }
 
-                // Update UI for Pending table (filter out the processed delivery)
-                setDeliveries(prev => prev.filter(d => d.delivery_id !== deliveryId));
-                
-                // If approved, update the Approved table/report instantly (if dates match) - although this will typically be empty now unless the Admin is also the SuperAdmin.
-                if (action === 'APPROVED' && processedDelivery && processedDelivery.delivery_date.startsWith(selectedDate)) {
-                    setApprovedDeliveries(prev => [...prev, {
-                        ...processedDelivery, 
-                        // Use the correct updated status
-                        approval_status: 'APPROVED_BY_ADMIN', 
-                        approved_by: 'Admin User',
-                        approved_at: new Date().toISOString()
-                    } as Delivery]);
+            const result = await response.json();
+
+            // 1. Update UI for Pending table (filter out the processed delivery)
+            setDeliveries(prev => prev.filter(d => d.delivery_id !== deliveryId));
+            
+            // 2. If APPROVED, immediately refresh the Approved Report for the current date
+            if (action === 'APPROVED') {
+                 // Check if the approval date matches the currently selected report date (now based on APPROVED_AT)
+                const approvalDate = new Date().toISOString().split('T')[0];
+                if (approvalDate === selectedDate) {
+                    // Only fetch if the date matches to show the latest approval instantly
+                    fetchApprovedByDate(selectedDate);
                 }
 
                 showNotification(
                     'success', 
-                    `${action === 'APPROVED' ? 'Admin Approval' : 'Rejection'} Successful`,
-                    `Shipment ID ${result.delivery.shipment_id} has been successfully moved to ${nextApprovalStatus} queue.`
+                    'SuperAdmin Approval Successful',
+                    `Shipment ID ${result.delivery.shipment_id} has been fully APPROVED.`
                 );
             } else {
-                const errorData = await response.json();
-                showNotification('error', 'Action Failed', errorData.error || `Failed to ${action.toLowerCase()} delivery status.`);
+                 showNotification(
+                    'success', 
+                    'Rejection Successful',
+                    `Shipment ID ${result.delivery.shipment_id} has been REJECTED.`
+                );
             }
-        } catch (error) {
-            console.error('Network Error during approval:', error);
-            showNotification('error', 'Network Error', `A network issue prevented the ${action.toLowerCase()} action from completing.`);
+
+        } catch (error: any) {
+            console.error('Error during SuperAdmin approval:', error);
+            showNotification('error', 'Action Failed', error.message);
         } finally {
             setActionLoading(null);
         }
@@ -191,7 +192,7 @@ export default function DeliveryApprovalPage() {
             <div className="flex items-center justify-center min-h-screen bg-gray-100">
                 <div className="text-center p-8 bg-white rounded-xl shadow-lg">
                     <Loader2 className="h-10 w-10 animate-spin mx-auto mb-4 text-blue-600" />
-                    <p className="text-lg font-medium text-gray-700">Loading pending deliveries...</p>
+                    <p className="text-lg font-medium text-gray-700">Loading pending SuperAdmin approvals...</p>
                 </div>
             </div>
         );
@@ -226,13 +227,13 @@ export default function DeliveryApprovalPage() {
                 )}
 
                 {/* ======================================================= */}
-                {/* 1. PENDING APPROVALS TABLE - NOW FOR ADMIN (PENDING -> APPROVED_BY_ADMIN) */}
+                {/* 1. PENDING APPROVALS TABLE - NOW FOR SUPERADMIN (APPROVED_BY_ADMIN -> APPROVED) */}
                 {/* ======================================================= */}
                 <Card className="shadow-2xl border-0 mb-8">
                     <CardHeader className="bg-white border-b border-gray-200 p-6">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-3xl font-bold text-gray-800">
-                                Admin Delivery Approvals (Stage 1)
+                                SuperAdmin Delivery Approvals (Stage 2)
                             </CardTitle>
                             <Badge 
                                 className="text-lg font-semibold px-4 py-1.5 rounded-full bg-yellow-500 text-white hover:bg-yellow-600 transition-colors"
@@ -245,9 +246,9 @@ export default function DeliveryApprovalPage() {
                         {totalPendingCount === 0 ? (
                             <div className="text-center py-20 px-4">
                                 <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-6" />
-                                <h3 className="text-2xl font-bold text-gray-700 mb-2">All Caught Up - No Deliveries Pending Admin Approval</h3>
-                                <p className="text-gray-500 text-lg">No pending deliveries requiring initial financial approval at this time.</p>
-                                <Button onClick={fetchPendingApprovals} variant="outline" className="mt-6 text-gray-600 hover:bg-gray-100 border-gray-300">
+                                <h3 className="text-2xl font-bold text-gray-700 mb-2">All Caught Up</h3>
+                                <p className="text-gray-500 text-lg">No deliveries requiring **SuperAdmin** final approval at this time.</p>
+                                <Button onClick={fetchAdminApprovedPending} variant="outline" className="mt-6 text-gray-600 hover:bg-gray-100 border-gray-300">
                                     Refresh List
                                 </Button>
                             </div>
@@ -263,7 +264,7 @@ export default function DeliveryApprovalPage() {
                                             <TableHead className="font-bold text-right py-3 px-6">Total Expenses</TableHead>
                                             <TableHead className="font-bold text-right py-3 px-6">Delivery Charges</TableHead>
                                             <TableHead className="font-bold text-right py-3 px-6 text-blue-700">Total Payable</TableHead>
-                                            <TableHead className="font-bold text-center py-3 px-6">Status</TableHead>
+                                            <TableHead className="font-bold text-center py-3 px-6">Approved By</TableHead>
                                             <TableHead className="font-bold text-center py-3 px-6">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -294,11 +295,14 @@ export default function DeliveryApprovalPage() {
                                                 <TableCell className="text-right font-medium text-green-600 py-4 px-6">{formatCurrency(delivery.total_delivery_charges)}</TableCell>
                                                 <TableCell className="text-right font-extrabold text-blue-700 py-4 px-6">{formatCurrency(calculateTotal(delivery))}</TableCell>
                                                 <TableCell className="text-center py-4 px-6">
-                                                    <Badge className='bg-yellow-500 text-white font-semibold hover:bg-yellow-600'>PENDING</Badge>
+                                                    {/* CORRECTED BADGE: Show the status applied by the Admin (APPROVED_BY_ADMIN) */}
+                                                    <Badge className='bg-blue-500 text-white font-semibold hover:bg-blue-600'>
+                                                        {delivery.approval_status}
+                                                    </Badge>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex gap-3 justify-center">
-                                                        {/* Approve Dialog */}
+                                                        {/* Approve Dialog (Final) */}
                                                         <AlertDialog>
                                                             <AlertDialogTrigger asChild>
                                                                 <Button 
@@ -309,15 +313,15 @@ export default function DeliveryApprovalPage() {
                                                                     {actionLoading === delivery.delivery_id ? (
                                                                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                                                     ) : (
-                                                                        'Admin Approve'
+                                                                        'Final Approve'
                                                                     )}
                                                                 </Button>
                                                             </AlertDialogTrigger>
                                                             <AlertDialogContent>
                                                                 <AlertDialogHeader>
-                                                                    <AlertDialogTitle className="text-xl font-bold text-green-700">Confirm Admin Approval (Stage 1)</AlertDialogTitle>
+                                                                    <AlertDialogTitle className="text-xl font-bold text-green-700">Confirm Final Approval (SuperAdmin)</AlertDialogTitle>
                                                                     <AlertDialogDescription className='text-gray-600'>
-                                                                        Are you absolutely sure you want to give **Admin Approval** for Shipment **{delivery.shipment_id}**?
+                                                                        Are you absolutely sure you want to grant the **FINAL APPROVAL** for Shipment **{delivery.shipment_id}**?
                                                                         <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                                                                             <h4 className='font-semibold text-green-800 mb-2'>Financial Summary:</h4>
                                                                             <div className="space-y-1 text-sm text-gray-700">
@@ -336,7 +340,7 @@ export default function DeliveryApprovalPage() {
                                                                             </div>
                                                                         </div>
                                                                         <p className="mt-4 font-medium text-sm text-red-500">
-                                                                            This action moves the item to **SuperAdmin** approval queue.
+                                                                            This action finalizes the financial transaction and cannot be easily reversed. Status will be set to **APPROVED**.
                                                                         </p>
                                                                     </AlertDialogDescription>
                                                                 </AlertDialogHeader>
@@ -346,7 +350,7 @@ export default function DeliveryApprovalPage() {
                                                                         onClick={() => handleApproval(delivery.delivery_id, 'APPROVED')}
                                                                         className="bg-green-600 hover:bg-green-700 font-semibold"
                                                                     >
-                                                                        Confirm Admin Approval
+                                                                        Confirm Final Approval
                                                                     </AlertDialogAction>
                                                                 </AlertDialogFooter>
                                                             </AlertDialogContent>
@@ -387,7 +391,7 @@ export default function DeliveryApprovalPage() {
                                                                             </div>
                                                                         </div>
                                                                         <p className="mt-4 font-medium text-sm text-blue-500">
-                                                                            Rejection will flag this item for further review by the delivery team.
+                                                                            Rejection will flag this item for further review by the delivery team. Status will be set to **REJECTED**.
                                                                         </p>
                                                                     </AlertDialogDescription>
                                                                 </AlertDialogHeader>
@@ -420,7 +424,7 @@ export default function DeliveryApprovalPage() {
                     <CardHeader className="bg-blue-600 text-white p-6 rounded-t-xl">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                             <CardTitle className="text-2xl font-bold">
-                                Daily Approved Deliveries Report
+                                Daily Approved Deliveries Report (Final Approved)
                             </CardTitle>
                             <div className="flex items-center space-x-3 mt-3 md:mt-0 bg-white p-2 rounded-lg shadow-inner">
                                 <label htmlFor="approved-date" className="text-gray-800 font-medium">
@@ -439,7 +443,7 @@ export default function DeliveryApprovalPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                        {isReportLoading ? (
+                         {isReportLoading ? (
                             <div className="text-center py-12">
                                 <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-blue-600" />
                                 <p className="text-gray-600 font-medium">Loading approved transactions for {selectedDate}...</p>
@@ -447,9 +451,9 @@ export default function DeliveryApprovalPage() {
                         ) : approvedDeliveries.length === 0 ? (
                             <div className="text-center py-16 px-4">
                                 <AlertCircle className="h-16 w-16 text-yellow-500 mx-auto mb-6" />
-                                <h3 className="text-xl font-bold text-gray-700 mb-2">No Approvals Found</h3>
+                                <h3 className="text-xl font-bold text-gray-700 mb-2">No Final Approvals Found</h3>
                                 <p className="text-gray-500">
-                                    No deliveries were approved on **{new Date(selectedDate).toLocaleDateString()}**.
+                                    No deliveries were finally approved on **{new Date(selectedDate).toLocaleDateString()}**.
                                 </p>
                             </div>
                         ) : (

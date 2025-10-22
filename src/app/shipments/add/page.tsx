@@ -12,7 +12,7 @@ import { toast as sonnerToast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox'; // ADDED
+import { Checkbox } from '@/components/ui/checkbox'; 
 import {
     Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
@@ -199,10 +199,16 @@ export default function AddShipment() {
     const [isLoadingShipments, setIsLoadingShipments] = useState(false);
     const [isFetchingRegNum, setIsFetchingRegNum] = useState(false);
 
-    const fetchShipments = async () => {
+    // MODIFIED: fetchShipments now accepts the date to filter by
+    const fetchShipments = async (dateToFilter: string) => { 
+        if (!dateToFilter) {
+             setShipments([]);
+             return;
+        }
         setIsLoadingShipments(true);
         try {
-            const response = await fetch('/api/shipments');
+            // MODIFIED: Pass the date to the API via query param
+            const response = await fetch(`/api/shipments?date=${dateToFilter}`);
             if (!response.ok) throw new Error('Failed to load shipment list.');
             const list = await response.json();
             setShipments(list);
@@ -228,9 +234,10 @@ export default function AddShipment() {
     const goodsDetails = form.watch("goods_details");
     const senderId = form.watch("sender_id");
     const receiverId = form.watch("receiver_id");
-    const bilityDate = form.watch("bility_date");
-    const isAlreadyPaid = form.watch("is_already_paid"); // NEW
-    const isFreeOfCost = form.watch("is_free_of_cost"); // NEW
+    // WATCH THE BILITY DATE FIELD
+    const bilityDate = form.watch("bility_date"); 
+    const isAlreadyPaid = form.watch("is_already_paid"); 
+    const isFreeOfCost = form.watch("is_free_of_cost"); 
     
     // Determine the status string to send to the API/DB
     const paymentStatusToSend = useMemo(() => {
@@ -266,6 +273,7 @@ export default function AddShipment() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [bilityDate]);
 
+    // Load initial data (including filters) on mount
     useEffect(() => {
         async function fetchInitialData() {
             try {
@@ -279,11 +287,21 @@ export default function AddShipment() {
             } finally {
                 setIsLoadingData(false);
             }
-            fetchShipments(); 
+            // MODIFIED: Pass the initial today's date to fetchShipments for the table
+            fetchShipments(today); 
         }
         fetchInitialData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); 
+    
+    // NEW: Fetch and display shipments whenever the bility_date changes
+    useEffect(() => {
+        // This ensures the table list updates instantly when the user changes the Bility Date on the form.
+        if (bilityDate) {
+            fetchShipments(bilityDate);
+        }
+    }, [bilityDate]);
+
 
     async function handleDirectSave(values: ShipmentFormValues) {
         try {
@@ -332,7 +350,8 @@ export default function AddShipment() {
 
             // Reset form
             form.reset({ ...generateDefaultValues(), register_number: regNum });
-            fetchShipments();
+            // Re-fetch only the shipments for the *new* bilityDate (which is 'today' from the reset)
+            fetchShipments(today); 
 
         } catch (error: any) {
             console.error('Submission Error:', error);
@@ -622,11 +641,12 @@ export default function AddShipment() {
 
             {/* Shipments Table */}
             <div className='mt-12 p-8 rounded-xl shadow-2xl border bg-white'>
-                <h2 className='text-2xl font-extrabold mb-6'>{t('shipment_section_saved_title')}</h2>
+                {/* MODIFIED HEADER TEXT */}
+                <h2 className='text-2xl font-extrabold mb-6'>Today's Shipments ({bilityDate ? new Date(bilityDate).toLocaleDateString() : 'Loading...'})</h2>
                 {isLoadingShipments ? (
                     <p className="text-center text-gray-500">Loading...</p>
                 ) : shipments.length === 0 ? (
-                    <p className="text-center text-gray-500">No shipments found.</p>
+                    <p className="text-center text-gray-500">No shipments found for the selected date.</p>
                 ) : (
                     <div className='overflow-x-auto'>
                         <Table>

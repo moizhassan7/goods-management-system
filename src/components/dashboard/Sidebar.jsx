@@ -226,11 +226,11 @@ const Sidebar = () => {
                 permissionKey: 'CORE_OPERATIONS',
                 links: [
                     { name: t('nav_record_new_delivery'), href: '/deliveries/add', icon: Package2, translationKey: 'nav_record_new_delivery', permissionKey: 'CORE_OPERATIONS' },
-                    // DELIVERY_APPROVAL is restricted to SUPERADMIN
-                    { name: t('nav_delivery_approvals'), href: '/deliveries/approval', icon: CheckCircle, translationKey: 'nav_delivery_approvals', permissionKey: 'DELIVERY_APPROVAL' }, 
+                    // MODIFIED: Admin-level approval (Stage 1)
+                    { name: t('nav_delivery_approvals'), href: '/deliveries/approval', icon: CheckCircle, translationKey: 'nav_delivery_approvals', permissionKey: 'DELIVERY_APPROVAL_ADMIN' }, 
+                    // NEW: SuperAdmin-level approval (Stage 2)
+                    { name: 'SuperAdmin Approval', href: '/deliveries/super-approval', icon: CheckCircle, translationKey: 'nav_superadmin_approval', permissionKey: 'DELIVERY_APPROVAL_SUPERADMIN' }, 
                     { name: t('nav_view_delivery_records'), href: '/deliveries/view', icon: FileText, translationKey: 'nav_view_delivery_records', permissionKey: 'REPORTS_VIEW' },
-                    { name: t('nav_delivery_expenses_report'), href: '/deliveries/report', icon: FileText, translationKey: 'nav_delivery_expenses_report', permissionKey: 'REPORTS_VIEW' },
-                    { name: 'Combined Expense Report', href: '/deliveries/expense-report', icon: DollarSign, permissionKey: 'REPORTS_VIEW' }, 
                 ]
             },
             {

@@ -1,5 +1,3 @@
-// src/app/api/deliveries/approved/route.ts
-
 import { NextResponse, NextRequest } from 'next/server';
 import { PrismaClient, ApprovalStatus } from '@prisma/client'; 
 
@@ -17,15 +15,15 @@ export async function GET(request: NextRequest) {
         );
     }
     
-    // Set date range for filtering (assuming delivery_date stores UTC time)
+    // Set date range for filtering
     const startOfDay = new Date(dateParam + 'T00:00:00.000Z');
     const endOfDay = new Date(dateParam + 'T23:59:59.999Z');
 
     try {
         const approvedDeliveries = await prisma.delivery.findMany({
             where: {
-                // Filter by delivery date for the specific day
-                delivery_date: {
+                // FIX: Filter by approved_at (the final approval date) instead of delivery_date
+                approved_at: { 
                     gte: startOfDay,
                     lte: endOfDay,
                 },

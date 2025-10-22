@@ -26,7 +26,8 @@ export const Permissions = {
     // Viewing Reports (Medium Privilege)
     REPORTS_VIEW: [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.OPERATOR],
     // Financial Approval (High Privilege - Only SuperAdmin for Deliveries)
-    DELIVERY_APPROVAL: [UserRole.SUPERADMIN],
+    DELIVERY_APPROVAL_ADMIN: [UserRole.ADMIN, UserRole.SUPERADMIN], // Admin and SuperAdmin can handle the first stage
+    DELIVERY_APPROVAL_SUPERADMIN: [UserRole.SUPERADMIN],
     // Labour Management (Medium Privilege)
     LABOUR_MANAGEMENT: [UserRole.ADMIN, UserRole.SUPERADMIN],
     // Core Operations (Low Privilege)
