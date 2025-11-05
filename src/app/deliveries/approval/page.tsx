@@ -260,8 +260,9 @@ export default function DeliveryApprovalPage() {
                                             <TableHead className="font-bold text-left py-3 px-6">Shipment ID</TableHead>
                                             <TableHead className="font-bold text-left py-3 px-6">Receiver</TableHead>
                                             <TableHead className="font-bold text-left py-3 px-6">Delivery Date</TableHead>
+                                            <TableHead className="font-bold text-right py-3 px-6 text-blue-700">Fare</TableHead>
+                                            <TableHead className="font-bold text-right py-3 px-6">Total Fare</TableHead>
                                             <TableHead className="font-bold text-right py-3 px-6">Total Expenses</TableHead>
-                                            <TableHead className="font-bold text-right py-3 px-6">Delivery Charges</TableHead>
                                             <TableHead className="font-bold text-right py-3 px-6 text-blue-700">Total Payable</TableHead>
                                             <TableHead className="font-bold text-center py-3 px-6">Status</TableHead>
                                             <TableHead className="font-bold text-center py-3 px-6">Actions</TableHead>
@@ -291,6 +292,7 @@ export default function DeliveryApprovalPage() {
                                                     {new Date(delivery.delivery_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' })}
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium text-red-600 py-4 px-6">{formatCurrency(delivery.total_expenses)}</TableCell>
+                                                <TableCell className="text-right font-medium text-green-600 py-4 px-6">{formatCurrency(delivery.total_delivery_charges)}</TableCell>
                                                 <TableCell className="text-right font-medium text-green-600 py-4 px-6">{formatCurrency(delivery.total_delivery_charges)}</TableCell>
                                                 <TableCell className="text-right font-extrabold text-blue-700 py-4 px-6">{formatCurrency(calculateTotal(delivery))}</TableCell>
                                                 <TableCell className="text-center py-4 px-6">
@@ -355,18 +357,7 @@ export default function DeliveryApprovalPage() {
                                                         {/* Reject Dialog */}
                                                         <AlertDialog>
                                                             <AlertDialogTrigger asChild>
-                                                                <Button 
-                                                                    size="sm" 
-                                                                    variant="destructive"
-                                                                    className='font-semibold disabled:opacity-50'
-                                                                    disabled={actionLoading === delivery.delivery_id}
-                                                                >
-                                                                    {actionLoading === delivery.delivery_id ? (
-                                                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                                    ) : (
-                                                                        'Reject'
-                                                                    )}
-                                                                </Button>
+                                                               
                                                             </AlertDialogTrigger>
                                                             <AlertDialogContent>
                                                                 <AlertDialogHeader>

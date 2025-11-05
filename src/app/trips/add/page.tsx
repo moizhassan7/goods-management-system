@@ -449,7 +449,7 @@ export default function AddTrip() {
             
             <FormField control={form.control} name='delivery_cut_percentage' render={({ field }) => (
               <FormItem>
-                <FormLabel>Delivery Cut %</FormLabel>
+                <FormLabel>Delivery %</FormLabel>
                 <Select onValueChange={(val) => field.onChange(parseFloat(val))} value={String(field.value)}>
                   <FormControl>
                     <SelectTrigger>
@@ -470,7 +470,7 @@ export default function AddTrip() {
 
             <FormField control={form.control} name='delivery_cut' render={({ field }) => (
               <FormItem>
-                <FormLabel>Delivery Cut Amount</FormLabel>
+                <FormLabel>Delivery Amount</FormLabel>
                 <FormControl>
                   <Input type='number' {...field} value={field.value.toFixed(0)} readOnly className="bg-blue-50 font-semibold" />
                 </FormControl>
@@ -479,7 +479,7 @@ export default function AddTrip() {
 
             <FormField control={form.control} name='cuts' render={({ field }) => (
               <FormItem>
-                <FormLabel>Other Cuts</FormLabel>
+                <FormLabel>Other</FormLabel>
                 <FormControl>
                   <Input type='number' step='0.01' {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
                 </FormControl>
@@ -488,7 +488,7 @@ export default function AddTrip() {
 
             <FormField control={form.control} name='accountant_charges' render={({ field }) => (
               <FormItem>
-                <FormLabel>Munsihna Charges</FormLabel>
+                <FormLabel>Munshiana Charges</FormLabel>
                 <FormControl>
                   <Input type='number' step='0.01' {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
                 </FormControl>

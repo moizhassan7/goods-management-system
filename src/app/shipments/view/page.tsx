@@ -273,7 +273,7 @@ export default function ViewShipments() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Reg. No</TableHead>
-                                        <TableHead>Bilty #</TableHead>
+                                        <TableHead>Bilty No</TableHead>
                                         <TableHead>Bilty Date</TableHead>
                                         <TableHead>Sender</TableHead>
                                         <TableHead>Receiver</TableHead>

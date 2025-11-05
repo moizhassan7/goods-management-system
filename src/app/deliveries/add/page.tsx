@@ -156,7 +156,8 @@ export default function AddDelivery() {
             }
             const shipment = await response.json();
             
-            const foundShipment = Array.isArray(shipment) ? shipment[0] : shipment;
+            // const foundShipment = Array.isArray(shipment) ? shipment[0] : shipment;
+            const foundShipment = Array.isArray(shipment) && shipment.length > 0 ? shipment[0] : null;
 
             if (foundShipment) {
                 setShipmentData(foundShipment);
