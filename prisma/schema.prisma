@@ -782,15 +782,21 @@ model Shipment {
   delivery_date           DateTime?              @db.Date
   remarks                 String?                @db.Text
   total_delivery_charges  Decimal                @default(0.00) @db.Decimal(10, 2)
+  
+  // *** NEW EXPENSE FIELDS *** (Kept as is)
+  station_expense         Decimal                @default(0.00) @db.Decimal(10, 2)
+  bility_expense          Decimal                @default(0.00) @db.Decimal(10, 2)
+  station_labour          Decimal                @default(0.00) @db.Decimal(10, 2)
+  cart_labour             Decimal                @default(0.00) @db.Decimal(10, 2)
+  total_expenses          Decimal                @default(0.00) @db.Decimal(10, 2)
+  // **************************
+
   goodsDetails            GoodsDetails[]
   transactions            Transaction[]
   deliveries              Delivery[]
   returns                 ReturnShipment[]
   vehicleTransactions     VehicleTransaction[]
-
-  // *** NEW FIELD ADDED ***
-  created_day             DateTime               @default(now()) @db.Date // Keep @db.Date for date only
-
+  created_day             DateTime               @default(now()) @db.Date 
   createdAt               DateTime               @default(now()) @db.Timestamptz(6) // Changed to Timestamptz(6)
   updatedAt               DateTime               @updatedAt @db.Timestamptz(6)   // Changed to Timestamptz(6)
   labourAssignments       LabourAssignment[]

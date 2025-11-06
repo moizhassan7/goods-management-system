@@ -92,6 +92,14 @@ const ShipmentFormSchema = z.object({
     total_delivery_charges: z.coerce.number().optional().default(0),
     total_amount: z.coerce.number().min(0, 'Total Amount must be greater than zero'),
 
+    // *** EXPENSE FIELDS (must match DB schema updates) ***
+    station_expense: z.coerce.number().optional().default(0),
+    bility_expense: z.coerce.number().optional().default(0),
+    station_labour: z.coerce.number().optional().default(0),
+    cart_labour: z.coerce.number().optional().default(0),
+    total_expenses: z.coerce.number().optional().default(0),
+    // *****************************************************
+
     // NEW PAYMENT STATUS FIELDS
     is_already_paid: z.boolean().default(false),
     is_free_of_cost: z.boolean().default(false),
@@ -146,12 +154,18 @@ interface ShipmentData {
     forwarding_agency_id: number;
     vehicle_number_id: number;
     total_charges: number;
-    total_delivery_charges: number; // Confirmed available
+    total_delivery_charges: number; 
     walk_in_sender_name?: string;
     walk_in_receiver_name?: string;
-    created_at: string; // Confirmed available
+    created_at: string; 
     goodsDetails?: { quantity: number; itemCatalog?: { item_description?: string } | null }[];
     payment_status?: string | null; 
+    // ADDED: Expenses are included in the Shipment model now for transport
+    station_expense: number;
+    bility_expense: number;
+    station_labour: number;
+    cart_labour: number;
+    total_expenses: number;
 }
 
 const today = new Date().toISOString().substring(0, 10);
@@ -173,6 +187,13 @@ const generateDefaultValues = (): ShipmentFormValues => ({
     walk_in_receiver_name: '',
     total_delivery_charges: 0.00,
     total_amount: 0.00,
+    // *** NEW DEFAULT VALUES ***
+    station_expense: 0.00,
+    bility_expense: 0.00,
+    station_labour: 0.00,
+    cart_labour: 0.00,
+    total_expenses: 0.00,
+    // ************************
     // NEW: Default payment status fields
     is_already_paid: false,
     is_free_of_cost: false,
@@ -225,6 +246,36 @@ export default function AddShipment() {
         mode: 'onChange',
     });
 
+    // --- WATCH NEW EXPENSE FIELDS ---
+    const stationExpense = form.watch("station_expense");
+    const bilityExpense = form.watch("bility_expense");
+    const stationLabour = form.watch("station_labour");
+    const cartLabour = form.watch("cart_labour");
+    const totalDeliveryCharges = form.watch("total_delivery_charges");
+    const totalExpenses = form.watch("total_expenses"); // Watch the calculated field as well
+    const isAlreadyPaid = form.watch("is_already_paid");
+    const isFreeOfCost = form.watch("is_free_of_cost");
+
+    // Recalculate Total Expenses & Total Amount whenever any watched field changes
+    useEffect(() => {
+        const calculatedTotalExp = (stationExpense || 0) + (bilityExpense || 0) + (stationLabour || 0) + (cartLabour || 0);
+        form.setValue("total_expenses", calculatedTotalExp);
+
+        let adjustedDeliveryCharges = totalDeliveryCharges || 0;
+        if (isAlreadyPaid || isFreeOfCost) {
+            if (adjustedDeliveryCharges === 0) {
+                adjustedDeliveryCharges = 1;
+                form.setValue("total_delivery_charges", 1);
+            }
+        }
+
+        // Total Amount = Adjusted Delivery Charges + Total Expenses
+        const calculatedTotalAmount = adjustedDeliveryCharges + calculatedTotalExp;
+        form.setValue("total_amount", calculatedTotalAmount);
+
+    }, [stationExpense, bilityExpense, stationLabour, cartLabour, totalDeliveryCharges, isAlreadyPaid, isFreeOfCost, form]);
+    // --------------------------------
+
     const { fields, append, remove } = useFieldArray({
         control: form.control,
         name: "goods_details",
@@ -234,9 +285,7 @@ export default function AddShipment() {
     const senderId = form.watch("sender_id");
     const receiverId = form.watch("receiver_id");
     // WATCH THE BILITY DATE FIELD
-    const bilityDate = form.watch("bility_date"); 
-    const isAlreadyPaid = form.watch("is_already_paid"); 
-    const isFreeOfCost = form.watch("is_free_of_cost"); 
+    const bilityDate = form.watch("bility_date");
     
     // Determine the status string to send to the API/DB
     const paymentStatusToSend = useMemo(() => {
@@ -304,9 +353,11 @@ export default function AddShipment() {
 
     async function handleDirectSave(values: ShipmentFormValues) {
         try {
+            const { register_number, is_already_paid, is_free_of_cost, ...restValues } = values;
+
             const payloadToSend = {
-                ...values,
-                total_charges: values.total_amount, 
+                ...restValues,
+                total_charges: values.total_amount,
                 total_delivery_charges: values.total_delivery_charges,
                 departure_city_id: Number(values.departure_city_id),
                 to_city_id: values.to_city_id ? Number(values.to_city_id) : undefined,
@@ -314,20 +365,23 @@ export default function AddShipment() {
                 vehicle_number_id: Number(values.vehicle_number_id),
                 sender_id: Number(values.sender_id),
                 receiver_id: Number(values.receiver_id),
-                
+
                 // NEW: Include the calculated payment status
                 payment_status: paymentStatusToSend,
-                
+
+                // *** INCLUDE NEW EXPENSE FIELDS IN PAYLOAD ***
+                station_expense: values.station_expense,
+                bility_expense: values.bility_expense,
+                station_labour: values.station_labour,
+                cart_labour: values.cart_labour,
+                total_expenses: values.total_expenses,
+                // ********************************************
+
                 goods_details: values.goods_details.map(detail => ({
                     item_id: Number(detail.item_id),
                     quantity: Number(detail.quantity),
                 }))
             };
-
-            // Remove internal form fields not mapped to the DB
-            delete payloadToSend.register_number;
-            delete payloadToSend.is_already_paid;
-            delete payloadToSend.is_free_of_cost;
 
             const response = await fetch('/api/shipments', {
                 method: 'POST',
@@ -589,7 +643,8 @@ export default function AddShipment() {
                                         step='0' 
                                         min='0' 
                                         onChange={(e) => field.onChange(e.target.valueAsNumber)} 
-                                        className='text-lg font-semibold text-green-800 border-green-300 focus:border-green-500'
+                                        readOnly
+                                        className='text-lg font-semibold text-green-800 border-green-300 focus:border-green-500 bg-gray-100'
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -597,7 +652,113 @@ export default function AddShipment() {
                         )} />
                     </div>
                     
-                    {/* NEW: Payment Status Checkboxes */}
+                    {/* 6. Delivery Expense Fields */}
+                     <div className='grid grid-cols-1 md:grid-cols-5 gap-4 pt-4 border-t'>
+                        <h4 className='col-span-full text-lg font-bold text-gray-700'>Delivery Expenses (Data Entry)</h4>
+                        
+                         <FormField 
+                            control={form.control} 
+                            name='station_expense' 
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('delivery_station_expense_label')}</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type='number' 
+                                            placeholder='0.00' 
+                                            {...field} 
+                                            step='0.01' 
+                                            min='0' 
+                                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} 
+                        />
+                        <FormField 
+                            control={form.control} 
+                            name='bility_expense' 
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('delivery_bility_expense_label')}</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type='number' 
+                                            placeholder='0.00' 
+                                            {...field} 
+                                            step='0.01' 
+                                            min='0' 
+                                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} 
+                        />
+                        <FormField 
+                            control={form.control} 
+                            name='station_labour' 
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('delivery_station_labour_label')}</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type='number' 
+                                            placeholder='0.00' 
+                                            {...field} 
+                                            step='0.01' 
+                                            min='0' 
+                                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} 
+                        />
+                        <FormField 
+                            control={form.control} 
+                            name='cart_labour' 
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('delivery_cart_labour_label')}</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type='number' 
+                                            placeholder='0.00' 
+                                            {...field} 
+                                            step='0.01' 
+                                            min='0' 
+                                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} 
+                        />
+
+                        <FormField 
+                            control={form.control} 
+                            name='total_expenses' 
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className='text-red-700 font-bold'>{t('delivery_total_expenses_label')}</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type='number' 
+                                            {...field} 
+                                            step='0.01' 
+                                            readOnly
+                                            className='bg-red-50 font-bold text-red-600'
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} 
+                        />
+                    </div>
+                    
+                    {/* 7. Payment Status Checkboxes */}
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t'>
                         <FormField
                             control={form.control}
@@ -715,10 +876,9 @@ export default function AddShipment() {
                                         </TableCell>
                                         {/* --- NEW CELLS ADDED HERE --- */}
                                         <TableCell>
-                                            {/* Uses the createdAt timestamp, formatted to local date string */}
-{                                            new Date(shipment.bility_date).toLocaleDateString()
-}                                        </TableCell>
-                                       
+                                          {shipment.created_at ? new Date(shipment.created_at).toLocaleDateString() : 'N/A'}
+                                        </TableCell>
+                                        
                                         {/* ------------------------------- */}
                                         <TableCell>
                                             {shipment.goodsDetails && shipment.goodsDetails.length > 0 
@@ -732,7 +892,7 @@ export default function AddShipment() {
                                                 : 'N/A'
                                             }
                                         </TableCell>
-                                         <TableCell className='text-right'>
+                                        <TableCell className='text-right'>
                                             {/* Formats and displays the total_delivery_charges */}
                                             {formatCurrency(shipment.total_delivery_charges)}
                                         </TableCell>

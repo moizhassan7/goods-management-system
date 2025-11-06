@@ -79,23 +79,20 @@ interface ShipmentData {
     register_number: string;
     bility_number: string;
     bility_date: string;
-    // FIX: Changed type to handle Prisma Decimal which is usually returned as a string
     total_charges: number | string; 
-    departureCity?: {
-        name: string;
-    };
-    toCity?: {
-        name: string;
-    };
-    sender?: {
-        name: string;
-    };
-    receiver?: {
-        name: string;
-        contactInfo?: string; // ADDED: to grab phone number
-    };
+    departureCity?: { name: string; };
+    toCity?: { name: string; };
+    sender?: { name: string; };
+    receiver?: { name: string; contactInfo?: string; };
     walk_in_sender_name?: string;
     walk_in_receiver_name?: string;
+    // *** NEW EXPENSE FIELDS ON SHIPMENT OBJECT ***
+    station_expense: number;
+    bility_expense: number;
+    station_labour: number;
+    cart_labour: number;
+    total_expenses: number;
+    // *******************************************
 }
 
 const today = new Date().toISOString().substring(0, 10);
@@ -117,15 +114,13 @@ const generateDefaultValues = (): DeliveryFormValues => ({
 
 export default function AddDelivery() {
     const { toast } = useToast();
-    const { t } = useTranslation(); // <-- ADDED: Translation Hook
+    const { t } = useTranslation(); 
     
     const [shipmentData, setShipmentData] = useState<ShipmentData | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<DeliveryFormValues>({
-        // NOTE: Zod messages remain English as they are for validation structure,
-        // but can be dynamically overridden or localized in an TBD implementation.
         resolver: zodResolver(DeliveryFormSchema),
         defaultValues: generateDefaultValues(),
         mode: 'onChange',
@@ -139,7 +134,8 @@ export default function AddDelivery() {
 
     // Calculate total expenses whenever any expense field changes
     useEffect(() => {
-        const total = stationExpense + bilityExpense + stationLabour + cartLabour;
+        // This recalculation remains important if the user edits the pre-filled fields
+        const total = (stationExpense || 0) + (bilityExpense || 0) + (stationLabour || 0) + (cartLabour || 0);
         form.setValue("total_expenses", total);
     }, [stationExpense, bilityExpense, stationLabour, cartLabour, form]);
 
@@ -150,11 +146,10 @@ export default function AddDelivery() {
         }
 
         setIsSearching(true);
-        // FIX 1: Explicitly clear previous shipment data immediately.
+        // Clear previous shipment data immediately.
         setShipmentData(null); 
         
-        // FIX 2: Reset form fields that are populated by the shipment data 
-        // to ensure old data isn't displayed for a new, failed search.
+        // Reset fields (keeping the bility number but clearing all populated/expense fields)
         form.reset({ 
             ...form.getValues(),
             receiver_name: '', 
@@ -167,41 +162,44 @@ export default function AddDelivery() {
             station_labour: 0,
             cart_labour: 0,
             total_expenses: 0,
-            // IMPORTANT: keep the bility_number entered by the user
             bility_number: bilityNumber
         }, { keepDefaultValues: true }); 
 
         try {
-            // API now correctly handles filtering by bility_number
             const response = await fetch(`/api/shipments?bility_number=${bilityNumber}`);
             
             if (!response.ok) {
-                 // Throwing here will land in catch block, which also sets shipmentData=null, so safe.
-                 // We don't check status 404 here, relying on the overall failure state.
                  throw new Error('Failed to search shipment or shipment not found.');
             }
             
             const shipment = await response.json();
             
-            // The API is expected to return an array, even if filtered down to zero or one result.
             const foundShipment = Array.isArray(shipment) && shipment.length > 0 ? shipment[0] : null;
 
             if (foundShipment) {
                 setShipmentData(foundShipment);
                 
-                // FIX 3: Pre-fill receiver name and phone from the found shipment.
+                // Pre-fill receiver name and phone
                 const receiverName = foundShipment.walk_in_receiver_name || foundShipment.receiver?.name || '';
                 const receiverPhone = foundShipment.receiver?.contactInfo || ''; 
 
                 form.setValue('receiver_name', receiverName);
                 form.setValue('receiver_phone', receiverPhone);
                 
+                // *** CRITICAL FIX: Auto-populate Expense Fields from Shipment Data ***
+                form.setValue('station_expense', foundShipment.station_expense || 0);
+                form.setValue('bility_expense', foundShipment.bility_expense || 0);
+                form.setValue('station_labour', foundShipment.station_labour || 0);
+                form.setValue('cart_labour', foundShipment.cart_labour || 0);
+                // Note: total_expenses is set here, but also recalculated by the useEffect above
+                form.setValue('total_expenses', foundShipment.total_expenses || 0); 
+                // *******************************************************************
+                
                 toast.success({ 
                     title: t('delivery_search_button'), 
                     description: `Found shipment: ${foundShipment.bility_number} (Reg: ${foundShipment.register_number})` 
                 });
             } else {
-                // If the API returns 200 with an empty array or the shipment object is unexpectedly missing details.
                  toast.error({ 
                     title: t('delivery_search_button'), 
                     description: `Shipment with bility number: ${bilityNumber} not found.` 
@@ -209,7 +207,6 @@ export default function AddDelivery() {
             }
         } catch (error: any) {
             console.error("Search error:", error);
-            // shipmentData is already null, showing error toast is sufficient
             toast.error({ title: t('delivery_search_button'), description: error.message || 'Could not search for shipment.' });
         } finally {
             setIsSearching(false);
@@ -220,6 +217,14 @@ export default function AddDelivery() {
         if (!shipmentData || !shipmentData.register_number) {
             toast.error({ title: t('delivery_record_button'), description: 'Please search and select a valid shipment first.' });
             return;
+        }
+        
+        // Safety check: Do not allow delivery if an expense field was missed and remained 0
+        if (values.total_expenses === 0) {
+            // Note: Since expenses are now prepopulated from the shipment, this might only trigger 
+            // if the original data entry was flawed, or if the user cleared the fields.
+             toast.error({ title: t('delivery_record_button'), description: 'Total expenses must be greater than 0.' });
+             return;
         }
 
         setIsSubmitting(true);
@@ -318,7 +323,7 @@ export default function AddDelivery() {
                                     <div>
                                         <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_bility_date')}</label>
                                         <p className='text-lg font-semibold'>
-                                            {new Date(shipmentData.bility_date + 'T00:00:00').toLocaleDateString()}
+                                           {new Date(shipmentData.bility_date).toLocaleDateString()}
                                         </p>
                                     </div>
                                     <div>
@@ -371,9 +376,9 @@ export default function AddDelivery() {
                                         )} 
                                     />
 
-                                    {/* Expense Fields */}
+                                    {/* Expense Fields - Now pre-filled */}
                                     <div className='space-y-4'>
-                                        <h4 className='font-semibold text-gray-700'>{t('delivery_expenses_heading')}</h4>
+                                        <h4 className='font-semibold text-gray-700'>{t('delivery_expenses_heading')} (Pre-filled, editable)</h4>
                                         
                                         <FormField 
                                             control={form.control} 
@@ -468,7 +473,6 @@ export default function AddDelivery() {
                                                     <FormControl>
                                                         <Input 
                                                             type='number' 
-                                                            placeholder={t('shipment_delivery_charges_placeholder')} 
                                                             {...field} 
                                                             step='0.01' 
                                                             min='0' 
