@@ -146,12 +146,11 @@ interface ShipmentData {
     forwarding_agency_id: number;
     vehicle_number_id: number;
     total_charges: number;
-    total_delivery_charges: number;
+    total_delivery_charges: number; // Confirmed available
     walk_in_sender_name?: string;
     walk_in_receiver_name?: string;
-    created_at: string;
+    created_at: string; // Confirmed available
     goodsDetails?: { quantity: number; itemCatalog?: { item_description?: string } | null }[];
-    // NEW: Add field to ShipmentData for displaying status
     payment_status?: string | null; 
 }
 
@@ -372,10 +371,31 @@ export default function AddShipment() {
     const isReceiverWalkIn = receiverId === WALK_IN_CUSTOMER_ID;
     const isFormValid = form.formState.isValid;
     const manualTotalAmount = form.watch("total_amount");
+    
+    // Formatting the current date for display in the new box
+    const displayDate = new Date(today).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    });
 
     return (
         <div className='p-6 max-w-6xl mx-auto bg-gray-50 min-h-screen'>
-            <h2 className='text-3xl font-extrabold mb-8 text-gray-900 border-b pb-2'>{t('shipment_register_title')}</h2>
+            {/* *** START NEW FLEX CONTAINER FOR TITLE AND DATE BOX *** */}
+            <div className="flex justify-between items-center mb-6 border-b pb-2">
+                <h2 className='text-3xl font-extrabold text-gray-900'>
+                    {t('shipment_register_title')}
+                </h2>
+                
+                {/* *** NEW DATE BOX *** */}
+                <div className="bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-lg">
+                    <span className="text-sm font-medium">Today's Date:</span>
+                    <span className="text-xl font-bold ml-2">
+                        {displayDate}
+                    </span>
+                </div>
+            </div>
+            {/* *** END NEW CONTAINER *** */}
             
             <Form {...form}>
                 <form 
@@ -662,15 +682,19 @@ export default function AddShipment() {
                                     <TableHead>{t('shipment_table_sender')}</TableHead>
                                     <TableHead>{t('shipment_table_receiver')}</TableHead>
                                     <TableHead>{t('shipment_table_destination')}</TableHead>
+                                    {/* --- NEW COLUMNS ADDED HERE --- */}
+                                    <TableHead>Current Date</TableHead> 
+                                    {/* ------------------------------- */}
                                     <TableHead>{t('shipment_table_item_type')}</TableHead>
                                     <TableHead>{t('shipment_table_quantity')}</TableHead>
-                                    <TableHead className='text-right'>Payment Status</TableHead>{/* MODIFIED */}
+                                    <TableHead className='text-right'>Delivery Charges</TableHead>
+                                    <TableHead className='text-right'>Payment Status</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {shipments.map((shipment) => (
                                     <TableRow key={shipment.register_number}>
-                                        <TableCell className='font-medium'>{shipment.register_number}</TableCell>
+                                        <TableCell className='font-mono text-sm'>{shipment.register_number}</TableCell>
                                         <TableCell>{shipment.bility_number}</TableCell>
                                         <TableCell>{new Date(shipment.bility_date).toLocaleDateString()}</TableCell>
                                         <TableCell>{findNameById(data, 'cities', shipment.departure_city_id)}</TableCell>
@@ -689,6 +713,13 @@ export default function AddShipment() {
                                         <TableCell>
                                             {shipment.to_city_id ? findNameById(data, 'cities', shipment.to_city_id) : 'Local'}
                                         </TableCell>
+                                        {/* --- NEW CELLS ADDED HERE --- */}
+                                        <TableCell>
+                                            {/* Uses the createdAt timestamp, formatted to local date string */}
+{                                            new Date(shipment.bility_date).toLocaleDateString()
+}                                        </TableCell>
+                                       
+                                        {/* ------------------------------- */}
                                         <TableCell>
                                             {shipment.goodsDetails && shipment.goodsDetails.length > 0 
                                                 ? shipment.goodsDetails.map(detail => detail.itemCatalog?.item_description).join(', ')
@@ -701,8 +732,12 @@ export default function AddShipment() {
                                                 : 'N/A'
                                             }
                                         </TableCell>
+                                         <TableCell className='text-right'>
+                                            {/* Formats and displays the total_delivery_charges */}
+                                            {formatCurrency(shipment.total_delivery_charges)}
+                                        </TableCell>
                                         <TableCell className='text-right font-bold'>
-                                            {/* MODIFIED: Display Payment Status */}
+                                            {/* Display Payment Status */}
                                             {shipment.payment_status === 'ALREADY_PAID' && <span className='text-green-600'>PAID</span>}
                                             {shipment.payment_status === 'FREE' && <span className='text-blue-600'>FREE</span>}
                                             {shipment.payment_status === 'PENDING' && <span className='text-red-600'>{formatCurrency(shipment.total_charges)}</span>}

@@ -48,6 +48,10 @@ interface ShipmentData {
     bility_number: string;
     bility_date: string; // Already mapped to YYYY-MM-DD in API
     total_charges: number;
+    // --- ADDED FIELDS ---
+    total_delivery_charges: number; // Added for the new column
+    createdAt: string; // Assumed creation timestamp from API for "Current Date"
+    // --------------------
     delivery_date: string | null; // Already mapped to YYYY-MM-DD or null in API
     departureCity: { name: string };
     toCity: { name: string } | null;
@@ -252,7 +256,7 @@ export default function ViewShipments() {
                 </CardContent>
             </Card>
 
-            {/* Shipments Table Card (unmodified below this line) */}
+            {/* Shipments Table Card */}
             <Card className='shadow-lg'>
                 <CardHeader>
                     <CardTitle className='text-2xl text-gray-800'>Shipment Details</CardTitle>
@@ -275,12 +279,16 @@ export default function ViewShipments() {
                                         <TableHead>Reg. No</TableHead>
                                         <TableHead>Bilty No</TableHead>
                                         <TableHead>Bilty Date</TableHead>
+                                        <TableHead>Created Date</TableHead> 
                                         <TableHead>Sender</TableHead>
                                         <TableHead>Receiver</TableHead>
                                         <TableHead>From</TableHead>
                                         <TableHead>To</TableHead>
+                                        {/* --- NEW COLUMNS ADDED --- */}
+                                        {/* ------------------------- */}
                                         <TableHead>Vehicle</TableHead>
-                                        <TableHead className='text-right'>Payment Status / Charges</TableHead> {/* MODIFIED HEADER */}
+                                        <TableHead className='text-right'>Delivery Charges</TableHead>
+                                        <TableHead className='text-right'>Payment Status / Charges</TableHead>
                                         <TableHead>Status</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -293,14 +301,21 @@ export default function ViewShipments() {
                                             <TableRow key={shipment.register_number} className={isDelivered ? 'bg-green-50/50 hover:bg-green-100' : 'hover:bg-yellow-50/50'}>
                                                 <TableCell className='font-mono text-sm'>{shipment.register_number}</TableCell>
                                                 <TableCell className='font-semibold'>{shipment.bility_number}</TableCell>
-                                                <TableCell>{shipment.bility_date}</TableCell>
+                                                <TableCell>{shipment.bility_date ? new Date(shipment.bility_date).toLocaleDateString() : null}</TableCell>
+                                                  <TableCell>
+                                                    {/* Format the creation timestamp to a local date string */}
+                                                    {shipment.createdAt ? new Date(shipment.createdAt).toLocaleDateString() : null}
+                                                </TableCell>
                                                 <TableCell>{shipment.sender.name}</TableCell>
                                                 <TableCell className='font-medium'>{receiverDisplay}</TableCell>
                                                 <TableCell>{shipment.departureCity.name}</TableCell>
-                                                <TableCell>{shipment.toCity?.name || 'Local'}</TableCell>
+                                                <TableCell>{shipment.toCity?.name || 'Local'}</TableCell>  
                                                 <TableCell>{shipment.vehicle.vehicleNumber}</TableCell>
-                                                
-                                                {/* MODIFIED CELL: Show Status or Charges */}
+                                                 <TableCell className='text-right'>
+                                                    {/* Format and display the delivery charges */}
+                                                    {formatCurrency(shipment.total_delivery_charges)}
+                                                </TableCell>
+                                                {/* Payment Status / Charges Cell */}
                                                 <TableCell className='text-right font-bold'>
                                                     {shipment.payment_status === 'ALREADY_PAID' && <span className='px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700'>PAID</span>}
                                                     {shipment.payment_status === 'FREE' && <span className='px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700'>FREE</span>}

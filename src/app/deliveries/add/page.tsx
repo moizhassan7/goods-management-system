@@ -1,3 +1,5 @@
+// src/app/deliveries/add/page.tsx
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -90,6 +92,7 @@ interface ShipmentData {
     };
     receiver?: {
         name: string;
+        contactInfo?: string; // ADDED: to grab phone number
     };
     walk_in_sender_name?: string;
     walk_in_receiver_name?: string;
@@ -122,7 +125,7 @@ export default function AddDelivery() {
 
     const form = useForm<DeliveryFormValues>({
         // NOTE: Zod messages remain English as they are for validation structure,
-        // but can be dynamically overridden or localized in an advanced implementation.
+        // but can be dynamically overridden or localized in an TBD implementation.
         resolver: zodResolver(DeliveryFormSchema),
         defaultValues: generateDefaultValues(),
         mode: 'onChange',
@@ -147,34 +150,66 @@ export default function AddDelivery() {
         }
 
         setIsSearching(true);
+        // FIX 1: Explicitly clear previous shipment data immediately.
+        setShipmentData(null); 
+        
+        // FIX 2: Reset form fields that are populated by the shipment data 
+        // to ensure old data isn't displayed for a new, failed search.
+        form.reset({ 
+            ...form.getValues(),
+            receiver_name: '', 
+            receiver_phone: '', 
+            receiver_cnic: '', 
+            receiver_address: '', 
+            delivery_notes: '',
+            station_expense: 0,
+            bility_expense: 0,
+            station_labour: 0,
+            cart_labour: 0,
+            total_expenses: 0,
+            // IMPORTANT: keep the bility_number entered by the user
+            bility_number: bilityNumber
+        }, { keepDefaultValues: true }); 
+
         try {
+            // API now correctly handles filtering by bility_number
             const response = await fetch(`/api/shipments?bility_number=${bilityNumber}`);
+            
             if (!response.ok) {
-                if (response.status !== 404) {
-                    throw new Error('Failed to search shipment');
-                }
+                 // Throwing here will land in catch block, which also sets shipmentData=null, so safe.
+                 // We don't check status 404 here, relying on the overall failure state.
+                 throw new Error('Failed to search shipment or shipment not found.');
             }
+            
             const shipment = await response.json();
             
-            // const foundShipment = Array.isArray(shipment) ? shipment[0] : shipment;
+            // The API is expected to return an array, even if filtered down to zero or one result.
             const foundShipment = Array.isArray(shipment) && shipment.length > 0 ? shipment[0] : null;
 
             if (foundShipment) {
                 setShipmentData(foundShipment);
+                
+                // FIX 3: Pre-fill receiver name and phone from the found shipment.
+                const receiverName = foundShipment.walk_in_receiver_name || foundShipment.receiver?.name || '';
+                const receiverPhone = foundShipment.receiver?.contactInfo || ''; 
+
+                form.setValue('receiver_name', receiverName);
+                form.setValue('receiver_phone', receiverPhone);
+                
                 toast.success({ 
                     title: t('delivery_search_button'), 
-                    description: `Found shipment for bility number: ${bilityNumber}` 
+                    description: `Found shipment: ${foundShipment.bility_number} (Reg: ${foundShipment.register_number})` 
                 });
             } else {
-                setShipmentData(null);
-                toast.error({ 
+                // If the API returns 200 with an empty array or the shipment object is unexpectedly missing details.
+                 toast.error({ 
                     title: t('delivery_search_button'), 
-                    description: t('shipment_bility_num_placeholder') 
+                    description: `Shipment with bility number: ${bilityNumber} not found.` 
                 });
             }
         } catch (error: any) {
             console.error("Search error:", error);
-            setShipmentData(null);
+            // shipmentData is already null, showing error toast is sufficient
             toast.error({ title: t('delivery_search_button'), description: error.message || 'Could not search for shipment.' });
         } finally {
             setIsSearching(false);
