@@ -70,7 +70,7 @@ export default function SignupPage() {
         throw new Error(data.message || 'Signup failed.');
       }
 
-      toast.success('Registration Successful 🎉', {
+      toast.success('Registration Successful', {
         description: `User ${values.username} created as ${data.user.role}. Redirecting to login...`,
       });
 

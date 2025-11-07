@@ -85,7 +85,7 @@ export default function LoginPage() {
       <Card className='w-full max-w-md shadow-2xl'>
         <CardHeader className='text-center'>
           <CardTitle className='text-3xl font-extrabold text-green-700'>Log In</CardTitle>
-          <CardDescription>Access your Zikria Goods Transports account.</CardDescription>
+          <CardDescription>Access your account.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -129,12 +129,12 @@ export default function LoginPage() {
             </form>
           </Form>
 
-          <div className='mt-6 text-center text-sm'>
+          {/* <div className='mt-6 text-center text-sm'>
             Don't have an account?{' '}
             <Link href='/signup' className='text-blue-600 hover:underline font-semibold'>
               Sign Up
             </Link>
-          </div>
+          </div> */}
         </CardContent>
       </Card>
     </div>
