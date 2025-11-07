@@ -158,18 +158,16 @@ const SidebarNestedList = ({ subSection, isCollapsed }) => {
 };
 
 
-const Sidebar = () => {
-    const [isCollapsed, setIsCollapsed] = useState(false);
+const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     const { user, isAuthLoading } = useAuth();
     const { hasPermission } = usePermission();
-    
+
     // Quick escape if authentication is still loading
-    if (isAuthLoading) return null; 
+    if (isAuthLoading) return null;
 
     const transitionClass = 'transition-all duration-300 ease-in-out';
-    const { t, locale, setLocale } = useTranslation(); 
-    
-    const sidebarWidth = isCollapsed ? 'w-20' : 'w-72'; 
+    const { t, locale, setLocale } = useTranslation();
+    const sidebarWidth = isCollapsed ? 'w-20' : 'w-80';
     const ToggleIcon = isCollapsed ? ChevronRight : ChevronLeft;
 
     // NEW: Language Selector Component
@@ -295,7 +293,6 @@ const Sidebar = () => {
                         links: [
                             { name: t('nav_add_vehicle'), href: '/vehicles/add', translationKey: 'nav_add_vehicle', permissionKey: 'MASTER_DATA_WRITE' },
                             { name: t('nav_view_vehicles'), href: '/vehicles/view', translationKey: 'nav_view_vehicles', permissionKey: 'MASTER_DATA_WRITE' },
-                            { name: t('nav_vehicles_report'), href: '/vehicles/report', translationKey: 'nav_vehicles_report', permissionKey: 'REPORTS_VIEW' },
                         ] 
                     },
                     { 
@@ -305,7 +302,6 @@ const Sidebar = () => {
                         links: [
                             { name: t('nav_add_city'), href: '/cities/add', translationKey: 'nav_add_city', permissionKey: 'MASTER_DATA_WRITE' },
                             { name: t('nav_view_cities'), href: '/cities/view', translationKey: 'nav_view_cities', permissionKey: 'MASTER_DATA_WRITE' },
-                            { name: t('nav_cities_report'), href: '/cities/report', translationKey: 'nav_cities_report', permissionKey: 'REPORTS_VIEW' },
                         ] 
                     },
                     { 
@@ -315,7 +311,6 @@ const Sidebar = () => {
                         links: [
                             { name: t('nav_add_agency'), href: '/agency/add', translationKey: 'nav_add_agency', permissionKey: 'MASTER_DATA_WRITE' },
                             { name: t('nav_view_agencies'), href: '/agency/view', translationKey: 'nav_view_agencies', permissionKey: 'MASTER_DATA_WRITE' },
-                            { name: t('nav_agency_report'), href: '/agency/report', translationKey: 'nav_agency_report', permissionKey: 'REPORTS_VIEW' },
                         ] 
                     },
                     { 
@@ -324,7 +319,6 @@ const Sidebar = () => {
                         translationKey: 'nav_items',
                         links: [
                             { name: t('nav_add_item_type'), href: '/items/add', translationKey: 'nav_add_item_type', permissionKey: 'MASTER_DATA_WRITE' },
-                            { name: t('nav_items_report'), href: '/items/report', translationKey: 'nav_items_report', permissionKey: 'REPORTS_VIEW' },
                         ] 
                     },
                      {
@@ -333,7 +327,6 @@ const Sidebar = () => {
                         translationKey: 'nav_returns',
                         links: [
                             { name: t('nav_create_return'), href: '/returns', translationKey: 'nav_create_return', permissionKey: 'CORE_OPERATIONS' },
-                            { name: t('nav_returns_report'), href: '/returns/report', translationKey: 'nav_returns_report', permissionKey: 'REPORTS_VIEW' },
                         ]
                      }
                 ]
@@ -373,8 +366,8 @@ const Sidebar = () => {
     }, [hasPermission, t]);
 
     return (
-        <div 
-            className={`${sidebarWidth} ${transitionClass} ${TEXT_PRIMARY} p-4 min-h-screen border-r border-[#023e8a]/30 shadow-xl ${BG_DEEP} flex flex-col relative z-20`}
+        <div
+            className={`${sidebarWidth} ${transitionClass} ${TEXT_PRIMARY} p-4 min-h-screen border-r border-[#023e8a]/30 shadow-xl ${BG_DEEP} flex flex-col fixed left-0 top-0 h-screen z-20`}
         >
          
             

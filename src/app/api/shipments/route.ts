@@ -249,7 +249,8 @@ export async function GET(request: Request) {
                     baseWhere, 
                     {bility_number: { 
                     equals: bilityNumberParam, 
-                    mode: 'insensitive' // <--- 🌟 Case-Insensitive Fix Applied Here
+                    // mode: 'insensitive' // <--- 🌟 Case-Insensitive Fix Applied Here
+                    // mode: 'insensitive'
                 }},
                 ],
             };

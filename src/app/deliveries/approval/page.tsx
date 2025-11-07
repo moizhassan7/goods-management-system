@@ -188,12 +188,16 @@ export default function DeliveryApprovalPage() {
     // --- Loading UI (Conditional Early Return) ---
     if (isPendingLoading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-100">
-                <div className="text-center p-8 bg-white rounded-xl shadow-lg">
-                    <Loader2 className="h-10 w-10 animate-spin mx-auto mb-4 text-blue-600" />
-                    <p className="text-lg font-medium text-gray-700">Loading pending deliveries...</p>
-                </div>
-            </div>
+            <div className='flex justify-center items-center min-h-screen'>
+    <div className='text-4xl font-extrabold text-blue-600 flex space-x-1'>
+      {/* We apply the bounce animation to each letter, 
+        but use arbitrary values for 'animation-delay' to stagger them.
+      */}
+      <span className="animate-bounce [animation-delay:-0.3s]">Z</span>
+      <span className="animate-bounce [animation-delay:-0.15s]">.</span>
+      <span className="animate-bounce">G</span>
+    </div>
+</div>
         );
     }
     

@@ -106,10 +106,16 @@ export default function DashboardPage() {
 
     if (isLoading) {
         return (
-            <div className='p-8 min-h-screen'>
-                <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
-                <p className="text-center text-gray-600 mt-4">Loading Dashboard Metrics...</p>
-            </div>
+           <div className='flex justify-center items-center min-h-screen'>
+    <div className='text-4xl font-extrabold text-blue-600 flex space-x-1'>
+      {/* We apply the bounce animation to each letter, 
+        but use arbitrary values for 'animation-delay' to stagger them.
+      */}
+      <span className="animate-bounce [animation-delay:-0.3s]">Z</span>
+      <span className="animate-bounce [animation-delay:-0.15s]">.</span>
+      <span className="animate-bounce">G</span>
+    </div>
+</div>
         );
     }
     

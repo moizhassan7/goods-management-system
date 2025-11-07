@@ -81,7 +81,7 @@ const getCurrentMonthDateRange = () => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    
+
     // Format to YYYY-MM-DD
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
@@ -95,7 +95,7 @@ export default function ViewShipments() {
     const { toast } = useToast();
     const [shipments, setShipments] = useState<ShipmentData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    
+
     // Filter States
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [vehicleId, setVehicleId] = useState<number | 'all'>('all');
@@ -125,12 +125,12 @@ export default function ViewShipments() {
             }
 
             const response = await fetch(`/api/shipments/view-all?${params.toString()}`);
-            
+
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Failed to load shipment records.');
             }
-            
+
             const data: ShipmentData[] = await response.json();
             setShipments(data);
         } catch (error: any) {
@@ -157,11 +157,11 @@ export default function ViewShipments() {
             }
         }
         loadFilters();
-        
+
         // Initial fetch: Load current month's shipments
         const { startDate: initialStart, endDate: initialEnd } = getCurrentMonthDateRange();
         fetchShipments(debouncedSearchTerm, initialStart, initialEnd, vehicleId);
-        
+
         // The dependency array will manage subsequent fetches via debouncedSearchTerm and the button click handler.
     }, []); // Empty dependency array for component mount only
 
@@ -190,13 +190,13 @@ export default function ViewShipments() {
 
     return (
         <div className='p-6 max-w-[1400px] mx-auto bg-gray-50 min-h-screen'>
-            <h2 className='text-3xl font-extrabold mb-8 text-gray-900 border-b pb-2'>All Shipment Records</h2>
+            <h2 className='text-3xl font-extrabold mb-8 text-gray-900 border-b pb-2'>All Blity Records</h2>
 
             {/* Search and Filter Card */}
             <Card className='shadow-lg mb-8'>
                 <CardHeader>
                     <CardTitle className='text-xl text-blue-800'>Search & Filter</CardTitle>
-                    <CardDescription>Filter shipments by date range, vehicle, or search by Party/Bilty.</CardDescription>
+                    <CardDescription>Filter blity number by date range, vehicle, or search by Party/Bilty.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className='grid grid-cols-1 lg:grid-cols-5 gap-4 items-end'>
@@ -211,7 +211,7 @@ export default function ViewShipments() {
                                 disabled={isLoading}
                             />
                         </div>
-                        
+
                         {/* 2. Date Filters */}
                         <div className='grid gap-2'>
                             <label className='text-sm font-medium'>Start Date</label>
@@ -243,10 +243,10 @@ export default function ViewShipments() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        
+
                         {/* 4. Load Button */}
                         <Button
-                            onClick={handleFilterLoad} 
+                            onClick={handleFilterLoad}
                             className='lg:col-span-1 h-9'
                             disabled={isLoading}
                         >
@@ -259,14 +259,20 @@ export default function ViewShipments() {
             {/* Shipments Table Card */}
             <Card className='shadow-lg'>
                 <CardHeader>
-                    <CardTitle className='text-2xl text-gray-800'>Shipment Details</CardTitle>
+                    <CardTitle className='text-2xl text-gray-800'>Blity Details</CardTitle>
                     <CardDescription>{shipments.length} records currently displayed.</CardDescription>
                 </CardHeader>
                 <CardContent className='p-0'>
                     {isLoading ? (
-                        <div className="text-center py-12">
-                            <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
-                            <p className="text-gray-600 mt-3">Loading shipment data...</p>
+                        <div className='flex justify-center items-center min-h-screen'>
+                            <div className='text-4xl font-extrabold text-blue-600 flex space-x-1'>
+                                {/* We apply the bounce animation to each letter, 
+        but use arbitrary values for 'animation-delay' to stagger them.
+      */}
+                                <span className="animate-bounce [animation-delay:-0.3s]">Z</span>
+                                <span className="animate-bounce [animation-delay:-0.15s]">.</span>
+                                <span className="animate-bounce">G</span>
+                            </div>
                         </div>
                     ) : shipments.length === 0 ? (
                         <p className="text-center text-gray-500 py-8">No shipments found matching the criteria.</p>
@@ -279,7 +285,7 @@ export default function ViewShipments() {
                                         <TableHead>Reg. No</TableHead>
                                         <TableHead>Bilty No</TableHead>
                                         <TableHead>Bilty Date</TableHead>
-                                        <TableHead>Created Date</TableHead> 
+                                        <TableHead>Created Date</TableHead>
                                         <TableHead>Sender</TableHead>
                                         <TableHead>Receiver</TableHead>
                                         <TableHead>From</TableHead>
@@ -296,22 +302,22 @@ export default function ViewShipments() {
                                     {shipments.map((shipment) => {
                                         const isDelivered = !!shipment.delivery_date;
                                         const receiverDisplay = shipment.walk_in_receiver_name || shipment.receiver.name;
-                                        
+
                                         return (
                                             <TableRow key={shipment.register_number} className={isDelivered ? 'bg-green-50/50 hover:bg-green-100' : 'hover:bg-yellow-50/50'}>
                                                 <TableCell className='font-mono text-sm'>{shipment.register_number}</TableCell>
                                                 <TableCell className='font-semibold'>{shipment.bility_number}</TableCell>
                                                 <TableCell>{shipment.bility_date ? new Date(shipment.bility_date).toLocaleDateString() : null}</TableCell>
-                                                  <TableCell>
+                                                <TableCell>
                                                     {/* Format the creation timestamp to a local date string */}
                                                     {shipment.createdAt ? new Date(shipment.createdAt).toLocaleDateString() : null}
                                                 </TableCell>
                                                 <TableCell>{shipment.sender.name}</TableCell>
                                                 <TableCell className='font-medium'>{receiverDisplay}</TableCell>
                                                 <TableCell>{shipment.departureCity.name}</TableCell>
-                                                <TableCell>{shipment.toCity?.name || 'Local'}</TableCell>  
+                                                <TableCell>{shipment.toCity?.name || 'Local'}</TableCell>
                                                 <TableCell>{shipment.vehicle.vehicleNumber}</TableCell>
-                                                 <TableCell className='text-right'>
+                                                <TableCell className='text-right'>
                                                     {/* Format and display the delivery charges */}
                                                     {formatCurrency(shipment.total_delivery_charges)}
                                                 </TableCell>
@@ -322,7 +328,7 @@ export default function ViewShipments() {
                                                     {shipment.payment_status === 'PENDING' && <span className='font-bold text-green-700'>{formatCurrency(shipment.total_charges)}</span>}
                                                     {(!shipment.payment_status || shipment.payment_status === null) && <span className='font-bold text-green-700'>{formatCurrency(shipment.total_charges)}</span>}
                                                 </TableCell>
-                                                
+
                                                 <TableCell>
                                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${isDelivered ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}`}>
                                                         {isDelivered ? 'DELIVERED' : 'IN TRANSIT'}

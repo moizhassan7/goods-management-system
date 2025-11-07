@@ -1,7 +1,7 @@
 // src/moizhassan7/goods-management-system/goods-management-system-36a96deb04db0b296f5178c3c6a89a34c19278dd/src/components/layout/LayoutContent.tsx
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation'; // Added useRouter and usePathname
 import { useLoading } from '@/contexts/LoadingContext';
 import { useAuth } from '@/contexts/AuthContext'; // NEW
@@ -19,12 +19,13 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   const { user, isLoading: isAuthLoading, logout } = useAuth(); // NEW: Use auth context
   const pathname = usePathname();
   const router = useRouter();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // --- Authentication / Routing Logic ---
   useEffect(() => {
     // If auth loading is complete
     if (!isAuthLoading) {
-      const isPublicPath = publicPaths.includes(pathname);
+      const isPublicPath = publicPaths.includes(pathname || '');
 
       if (user && isPublicPath) {
         // User is logged in and trying to access login/signup -> Redirect to Dashboard
@@ -36,16 +37,39 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     }
   }, [user, isAuthLoading, pathname, router]);
 
+  // --- Custom Close Confirmation ---
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Do you want to close this tab?'; // Custom message
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   // Show a full-screen loading spinner while the initial auth check is running
   if (isAuthLoading) {
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
-            <CustomLoader message="Checking authentication..." />
-        </div>
+       <div className='flex justify-center items-center min-h-screen'>
+    <div className='text-4xl font-extrabold text-blue-600 flex space-x-1'>
+      {/* We apply the bounce animation to each letter, 
+        but use arbitrary values for 'animation-delay' to stagger them.
+      */}
+      <span className="animate-bounce [animation-delay:-0.3s]">Z</span>
+      <span className="animate-bounce [animation-delay:-0.15s]">.</span>
+      <span className="animate-bounce">G</span>
+      {/* Checking Authication */}
+    </div>
+</div>
+        
     );
   }
 
-  const isLoginPage = publicPaths.includes(pathname);
+  const isLoginPage = publicPaths.includes(pathname || '');
   
   // If the user is on login/signup page OR not logged in yet, just render the children (login/signup form)
   if (isLoginPage) {
@@ -66,11 +90,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     <>
       <LanguageSetter /> 
       <div className="flex min-h-screen">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
+        <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'ml-20' : 'ml-72'}`}>
             {/* Header with User Info and Logout */}
             <header className="flex justify-between items-center p-4 bg-white border-b shadow-sm sticky top-0 z-10">
-                  <h1 className="text-xl font-bold text-gray-800">
+                  <h1 className="text-xl font-bold text-gray-800 pl-8">
                                              Zikria Goods Transports Company
 
                   </h1>

@@ -271,9 +271,16 @@ export default function AddTrip() {
 
   if (isLoadingData) {
     return (
-      <div className='p-6 max-w-4xl mx-auto text-center'>
-        <p className="text-xl">Loading form data...</p>
-      </div>
+      <div className='flex justify-center items-center min-h-screen'>
+    <div className='text-4xl font-extrabold text-blue-600 flex space-x-1'>
+      {/* We apply the bounce animation to each letter, 
+        but use arbitrary values for 'animation-delay' to stagger them.
+      */}
+      <span className="animate-bounce [animation-delay:-0.3s]">Z</span>
+      <span className="animate-bounce [animation-delay:-0.15s]">.</span>
+      <span className="animate-bounce">G</span>
+    </div>
+</div>
     );
   }
 
