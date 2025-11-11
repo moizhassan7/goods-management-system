@@ -1,5 +1,7 @@
+"use client";
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { 
     Truck, FileText, MapPin, Users, Package,
     ChevronDown, ChevronUp, ArrowRight, Home,
@@ -25,7 +27,11 @@ const HOVER_BG = 'hover:bg-[#023e8a]/30';
 // Single Link Component
 const SidebarLink = ({ link, isSubItem = false, isNestedSubItem = false, isCollapsed }) => {
     const Icon = link.icon;
-    
+    const pathname = usePathname();
+
+    // active when exact path or when current pathname starts with link.href (for child routes)
+    const isActive = pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href));
+
     let paddingClass = 'px-4';
     if (!isCollapsed) {
         paddingClass = isNestedSubItem ? 'pl-12' : isSubItem ? 'pl-8' : 'pl-4';
@@ -36,12 +42,14 @@ const SidebarLink = ({ link, isSubItem = false, isNestedSubItem = false, isColla
     const textSize = isNestedSubItem ? 'text-sm' : 'text-base';
     const textColor = isNestedSubItem ? TEXT_SECONDARY : TEXT_PRIMARY; 
 
+    const activeClass = isActive ? 'bg-[#023e8a]/80 font-semibold' : '';
+
     return (
         <Link 
             href={link.href} 
             key={link.name}
             className={`w-full flex items-center text-left py-2 h-auto transition-all duration-200 rounded-lg pr-4 
-                ${textColor} ${HOVER_BG} font-medium ${textSize} ${paddingClass} ${isCollapsed ? 'w-auto' : 'w-full'}`}
+                ${textColor} ${HOVER_BG} font-medium ${textSize} ${paddingClass} ${isCollapsed ? 'w-auto' : 'w-full'} ${activeClass}`}
         >
             {/* Show nested arrows only when expanded */}
             {(!isCollapsed && (isSubItem || isNestedSubItem)) && <ArrowRight className={`w-4 h-4 mr-1 text-[${ACCENT_COLOR}] shrink-0`} />}
@@ -57,14 +65,24 @@ const SidebarLink = ({ link, isSubItem = false, isNestedSubItem = false, isColla
 
 // Toggle-able Section Component 
 const SidebarCollapsibleSection = ({ section, isCollapsed }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const pathname = usePathname();
+    // Determine if any child link is active so we can open the section by default
+    const visibleLinks = section.links?.filter(link => link.isVisible) || [];
+    const visibleSubSections = section.subSections?.filter(subSection => 
+        subSection.links.some(link => link.isVisible)
+    ) || [];
+
+    const childrenFlatLinks = [
+        ...visibleLinks,
+        ...visibleSubSections.flatMap(s => s.links || [])
+    ];
+
+    const anyChildActive = childrenFlatLinks.some(link => pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href)));
+
+    const [isOpen, setIsOpen] = useState(Boolean(anyChildActive));
     const SectionIcon = section.icon;
     const ToggleIcon = isOpen ? ChevronUp : ChevronDown;
     // Filter visible links based on roles (added link.isVisible property)
-    const visibleLinks = section.links?.filter(link => link.isVisible);
-    const visibleSubSections = section.subSections?.filter(subSection => 
-        subSection.links.some(link => link.isVisible)
-    );
 
     const toggleOpen = () => setIsOpen(!isOpen);
 
@@ -90,7 +108,7 @@ const SidebarCollapsibleSection = ({ section, isCollapsed }) => {
             <button
                 onClick={toggleOpen}
                 className={`w-full flex items-center justify-between text-left py-2 pr-4 transition-colors p-2 rounded-lg 
-                    ${TEXT_PRIMARY} hover:text-white ${HOVER_BG}`}
+                    ${TEXT_PRIMARY} hover:text-white ${HOVER_BG} ${anyChildActive ? 'bg-[#023e8a]/80 font-semibold' : ''}`}
             >
                 <div className='flex items-center'>
                     <SectionIcon className={`w-5 h-5 mr-3 shrink-0 text-[${ACCENT_COLOR}]`} />
@@ -121,11 +139,13 @@ const SidebarCollapsibleSection = ({ section, isCollapsed }) => {
 
 // Nested List Component (Only visible when expanded)
 const SidebarNestedList = ({ subSection, isCollapsed }) => {
-    const [isNestedOpen, setIsNestedOpen] = useState(false);
+    const pathname = usePathname();
+    const visibleLinks = subSection.links.filter(link => link.isVisible);
+    const anyNestedActive = visibleLinks.some(link => pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href)));
+    const [isNestedOpen, setIsNestedOpen] = useState(Boolean(anyNestedActive));
     const SubSectionIcon = subSection.icon;
     const ToggleIcon = isNestedOpen ? ChevronUp : ChevronDown;
     
-    const visibleLinks = subSection.links.filter(link => link.isVisible);
 
     if (isCollapsed || visibleLinks.length === 0) return null;
 
@@ -136,7 +156,7 @@ const SidebarNestedList = ({ subSection, isCollapsed }) => {
             <button
                 onClick={toggleNestedOpen}
                 className={`w-full flex items-center justify-between text-left py-2 pr-4 transition-colors rounded-lg 
-                    text-sm ${TEXT_SECONDARY} hover:text-white ${HOVER_BG} pl-4`}
+                    text-sm ${TEXT_SECONDARY} hover:text-white ${HOVER_BG} pl-4 ${anyNestedActive ? 'bg-[#023e8a]/80 font-semibold' : ''}`}
             >
                 <div className='flex items-center'>
                     <SubSectionIcon className={`w-4 h-4 mr-3 shrink-0 text-[${ACCENT_COLOR}]`} />

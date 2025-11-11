@@ -264,16 +264,17 @@ export default function ViewShipments() {
                 </CardHeader>
                 <CardContent className='p-0'>
                     {isLoading ? (
-                        <div className='flex justify-center items-center min-h-screen'>
-                            <div className='text-4xl font-extrabold text-blue-600 flex space-x-1'>
-                                {/* We apply the bounce animation to each letter, 
-        but use arbitrary values for 'animation-delay' to stagger them.
-      */}
-                                <span className="animate-bounce [animation-delay:-0.3s]">Z</span>
-                                <span className="animate-bounce [animation-delay:-0.15s]">.</span>
-                                <span className="animate-bounce">G</span>
-                            </div>
-                        </div>
+                       <div className='flex justify-center items-center min-h-screen'>
+    <div className='text-4xl font-extrabold text-blue-600 flex space-x-1'>
+        {/* We apply the bounce animation to each letter, 
+            using arbitrary values for 'animation-delay' to stagger them.
+        */}
+        <span className="animate-bounce [animation-delay:-0.45s]">Z</span>
+        <span className="animate-bounce [animation-delay:-0.30s]">G</span>
+        <span className="animate-bounce [animation-delay:-0.15s]">T</span>
+        <span className="animate-bounce">C</span>
+    </div>
+</div>
                     ) : shipments.length === 0 ? (
                         <p className="text-center text-gray-500 py-8">No shipments found matching the criteria.</p>
                     ) : (

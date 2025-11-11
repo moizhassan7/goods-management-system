@@ -45,7 +45,7 @@ import { cn } from '@/lib/utils';
 
 // Import the necessary i18n hook
 import { useTranslation } from '@/lib/i18n';
-
+import { SearchableDropdown } from "@/components/ui/SearchableDropdown";
 
 // --- Toast/Utility Setup (Keep existing useToast implementation) ---
 export interface Toast {
@@ -243,6 +243,12 @@ export default function AddShipment() {
     const [modalType, setModalType] = useState<'city' | 'agency' | 'vehicle' | 'party' | 'item' | null>(null);
     const [modalInput, setModalInput] = useState<any>({});
     const [isModalSubmitting, setIsModalSubmitting] = useState(false);
+    const [city, setCity] = useState<string | null>(null);
+    const [agency, setAgency] = useState<string | null>(null);
+    const [vehicles, setVehicles] = useState<string | null>(null);
+    const [item, setItem] = useState<string | null>(null);
+    const [sender, setSender] = useState<string | null>(null);
+    const [reciver, setReciver] = useState<string | null>(null);
 
     const fetchShipments = async (dateToFilter: string) => {
         if (!dateToFilter) {
@@ -760,15 +766,16 @@ export default function AddShipment() {
 
     if (isLoadingData) {
         return (
-         // This div now controls the full-screen layout
-<div className='flex justify-center items-center min-h-screen'>
+            // This div now controls the full-screen layout
+           <div className='flex justify-center items-center min-h-screen'>
     <div className='text-4xl font-extrabold text-blue-600 flex space-x-1'>
-      {/* We apply the bounce animation to each letter, 
-        but use arbitrary values for 'animation-delay' to stagger them.
-      */}
-      <span className="animate-bounce [animation-delay:-0.3s]">Z</span>
-      <span className="animate-bounce [animation-delay:-0.15s]">.</span>
-      <span className="animate-bounce">G</span>
+        {/* We apply the bounce animation to each letter, 
+            using arbitrary values for 'animation-delay' to stagger them.
+        */}
+        <span className="animate-bounce [animation-delay:-0.45s]">Z</span>
+        <span className="animate-bounce [animation-delay:-0.30s]">G</span>
+        <span className="animate-bounce [animation-delay:-0.15s]">T</span>
+        <span className="animate-bounce">C</span>
     </div>
 </div>
         );
@@ -815,14 +822,16 @@ export default function AddShipment() {
 
                         {/* DEPARTURE CITY */}
                         <FormField control={form.control} name='departure_city_id' render={({ field }) => (
-                            <SearchableCombobox
-                                field={field}
-                                labelTKey='shipment_departure_city_label'
-                                placeholderTKey='shipment_departure_city_placeholder'
-                                listName='cities'
-                                onAddClick={() => openMasterDataModal('city')}
-                                disabled={itemIsLoading}
+                            <SearchableDropdown
+                                label="Departure City"
+                                endpoint="/api/cities"
+                                placeholder="Select or add city"
+                                value={field.value}
+                                onChange={(name) => setCity(name)}
+                                onSelectItem={(it) => field.onChange(Number(it.id))}
+                                items={data?.cities}
                             />
+
                         )} />
                     </div>
 
@@ -830,24 +839,27 @@ export default function AddShipment() {
                     <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
                         {/* FORWARDING AGENCY */}
                         <FormField control={form.control} name='forwarding_agency_id' render={({ field }) => (
-                            <SearchableCombobox
-                                field={field}
-                                labelTKey='shipment_agency_label'
-                                placeholderTKey='shipment_agency_placeholder'
-                                listName='agencies'
-                                onAddClick={() => openMasterDataModal('agency')}
-                                disabled={itemIsLoading}
+                            <SearchableDropdown
+                                label="Forwading Agency"
+                                endpoint="/api/agencies"
+                                placeholder="Select or add agency"
+                                value={field.value}
+                                onChange={(name) => setAgency(name)}
+                                onSelectItem={(it) => field.onChange(Number(it.id))}
+                                items={data?.agencies}
                             />
                         )} />
                         {/* VEHICLE NUMBER */}
                         <FormField control={form.control} name='vehicle_number_id' render={({ field }) => (
-                            <SearchableCombobox
-                                field={field}
-                                labelTKey='shipment_vehicle_label'
-                                placeholderTKey='shipment_vehicle_placeholder'
-                                listName='vehicles'
-                                onAddClick={() => openMasterDataModal('vehicle')}
-                                disabled={itemIsLoading}
+                            <SearchableDropdown
+                                label="Vehicle Number"
+                                endpoint="/api/vehicles"
+                                placeholder="Select or add vehicle"
+                                value={field.value}
+                                onChange={(name) => setVehicles(name)}
+                                onSelectItem={(it) => field.onChange(Number(it.id))}
+                                items={data?.vehicles}
+                                createPropertyName="vehicleNumber"
                             />
                         )} />
 
@@ -869,13 +881,15 @@ export default function AddShipment() {
 
                         {/* ITEM TYPE */}
                         <FormField control={form.control} name={`goods_details.0.item_id`} render={({ field }) => (
-                            <SearchableCombobox
-                                field={field}
-                                labelTKey='shipment_item_type_label'
-                                placeholderTKey='shipment_item_type_placeholder'
-                                listName='items'
-                                onAddClick={() => openMasterDataModal('item')}
-                                disabled={itemIsLoading}
+                            <SearchableDropdown
+                                label="Item Type"
+                                endpoint="/api/items"
+                                placeholder="Select or add item type"
+                                value={field.value}
+                                onChange={(name) => setItem(name)}
+                                onSelectItem={(it) => field.onChange(Number(it.id))}
+                                items={data?.items}
+                                createPropertyName="description"
                             />
                         )} />
 
@@ -885,30 +899,32 @@ export default function AddShipment() {
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                         {/* SENDER */}
                         <FormField control={form.control} name='sender_id' render={({ field }) => (
-                            <SearchableCombobox
-                                field={field}
-                                labelTKey='shipment_sender_label'
-                                placeholderTKey='shipment_sender_placeholder'
-                                listName='parties'
-                                onAddClick={() => openMasterDataModal('party')}
-                                disabled={itemIsLoading}
+                           <SearchableDropdown
+                                label="Sender"
+                                endpoint="/api/parties"
+                                placeholder="Select or add sender"
+                                value={field.value}
+                                onChange={(name) => setSender(name)}
+                                onSelectItem={(it) => field.onChange(Number(it.id))}
+                                items={data?.parties}
                             />
                         )} />
                         {/* RECEIVER */}
                         <FormField control={form.control} name='receiver_id' render={({ field }) => (
-                            <SearchableCombobox
-                                field={field}
-                                labelTKey='shipment_receiver_label'
-                                placeholderTKey='shipment_receiver_placeholder'
-                                listName='parties'
-                                onAddClick={() => openMasterDataModal('party')}
-                                disabled={itemIsLoading}
+                            <SearchableDropdown
+                                label="Receiver"
+                                endpoint="/api/parties"
+                                placeholder="Select or add receiver"
+                                value={field.value}
+                                onChange={(name) => setReciver(name)}
+                                onSelectItem={(it) => field.onChange(Number(it.id))}
+                                items={data?.parties}
                             />
                         )} />
                     </div>
 
                     {/* Walk-in fields if needed */}
-                    {(isSenderWalkIn || isReceiverWalkIn) && (
+                    {/* {(isSenderWalkIn || isReceiverWalkIn) && (
                         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                             {isSenderWalkIn && <FormField control={form.control} name='walk_in_sender_name' render={({ field }) => (
                                 <FormItem><FormLabel>{t('shipment_walk_in_sender_label')}</FormLabel><FormControl><Input placeholder={t('shipment_walk_in_placeholder')} {...field} /></FormControl><FormMessage /></FormItem>
@@ -917,19 +933,20 @@ export default function AddShipment() {
                                 <FormItem><FormLabel>{t('shipment_walk_in_receiver_label')}</FormLabel><FormControl><Input placeholder={t('shipment_walk_in_placeholder')} {...field} /></FormControl><FormMessage /></FormItem>
                             )} />}
                         </div>
-                    )}
+                    )} */}
 
                     {/* 5. Destination, Delivery Charges, Total Amount */}
                     <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
                         {/* DESTINATION CITY */}
                         <FormField control={form.control} name='to_city_id' render={({ field }) => (
-                            <SearchableCombobox
-                                field={field}
-                                labelTKey='shipment_dest_city_label'
-                                placeholderTKey='shipment_dest_city_placeholder'
-                                listName='cities'
-                                onAddClick={() => openMasterDataModal('city')}
-                                disabled={itemIsLoading}
+                            <SearchableDropdown
+                                label="Destination City"
+                                endpoint="/api/cities"
+                                placeholder="Select or add city"
+                                value={field.value}
+                                onChange={(name) => setCity(name)}
+                                onSelectItem={(it) => field.onChange(Number(it.id))}
+                                items={data?.cities}
                             />
                         )} />
 

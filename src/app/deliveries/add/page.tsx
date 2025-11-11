@@ -178,26 +178,21 @@ export default function AddDelivery() {
 
             if (foundShipment) {
                 setShipmentData(foundShipment);
-                
-                // Pre-fill receiver name and phone
-                const receiverName = foundShipment.walk_in_receiver_name || foundShipment.receiver?.name || '';
-                const receiverPhone = foundShipment.receiver?.contactInfo || ''; 
 
-                form.setValue('receiver_name', receiverName);
-                form.setValue('receiver_phone', receiverPhone);
-                
-                // *** CRITICAL FIX: Auto-populate Expense Fields from Shipment Data ***
+                // NOTE: Do NOT auto-fill receiver_name or receiver_phone here.
+                // Leave those fields for the user to enter/confirm manually.
+
+                // Auto-populate Expense Fields from Shipment Data (still desired)
                 form.setValue('station_expense', foundShipment.station_expense || 0);
                 form.setValue('bility_expense', foundShipment.bility_expense || 0);
                 form.setValue('station_labour', foundShipment.station_labour || 0);
                 form.setValue('cart_labour', foundShipment.cart_labour || 0);
                 // Note: total_expenses is set here, but also recalculated by the useEffect above
-                form.setValue('total_expenses', foundShipment.total_expenses || 0); 
-                // *******************************************************************
-                
-                toast.success({ 
-                    title: t('delivery_search_button'), 
-                    description: `Found shipment: ${foundShipment.bility_number} (Reg: ${foundShipment.register_number})` 
+                form.setValue('total_expenses', foundShipment.total_expenses || 0);
+
+                toast.success({
+                    title: t('delivery_search_button'),
+                    description: `Found shipment: ${foundShipment.bility_number} (Reg: ${foundShipment.register_number})`
                 });
             } else {
                  toast.error({ 
@@ -288,7 +283,16 @@ export default function AddDelivery() {
                                         <FormItem>
                                             <FormLabel>{t('delivery_bility_number_label')}</FormLabel>
                                             <FormControl>
-                                                <Input placeholder={t('delivery_bility_number_placeholder')} {...field} />
+                                                <Input
+                                                    placeholder={t('delivery_bility_number_placeholder')}
+                                                    {...field}
+                                                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            handleSearch();
+                                                        }
+                                                    }}
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -327,10 +331,14 @@ export default function AddDelivery() {
                                         </p>
                                     </div>
                                     <div>
-                                    <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_total_amount')}</label>
+                                        <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_bility_number') || 'Bility #'}</label>
+                                        <p className='text-lg font-semibold'>{shipmentData.bility_number}</p>
+                                    </div>
+                                    <div>
+                                        <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_total_amount')}</label>
                                         <p className='text-lg font-semibold text-green-600'>
                                             {/* FIX: Ensure total_charges is converted to string before Number() to handle Prisma Decimal type reliably */}
-                                            **${Number(shipmentData.total_charges.toString()).toFixed(2)}**
+                                            Rs {Number(shipmentData.total_charges.toString()).toFixed(2)}/-
                                         </p>
                                     </div>
                                     <div>
@@ -346,6 +354,12 @@ export default function AddDelivery() {
                                         <p className='text-lg'>
                                             {shipmentData.walk_in_sender_name || shipmentData.sender?.name || 'N/A'}
                                         </p>
+                                    </div>
+                                    <div>
+                                        <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_reciver')}</label>
+                                        <p className='text-lg'>
+                                                {shipmentData.walk_in_receiver_name || shipmentData.receiver?.name || 'N/A'}
+                                            </p>
                                     </div>
                                 </div>
                             </CardContent>

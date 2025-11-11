@@ -39,3 +39,30 @@ export async function GET() {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
+// import {prisma} from "../../../lib/prisma";
+// import { NextRequest, NextResponse } from "next/server";
+
+
+// export async function GET () {
+//   try{
+//     const cities = await prisma.city.findMany()
+//     return NextResponse.json(cities, {status: 200})
+//   }catch(error){
+//      console.log("Error while fetching the cities",error)
+//      return NextResponse.json({error: 'Internal Server Error'}, {status: 500}) 
+//   }
+// }
+//  export async function POST(request:NextRequest) {
+//       const { name } = await request.json(); 
+// try{
+
+
+//    const createCity = await prisma.city.create({
+//         data: { name: name.trim() },
+//     })
+//     return NextResponse.json(createCity, {status: 200})
+// }catch(error){
+//     console.log("Error While saving the cities", error)
+//     return NextResponse.json({error: "Internal Server Error"}, {status: 500})
+// }
+//  }
