@@ -117,6 +117,7 @@ model Shipment {
   vehicle                Vehicle              @relation(fields: [vehicle_number_id], references: [id])
   transactions           Transaction[]
   vehicleTransactions    VehicleTransaction[]
+  paymentHistory         LabourPaymentHistory[]
 }
 
 model ReturnShipment {
@@ -251,12 +252,13 @@ model VehicleTransaction {
 }
 
 model LabourPerson {
-  id           Int                @id @default(autoincrement())
-  name         String             @db.VarChar(100)
-  contact_info String             @db.VarChar(100)
-  createdAt    DateTime           @default(now()) @db.Timestamptz(6)
-  updatedAt    DateTime           @updatedAt @db.Timestamptz(6)
-  assignments  LabourAssignment[]
+  id              Int                   @id @default(autoincrement())
+  name            String                @db.VarChar(100)
+  contact_info    String                @db.VarChar(100)
+  createdAt       DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime              @updatedAt @db.Timestamptz(6)
+  assignments     LabourAssignment[]
+  paymentHistory  LabourPaymentHistory[]
 
   @@map("Labour_Person")
 }
@@ -270,6 +272,11 @@ model LabourAssignment {
   status           LabourAssignmentStatus @default(ASSIGNED)
   delivered_date   DateTime?              @db.Timestamptz(6)
   collected_amount Decimal?               @db.Decimal(10, 2)
+  station_expense  Decimal                @default(0.00) @db.Decimal(10, 2)
+  bility_expense   Decimal                @default(0.00) @db.Decimal(10, 2)
+  station_labour   Decimal                @default(0.00) @db.Decimal(10, 2)
+  cart_labour      Decimal                @default(0.00) @db.Decimal(10, 2)
+  total_expenses   Decimal                @default(0.00) @db.Decimal(10, 2)
   settled_date     DateTime?              @db.Timestamptz(6)
   notes            String?
   createdAt        DateTime               @default(now()) @db.Timestamptz(6)
@@ -278,6 +285,22 @@ model LabourAssignment {
   shipment         Shipment               @relation(fields: [shipment_id], references: [register_number])
 
   @@map("Labour_Assignment")
+}
+
+model LabourPaymentHistory {
+  id               Int       @id @default(autoincrement())
+  labour_person_id Int
+  shipment_id      String    @db.VarChar(50)
+  payment_date     DateTime  @default(now()) @db.Timestamptz(6)
+  amount_paid      Decimal   @db.Decimal(10, 2)
+  payment_method   String    @db.VarChar(50) @default("CASH")
+  notes            String?
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(6)
+  labourPerson     LabourPerson @relation(fields: [labour_person_id], references: [id])
+  shipment         Shipment     @relation(fields: [shipment_id], references: [register_number])
+
+  @@map("Labour_Payment_History")
 }
 
 enum ReturnStatus {

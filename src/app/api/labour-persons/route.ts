@@ -32,24 +32,19 @@ export async function GET() {
     }
 }
 
-// POST: Create a new labour person
 export async function POST(request: Request) {
     try {
-        const { name, contact_info } = await request.json();
+        const { name, contactInfo } = await request.json(); 
 
-        if (!name || !contact_info) {
+        if (!name) {
             return NextResponse.json({
-                message: 'Name and contact info are required.'
+                message: 'Name info are required.'
             }, { status: 400 });
         }
 
-        const newLabourPerson = await prisma.labourPerson.create({
-            data: {
-                name,
-                contact_info
-            }
-        });
-
+       const newLabourPerson = await prisma.labourPerson.create({
+        data: { name: name.trim(), contact_info: contactInfo?.trim() || "" },
+       })
         return NextResponse.json({
             message: 'Labour person created successfully.',
             labourPerson: newLabourPerson

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DollarSign, Truck, Package, Users, Hourglass, CheckCircle2, ChevronRight, Loader2, Factory, Car} from 'lucide-react';
+import { DollarSign, Truck, Package, Users, Hourglass, CheckCircle2, ChevronRight, Loader2, Factory, Car,AlertCircle } from 'lucide-react';
 
 // Recharts components (already in package.json)
 import { 

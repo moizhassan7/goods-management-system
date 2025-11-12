@@ -43,7 +43,7 @@ export function useToast() {
 // --- Zod Schema ---
 const LabourPersonSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
-    contact_info: z.string().min(10, 'Contact info must be at least 10 characters'),
+    contact_info: z.string().optional(),
 });
 
 type LabourPersonFormValues = z.infer<typeof LabourPersonSchema>;

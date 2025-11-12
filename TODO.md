@@ -1,5 +1,7 @@
-- [ ] Move isCollapsed state from Sidebar.jsx to LayoutContent.tsx
-- [ ] Pass isCollapsed and setIsCollapsed as props to Sidebar component
-- [ ] Update Sidebar.jsx to accept props and add fixed positioning classes (fixed left-0 top-0 h-screen z-20)
-- [ ] Update LayoutContent.tsx to add dynamic margin-left to main content div based on isCollapsed
-- [ ] Test the layout to ensure sidebar stays fixed and main content adjusts properly
+# TODO: Make driver name, driver mobile, and forwarding agency optional in trips add page, and change shipment filter from bility_date to created_at
+
+## Tasks
+- [x] Update TripLogFormSchema in src/app/trips/add/page.tsx to make driver_name, driver_mobile, and forwarding_agency_id optional
+- [x] Modify API in src/app/api/shipments/by-vehicle-date/route.ts to filter shipments by created_at using date range instead of bility_date
+- [ ] Test the form to ensure optional fields allow submission without values
+- [ ] Test the API to verify shipments load based on created_at date instead of bility_date

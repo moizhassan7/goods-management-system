@@ -30,10 +30,10 @@ const TripShipmentLogSchema = z.object({
 
 const TripLogFormSchema = z.object({
   vehicle_id: z.number().min(1, 'Vehicle is required'),
-  driver_name: z.string().min(1, 'Driver name is required'),
-  driver_mobile: z.string().min(1, 'Driver mobile is required'),
+  driver_name: z.string().optional(),
+  driver_mobile: z.string().optional(),
   // MODIFIED: Changed station_name to forwarding_agency_id
-  forwarding_agency_id: z.number().int().min(1, 'Agency is required'),
+  forwarding_agency_id: z.number().int().optional(),
   city_id: z.number().int().min(1, 'City is required'),
   date: z.string().min(1, 'Date is required'),
   total_fare_collected: z.number().min(0),

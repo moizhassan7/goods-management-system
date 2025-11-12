@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "Labour_Assignment" ADD COLUMN     "bility_expense" DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+ADD COLUMN     "cart_labour" DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+ADD COLUMN     "station_expense" DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+ADD COLUMN     "station_labour" DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+ADD COLUMN     "total_expenses" DECIMAL(10,2) NOT NULL DEFAULT 0.00;

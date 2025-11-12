@@ -35,8 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchSession = useCallback(async () => {
     setIsLoading(true);
     try {
-        // Hitting a simple protected route or a dedicated session check route
-        // Since we don't have a dedicated endpoint, we'll create a mock one later
+        // Hitting the session endpoint to validate the server-side cookie
         const response = await fetch('/api/auth/session');
         if (response.ok) {
             const session: UserSession = await response.json();
@@ -70,7 +69,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     } catch (error) {
         console.error('Logout error:', error);
-        toast.error('Logout failed', { description: 'Please try again.' });
     }
   }, []);
 

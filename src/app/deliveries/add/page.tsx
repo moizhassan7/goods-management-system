@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast as sonnerToast } from 'sonner';
+import { Printer } from 'lucide-react';
 
 // Import the translation hook
 import { useTranslation } from '@/lib/i18n';
@@ -64,11 +65,11 @@ const DeliveryFormSchema = z.object({
     
     // Receiver details
     receiver_name: z.string().min(2, 'Receiver name is required'),
-    receiver_phone: z.string().min(10, 'Phone number is required'),
+    receiver_phone: z.string().optional(),
     // MODIFIED: CNIC is now optional (min length requirement removed)
-    receiver_cnic: z.string().max(15, 'CNIC cannot exceed 15 characters'),
+    receiver_cnic: z.string().max(15, 'CNIC cannot exceed 15 characters').optional(),
     // MODIFIED: Address is now optional (min length requirement removed)
-    receiver_address: z.string(),
+    receiver_address: z.string().optional(),
     
     delivery_notes: z.string().optional(),
 });
@@ -259,6 +260,255 @@ export default function AddDelivery() {
     const handleSearch = () => {
         const bilityNumber = form.getValues("bility_number");
         searchShipment(bilityNumber);
+    };
+
+    const formatCurrency = (amount: number | string) => {
+        return new Intl.NumberFormat('en-PK', {
+            style: 'currency',
+            currency: 'PKR',
+            minimumFractionDigits: 2,
+        }).format(Number(amount));
+    };
+
+    const handlePrintDelivery = (values: DeliveryFormValues) => {
+        if (!shipmentData) {
+            toast.error({ title: 'Error', description: 'No shipment data available to print.' });
+            return;
+        }
+        try {
+            const printHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Delivery Record</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            padding: 20px;
+            background-color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header { 
+            text-align: center; 
+            border-bottom: 2px solid black; 
+            padding-bottom: 20px; 
+            margin-bottom: 20px; 
+        }
+        .header h1 { 
+            margin: 0; 
+            font-size: 28px; 
+            font-weight: bold;
+        }
+        .header p { 
+            margin: 5px 0; 
+            font-size: 14px; 
+            color: #666;
+        }
+        .section { 
+            border: 1px solid #ccc; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+        }
+        .section-title { 
+            font-weight: bold; 
+            font-size: 14px; 
+            color: #333;
+            text-transform: uppercase; 
+            margin-bottom: 10px; 
+            padding-bottom: 5px;
+            border-bottom: 1px solid #999;
+        }
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+        .field {
+            font-size: 13px;
+        }
+        .field-label { 
+            font-weight: bold; 
+            color: #555;
+        }
+        .field-value {
+            color: #000;
+            margin-top: 2px;
+        }
+        .expense-section {
+            background-color: #ffe4b5;
+        }
+        .financial-section {
+            background-color: #fffacd;
+        }
+        .expense-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+            font-size: 13px;
+        }
+        .expense-row:last-child {
+            border-bottom: 2px solid #999;
+            font-weight: bold;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        .footer { 
+            text-align: center; 
+            border-top: 2px solid black; 
+            padding-top: 15px; 
+            margin-top: 20px; 
+            font-size: 11px; 
+            color: #666; 
+        }
+        @media print {
+            body { margin: 0; padding: 0; }
+            .container { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>DELIVERY RECORD</h1>
+            <p>Zikria Goods Transports Company</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Shipment Information</div>
+            <div class="row">
+                <div class="field">
+                    <div class="field-label">Registration Number:</div>
+                    <div class="field-value" style="font-size: 16px; color: #0066cc; font-weight: bold;">${shipmentData.register_number}</div>
+                </div>
+                <div class="field">
+                    <div class="field-label">Bility Number:</div>
+                    <div class="field-value" style="font-size: 16px; color: #0066cc; font-weight: bold;">${shipmentData.bility_number}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="field">
+                    <div class="field-label">Bility Date:</div>
+                    <div class="field-value">${new Date(shipmentData.bility_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                </div>
+                <div class="field">
+                    <div class="field-label">Delivery Date:</div>
+                    <div class="field-value">${new Date(values.delivery_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Route Information</div>
+            <div class="row">
+                <div class="field">
+                    <div class="field-label">From City:</div>
+                    <div class="field-value">${shipmentData.departureCity?.name || 'N/A'}</div>
+                </div>
+                <div class="field">
+                    <div class="field-label">To City:</div>
+                    <div class="field-value">${shipmentData.toCity?.name || 'Local'}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="field">
+                    <div class="field-label">Sender:</div>
+                    <div class="field-value">${shipmentData.walk_in_sender_name || shipmentData.sender?.name || 'N/A'}</div>
+                </div>
+                <div class="field">
+                    <div class="field-label">Original Receiver:</div>
+                    <div class="field-value">${shipmentData.walk_in_receiver_name || shipmentData.receiver?.name || 'N/A'}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Delivery Details</div>
+            <div class="row">
+                <div class="field">
+                    <div class="field-label">Receiver Name:</div>
+                    <div class="field-value" style="font-weight: bold;">${values.receiver_name}</div>
+                </div>
+                <div class="field">
+                    <div class="field-label">Phone Number:</div>
+                    <div class="field-value">${values.receiver_phone || 'N/A'}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="field">
+                    <div class="field-label">CNIC:</div>
+                    <div class="field-value">${values.receiver_cnic || 'N/A'}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section financial-section">
+            <div class="section-title">Financial Information</div>
+            <div class="field" style="padding: 10px 0;">
+                <div class="field-label">Total Amount (Shipment):</div>
+                <div class="field-value" style="font-size: 16px; color: #008000; font-weight: bold;">${formatCurrency(shipmentData.total_charges.toString())}</div>
+            </div>
+        </div>
+
+        <div class="section expense-section">
+            <div class="section-title">Expense Breakdown</div>
+            <div class="expense-row">
+                <span>Station Expense:</span>
+                <span>${formatCurrency(values.station_expense)}</span>
+            </div>
+            <div class="expense-row">
+                <span>Bility Expense:</span>
+                <span>${formatCurrency(values.bility_expense)}</span>
+            </div>
+            <div class="expense-row">
+                <span>Station Labour:</span>
+                <span>${formatCurrency(values.station_labour)}</span>
+            </div>
+            <div class="expense-row">
+                <span>Cart Labour:</span>
+                <span>${formatCurrency(values.cart_labour)}</span>
+            </div>
+            <div class="expense-row">
+                <span>Total Expenses:</span>
+                <span>${formatCurrency(values.total_expenses)}</span>
+            </div>
+        </div>
+
+        ${values.delivery_notes ? `
+        <div class="section">
+            <div class="section-title">Delivery Notes</div>
+            <div style="font-size: 13px; color: #333; white-space: pre-wrap; line-height: 1.5;">
+                ${values.delivery_notes}
+            </div>
+        </div>
+        ` : ''}
+
+        <div class="footer">
+            <p>Printed on: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            <p>© Switch2itech. All Rights Reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+            `;
+
+            const printWindow = window.open('', '', 'height=800,width=900');
+            if (printWindow) {
+                printWindow.document.write(printHTML);
+                printWindow.document.close();
+                setTimeout(() => {
+                    printWindow.print();
+                }, 250);
+            }
+        } catch (err) {
+            console.error('Print error:', err);
+            toast.error({ title: 'Print Error', description: 'Unable to print the delivery record.' });
+        }
     };
 
     return (
@@ -592,13 +842,24 @@ export default function AddDelivery() {
 
                     {/* Submit Button */}
                     {shipmentData && (
-                        <Button 
-                            type='submit' 
-                            className='w-full bg-green-700 hover:bg-green-800 py-4 text-lg font-bold'
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? t('delivery_recording_button') : t('delivery_record_button')} 
-                        </Button>
+                        <div className='flex gap-4'>
+                            <Button 
+                                type='submit' 
+                                className='flex-1 bg-green-700 hover:bg-green-800 py-4 text-lg font-bold'
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? t('delivery_recording_button') : t('delivery_record_button')} 
+                            </Button>
+                            <Button 
+                                type='button' 
+                                className='flex-1 bg-blue-600 hover:bg-blue-700 py-4 text-lg font-bold flex items-center justify-center gap-2'
+                                onClick={() => handlePrintDelivery(form.getValues())}
+                                disabled={isSubmitting}
+                            >
+                                <Printer className='h-5 w-5' />
+                                Print
+                            </Button>
+                        </div>
                     )}
                 </form>
             </Form>

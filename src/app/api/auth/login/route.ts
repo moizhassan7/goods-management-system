@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
         }, { status: 200 });
 
         // 4. Set the session cookie (User ID is stored as the token for simplicity)
-        // This relies on the client-side cookie logic to handle domain/path/expiry
+        // This is a session-only cookie - it will be cleared when the browser closes
         response.cookies.set({
             name: AUTH_COOKIE_NAME,
             value: String(user.id),
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
             httpOnly: true, // Important for security
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7, // 1 week expiry
+            // No maxAge specified = session cookie (cleared when browser closes)
         });
 
         return response;

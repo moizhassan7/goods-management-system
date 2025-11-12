@@ -17,7 +17,7 @@ interface DeliveryRequestPayload {
     
     // Receiver details
     receiver_name: string;
-    receiver_phone: string;
+    receiver_phone?: string;
     receiver_cnic?: string;
     receiver_address?: string;
     
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
                 total_expenses: new Prisma.Decimal(payload.total_expenses),
                 
                 receiver_name: payload.receiver_name,
-                receiver_phone: payload.receiver_phone,
+                receiver_phone: payload.receiver_phone || "",
                 receiver_cnic: payload.receiver_cnic || "",
                 receiver_address: payload.receiver_address || "",
                 

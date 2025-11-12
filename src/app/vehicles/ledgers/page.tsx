@@ -135,10 +135,10 @@ export default function VehicleLedgers() {
             <Tabs defaultValue="unpaid">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="unpaid">
-                        Outstanding Fares ({unpaidLedgers.length})
+                        Unpaid Fares ({unpaidLedgers.length})
                     </TabsTrigger>
                     <TabsTrigger value="paid">
-                        Fares Settled ({settledLedgers.length})
+                        Paid Fares({settledLedgers.length})
                     </TabsTrigger>
                 </TabsList>
                 
