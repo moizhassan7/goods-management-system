@@ -8,6 +8,7 @@ import { LabourAssignmentStatus, Prisma, ApprovalStatus } from '@prisma/client';
 /**
  * Handles GET requests to fetch all labour assignments.
  * Fetches associated delivery expenses and EXCLUDES SETTLED assignments.
+ * Also fetches payment history for ledger view via LabourPerson relationship.
  * Endpoint: /api/labour-assignments
  */
 export async function GET(request: Request) {
@@ -26,13 +27,17 @@ export async function GET(request: Request) {
         const assignments = await prisma.labourAssignment.findMany({
             where,
             include: {
-                labourPerson: true,
+                labourPerson: {
+                    include: {
+                        // Fetch ALL payment history for the person
+                        paymentHistory: true, 
+                    }
+                },
                 shipment: {
                     include: {
                         receiver: { select: { name: true } },
                         departureCity: { select: { name: true } },
                         toCity: { select: { name: true } },
-                        // Include deliveries to get expense details
                         deliveries: true, 
                     }
                 }
@@ -40,11 +45,11 @@ export async function GET(request: Request) {
             orderBy: { assigned_date: 'desc' }
         });
 
-        // Map and format the assignments, extracting expense details from the first delivery record
+        // Map and format the assignments, extracting expense details and filtering payments
         const formattedAssignments = assignments.map(a => {
-            // Assuming one delivery record per shipment for expenses
             const delivery = a.shipment.deliveries?.[0];
             
+            // Expenses are stored in the Delivery table after the COLLECT action
             const stationExpense = Number(delivery?.station_expense || 0);
             const bilityExpense = Number(delivery?.bility_expense || 0);
             const stationLabour = Number(delivery?.station_labour || 0);
@@ -54,8 +59,20 @@ export async function GET(request: Request) {
             
             const totalAmount = shipmentCharges + totalExpenses;
 
+            // Filter payment history to only include payments for the current assignment's shipment
+            const paymentHistory = a.labourPerson.paymentHistory
+                .filter(p => p.shipment_id === a.shipment_id)
+                .sort((p1, p2) => p1.payment_date.getTime() - p2.payment_date.getTime()) // Sort by date ascending
+                .map(p => ({
+                    id: p.id,
+                    amount_paid: Number(p.amount_paid),
+                    payment_date: p.payment_date.toISOString(),
+                    notes: p.notes,
+                }));
+
             return {
                 ...a,
+                // collected_amount is the running total from the database
                 collected_amount: Number(a.collected_amount || 0),
                 station_expense: stationExpense,
                 bility_expense: bilityExpense,
@@ -63,6 +80,7 @@ export async function GET(request: Request) {
                 cart_labour: cartLabour,
                 total_expenses: totalExpenses,
                 total_amount: totalAmount, // Calculated total amount due (Charges + Expenses)
+                paymentHistory, // Filtered and sorted payment history
                 
                 shipment: {
                     ...a.shipment,
@@ -157,14 +175,14 @@ export async function POST(request: Request) {
 }
 
 // -------------------------------------------------------------
-// PATCH Handler: Update assignment (DELIVER, COLLECT, SETTLE) (Unchanged but included for completeness)
+// PATCH Handler: Update assignment (DELIVER, COLLECT, SETTLE) 
 // -------------------------------------------------------------
 export async function PATCH(request: Request) {
     try {
         const { 
             assignment_id, 
             action, 
-            collected_amount, 
+            collected_amount, // Handled only for SETTLE correction.
             notes,
             station_expense,
             bility_expense,
@@ -197,9 +215,13 @@ export async function PATCH(request: Request) {
             }, { status: 404 });
         }
 
+        // Parse collected_amount if present (primarily for SETTLE correction)
+        const collectedDecimal = collected_amount !== undefined && collected_amount !== null 
+            ? new Prisma.Decimal(collected_amount) 
+            : new Prisma.Decimal(0);
+            
         const deliveryDate = new Date(); 
         const updateData: any = { notes };
-        const collectedDecimal = collected_amount ? new Prisma.Decimal(collected_amount) : new Prisma.Decimal(0);
 
         const result = await prisma.$transaction(async (tx) => {
             
@@ -213,8 +235,9 @@ export async function PATCH(request: Request) {
                     updateData.delivered_date = deliveryDate;
 
                     const receiverName = assignment.shipment.walk_in_receiver_name || assignment.shipment.receiver.name;
-                    const receiverContact = assignment.shipment.receiver.contactInfo;
+                    const receiverContact = assignment.shipment.receiver.contactInfo || 'N/A';
 
+                    // Create the initial Delivery record with zero expenses
                     await tx.delivery.create({
                         data: {
                             shipment_id: assignment.shipment_id,
@@ -228,9 +251,9 @@ export async function PATCH(request: Request) {
                             total_expenses: new Prisma.Decimal(0),
                             
                             receiver_name: receiverName,
-                            receiver_phone: receiverContact,
+                            receiver_phone: receiverContact.substring(0, 20),
                             receiver_cnic: 'N/A from Labour', 
-                            receiver_address: receiverContact, 
+                            receiver_address: receiverContact.substring(0, 100),
                             
                             delivery_notes: `Delivered by Labour Person: ${assignment.labourPerson.name}. ${notes || ''}`,
                             delivery_status: 'DELIVERED',
@@ -243,14 +266,12 @@ export async function PATCH(request: Request) {
                         data: { delivery_date: deliveryDate }
                     });
                     break;
-                case 'COLLECT':
+                case 'COLLECT': // This is now solely for recording EXPENSES and transitioning status to COLLECTED
                     if (assignment.status !== LabourAssignmentStatus.DELIVERED && assignment.status !== LabourAssignmentStatus.COLLECTED) {
-                        throw new Error('Assignment must be marked delivered or already collected for fund collection/correction.');
-                    }
-                    if (collectedDecimal.lte(0)) {
-                        throw new Error('Collected amount must be greater than zero for collection.');
+                        throw new Error('Assignment must be marked delivered or already collected for expense recording/correction.');
                     }
 
+                    // 1. Calculate Expenses from Payload
                     const expenseDecimals = {
                         station_expense: new Prisma.Decimal(station_expense || 0),
                         bility_expense: new Prisma.Decimal(bility_expense || 0),
@@ -268,34 +289,38 @@ export async function PATCH(request: Request) {
                         throw new Error('Cannot collect: Delivery record is missing. Please mark the shipment as DELIVERED first.');
                     }
 
-                    // Only update Delivery expense fields if collecting for the first time OR if explicit expenses are sent
-                    if (assignment.status === LabourAssignmentStatus.DELIVERED || totalExpensesDecimal.gt(0)) {
-                         await tx.delivery.update({
-                            where: { delivery_id: deliveryRecord.delivery_id },
-                            data: {
-                                station_expense: expenseDecimals.station_expense,
-                                bility_expense: expenseDecimals.bility_expense,
-                                station_labour: expenseDecimals.station_labour,
-                                cart_labour: expenseDecimals.cart_labour,
-                                total_expenses: totalExpensesDecimal,
-                            }
-                        });
-                    }
+                    // 2. Update Delivery expense fields (saves the expenses for settlement calculation)
+                     await tx.delivery.update({
+                        where: { delivery_id: deliveryRecord.delivery_id },
+                        data: {
+                            station_expense: expenseDecimals.station_expense,
+                            bility_expense: expenseDecimals.bility_expense,
+                            station_labour: expenseDecimals.station_labour,
+                            cart_labour: expenseDecimals.cart_labour,
+                            total_expenses: totalExpensesDecimal,
+                        }
+                    });
                     
+                    // 3. Update Assignment Status
                     if (assignment.status === LabourAssignmentStatus.DELIVERED) {
                         updateData.status = LabourAssignmentStatus.COLLECTED;
                     }
                     
-                    updateData.collected_amount = collectedDecimal;
+                    // 4. Handle collected_amount correction (only used if client sends this explicitly for settlement fix)
+                    if (collected_amount !== undefined && collected_amount !== null) {
+                         updateData.collected_amount = collectedDecimal;
+                    }
 
                     break;
                 case 'SETTLE':
                     if (assignment.status !== LabourAssignmentStatus.COLLECTED) {
                         throw new Error('Assignment must be collected before settlement.');
                     }
+                    
                     updateData.status = LabourAssignmentStatus.SETTLED;
                     updateData.settled_date = new Date();
 
+                    // Create final transaction record using the FINAL collected_amount
                     await tx.transaction.create({
                         data: {
                             transaction_date: new Date(),
@@ -307,8 +332,24 @@ export async function PATCH(request: Request) {
                             description: `Payment collected by labour person ${assignment.labourPerson.name} (Settled)`
                         }
                     });
+                    
+                    // Create Labour Payment History record for the full settled amount (for audit trail)
+                    const finalPaymentAmount = assignment.collected_amount;
+                    if (finalPaymentAmount.gt(0)) {
+                        await tx.labourPaymentHistory.create({
+                            data: {
+                                labour_person_id: assignment.labour_person_id,
+                                shipment_id: assignment.shipment_id,
+                                amount_paid: finalPaymentAmount,
+                                payment_date: new Date(),
+                                payment_method: 'SETTLED',
+                                notes: `Final settlement: account balanced. ${notes || ''}`,
+                            }
+                        });
+                    }
                     break;
                 default:
+                    // This is the error-throwing block, now correctly only catching invalid actions
                     throw new Error('Invalid action. Use DELIVER, COLLECT, or SETTLE.');
             }
 

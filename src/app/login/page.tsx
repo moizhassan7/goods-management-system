@@ -61,7 +61,7 @@ export default function LoginPage() {
       // NEW: Notify the AuthContext to fetch the new session from the server
       await refetchSession(); 
 
-      toast.success('Login Successful 🎉', {
+      toast.success('Login Successful', {
         description: `Welcome, ${data.user.username}. You are logged in as ${data.user.role}.`,
       });
 

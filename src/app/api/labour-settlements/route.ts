@@ -1,167 +1,87 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 /**
- * GET /api/labour-settlements
- * Fetches all labour persons with their shipments, delivery expenses, and complete payment history
- * Maintains running balance calculations for each labour person
+ * Handles POST requests to record a payment against a LabourAssignment.
+ * This implements the ledger/incremental payment requirement.
+ * Endpoint: POST /api/labour-settlements
  */
-export async function GET(request: Request) {
+export async function POST(request: NextRequest) {
     try {
-        const { searchParams } = new URL(request.url);
-        const labour_person_id = searchParams.get('labour_person_id');
+        const { assignment_id, amount_paid, notes } = await request.json();
 
-        const where = labour_person_id ? { id: parseInt(labour_person_id) } : {};
+        if (!assignment_id || !amount_paid) {
+            return NextResponse.json(
+                { message: 'Assignment ID and amount_paid are required.' },
+                { status: 400 }
+            );
+        }
 
-        const labourPersons = await prisma.labourPerson.findMany({
-            where,
-            include: {
-                assignments: {
-                    include: {
-                        shipment: {
-                            include: {
-                                deliveries: {
-                                    select: {
-                                        station_expense: true,
-                                        bility_expense: true,
-                                        station_labour: true,
-                                        cart_labour: true,
-                                        total_expenses: true,
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                paymentHistory: {
-                    orderBy: { payment_date: 'asc' }
+        const amountDecimal = new Prisma.Decimal(amount_paid);
+        if (amountDecimal.lte(0)) {
+             return NextResponse.json(
+                { message: 'Payment amount must be greater than zero.' },
+                { status: 400 }
+            );
+        }
+
+        // FIX: Added timeout option to prevent P2028 transaction timeout errors.
+        const updatedAssignment = await prisma.$transaction(async (tx) => {
+            
+            // 1. Fetch current assignment to get current total and IDs
+            const assignment = await tx.labourAssignment.findUnique({
+                where: { id: assignment_id },
+                select: { 
+                    collected_amount: true, 
+                    shipment_id: true,
+                    labour_person_id: true,
                 }
+            });
+
+            if (!assignment) {
+                throw new Error('Labour Assignment not found.');
             }
-        });
 
-        // Calculate total owed, paid, and remaining balance for each labour person
-        const formattedData = labourPersons.map((person: any) => {
-            // Calculate total amount due from all assignments
-            const totalDue = person.assignments.reduce((sum: number, assignment: any) => {
-                const shipmentCharges = Number(assignment.shipment.total_charges || 0);
-                const delivery = assignment.shipment.deliveries?.[0];
-                const totalExpenses = Number(delivery?.total_expenses || 0);
-                return sum + shipmentCharges + totalExpenses;
-            }, 0);
+            // 2. Calculate the new total collected amount
+            const newCollectedAmount = assignment.collected_amount.plus(amountDecimal);
 
-            // Calculate total paid from payment history
-            const totalPaid = person.paymentHistory.reduce((sum: number, payment: any) => {
-                return sum + Number(payment.amount_paid || 0);
-            }, 0);
+            // 3. Log the payment to LabourPaymentHistory (for the ledger)
+            await tx.labourPaymentHistory.create({
+                data: {
+                    labour_person_id: assignment.labour_person_id,
+                    shipment_id: assignment.shipment_id,
+                    amount_paid: amountDecimal,
+                    payment_date: new Date(),
+                    payment_method: 'CASH', // Assuming cash for simplicity
+                    notes,
+                }
+            });
 
-            return {
-                id: person.id,
-                name: person.name,
-                contact_info: person.contact_info,
-                totalDue: totalDue,
-                totalPaid: totalPaid,
-                balance: totalDue - totalPaid,
-                assignments: person.assignments.map((a: any) => ({
-                    id: a.id,
-                    shipment_id: a.shipment_id,
-                    bility_number: a.shipment.bility_number,
-                    register_number: a.shipment.register_number,
-                    shipment_charges: Number(a.shipment.total_charges),
-                    delivery_expenses: a.shipment.deliveries?.[0] ? {
-                        station_expense: Number(a.shipment.deliveries[0].station_expense || 0),
-                        bility_expense: Number(a.shipment.deliveries[0].bility_expense || 0),
-                        station_labour: Number(a.shipment.deliveries[0].station_labour || 0),
-                        cart_labour: Number(a.shipment.deliveries[0].cart_labour || 0),
-                        total_expenses: Number(a.shipment.deliveries[0].total_expenses || 0),
-                    } : null,
-                    total_due: Number(a.shipment.total_charges) + (Number(a.shipment.deliveries?.[0]?.total_expenses || 0)),
-                    status: a.status,
-                    collected_amount: Number(a.collected_amount || 0),
-                })),
-                paymentHistory: person.paymentHistory.map((p: any) => ({
-                    id: p.id,
-                    shipment_id: p.shipment_id,
-                    payment_date: p.payment_date,
-                    amount_paid: Number(p.amount_paid),
-                    payment_method: p.payment_method,
-                    notes: p.notes,
-                })),
-            };
-        });
-
-        return NextResponse.json(formattedData, { status: 200 });
-    } catch (error) {
-        console.error('Error fetching labour settlements:', error);
-        return NextResponse.json(
-            { message: 'Internal Server Error while fetching labour settlements.' },
-            { status: 500 }
-        );
-    }
-}
-
-/**
- * POST /api/labour-settlements
- * Records a payment for a labour person
- */
-export async function POST(request: Request) {
-    try {
-        const { labour_person_id, shipment_id, amount_paid, payment_method, notes } = await request.json();
-
-        if (!labour_person_id || !shipment_id || !amount_paid) {
-            return NextResponse.json({
-                message: 'Labour person ID, shipment ID, and amount paid are required.'
-            }, { status: 400 });
-        }
-
-        if (Number(amount_paid) <= 0) {
-            return NextResponse.json({
-                message: 'Amount paid must be greater than zero.'
-            }, { status: 400 });
-        }
-
-        // Verify labour person and shipment exist
-        const [labourPerson, shipment, assignment] = await Promise.all([
-            prisma.labourPerson.findUnique({ where: { id: labour_person_id } }),
-            prisma.shipment.findUnique({ where: { register_number: shipment_id } }),
-            prisma.labourAssignment.findFirst({
-                where: { labour_person_id, shipment_id }
-            })
-        ]);
-
-        if (!labourPerson) {
-            return NextResponse.json({ message: 'Labour person not found.' }, { status: 404 });
-        }
-
-        if (!shipment) {
-            return NextResponse.json({ message: 'Shipment not found.' }, { status: 404 });
-        }
-
-        if (!assignment) {
-            return NextResponse.json({ 
-                message: 'No assignment found for this labour person and shipment.' 
-            }, { status: 404 });
-        }
-
-        // Record the payment in the LabourPaymentHistory table
-        const paymentRecord = await prisma.labourPaymentHistory.create({
-            data: {
-                labour_person_id,
-                shipment_id,
-                amount_paid: Number(amount_paid),
-                payment_method: payment_method || 'CASH',
-                notes: notes || undefined,
-            }
+            // 4. Update the collected_amount on the LabourAssignment (the running total)
+            const updated = await tx.labourAssignment.update({
+                where: { id: assignment_id },
+                data: {
+                    collected_amount: newCollectedAmount,
+                },
+                select: { id: true, collected_amount: true }
+            });
+            
+            return updated;
+        }, {
+            // Increase timeout from default 5000ms to 30000ms (30 seconds)
+            timeout: 30000, 
         });
 
         return NextResponse.json({
-            message: 'Payment recorded successfully.',
-            payment: paymentRecord
-        }, { status: 201 });
+            message: `Payment of $${amountDecimal.toFixed(2)} recorded successfully. Total paid is now $${updatedAssignment.collected_amount.toFixed(2)}.`,
+            assignment: updatedAssignment,
+        }, { status: 200 });
 
     } catch (error: any) {
         console.error('Error recording labour payment:', error);
         return NextResponse.json(
-            { message: `Internal Server Error: ${error.message}` },
+            { message: `Internal Server Error: Failed to record payment. Details: ${error.message}` },
             { status: 500 }
         );
     }
