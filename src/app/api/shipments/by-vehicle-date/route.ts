@@ -52,10 +52,7 @@ export async function GET(request: NextRequest) {
         register_number: shipment.register_number,
         bility_number: shipment.bility_number,
         receiver_id: shipment.receiver_id,
-        receiver_name:
-          shipment.receiver_id === 1
-            ? shipment.walk_in_receiver_name || 'Walk-in Customer'
-            : shipment.receiver?.name || 'Unknown',
+        receiver_name: shipment.receiver?.name || 'Unknown',
         item_id: goods.item_name_id,
         item_description: goods.itemCatalog?.item_description || 'Unknown Item',
         quantity: goods.quantity,

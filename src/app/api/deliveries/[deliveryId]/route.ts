@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, ApprovalStatus } from '@prisma/client'; 
-
-const prisma = new PrismaClient();
+import { ApprovalStatus } from '@prisma/client'; 
+import { prisma } from '@/lib/prisma';
 
 export async function PATCH(
     request: NextRequest,
@@ -78,7 +77,5 @@ export async function PATCH(
             { error: 'Internal server error' },
             { status: 500 }
         );
-    } finally {
-        await prisma.$disconnect();
     }
-}
+}

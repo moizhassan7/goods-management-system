@@ -1,7 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient, ApprovalStatus } from '@prisma/client'; 
-
-const prisma = new PrismaClient();
+import { ApprovalStatus } from '@prisma/client'; 
+import { prisma } from '@/lib/prisma';
 
 // --- REQUIRED GET HANDLER ---
 export async function GET(request: NextRequest) {
@@ -77,8 +76,5 @@ export async function GET(request: NextRequest) {
             { error: 'Internal server error: Failed to process data.' },
             { status: 500 }
         );
-    } finally {
-        // Ensure connection is closed
-        await prisma.$disconnect(); 
     }
-}
+}

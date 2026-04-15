@@ -32,8 +32,6 @@ interface DeliveryData {
         toCity?: { name: string };
         sender?: { name: string };
         receiver?: { name: string };
-        walk_in_sender_name?: string;
-        walk_in_receiver_name?: string;
     };
 }
 

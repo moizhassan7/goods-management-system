@@ -21,13 +21,6 @@ import {
     Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from '@/components/ui/select';
-import {
     Command,
     CommandEmpty,
     CommandGroup,
@@ -39,7 +32,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Plus, Loader2, Check, ChevronsUpDown, Printer, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -48,7 +41,7 @@ import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
 import { SearchableDropdown } from "@/components/ui/SearchableDropdown";
 
-// --- Toast/Utility Setup (Keep existing useToast implementation) ---
+// --- Toast/Utility Setup ---
 export interface Toast {
     id: string;
     title?: string;
@@ -87,7 +80,7 @@ const formatCurrency = (amount: number) => {
     }).format(amount);
 };
 
-// --- Zod Schemas ---
+// --- Zod Schemas (Reverted to English for standard validation) ---
 const GoodsDetailSchema = z.object({
     id: z.string().optional(),
     item_id: z.coerce.number().int().min(1, 'Item is required'),
@@ -96,7 +89,7 @@ const GoodsDetailSchema = z.object({
 
 const ShipmentFormSchema = z.object({
     register_number: z.string().optional(),
-    bility_number: z.string().min(1, 'Lading number required').max(50),
+    bility_number: z.string().min(1, 'Bility number is required').max(50),
     bility_date: z.string().min(1, 'Bility date is required'),
     departure_city_id: z.coerce.number().int().min(1, 'Departure city is required'),
     forwarding_agency_id: z.coerce.number().int().min(1, 'Agency is required'),
@@ -107,13 +100,10 @@ const ShipmentFormSchema = z.object({
 
     sender_id: z.coerce.number().int().min(1, 'Sender is required'),
     receiver_id: z.coerce.number().int().min(1, 'Receiver is required'),
-    to_city_id: z.coerce.number().int().min(1, 'Destination city is required'),
-
-    walk_in_sender_name: z.string().optional(),
-    walk_in_receiver_name: z.string().optional(),
+    to_city_id: z.coerce.number().int().min(1, 'Destination is required'),
 
     total_delivery_charges: z.coerce.number().optional().default(0),
-    total_amount: z.coerce.number().min(0, 'Total Amount must be greater than zero'),
+    total_amount: z.coerce.number().optional().default(0),
 
     // EXPENSE FIELDS
     station_expense: z.coerce.number().optional().default(0),
@@ -128,19 +118,10 @@ const ShipmentFormSchema = z.object({
 
     remarks: z.string().max(255).optional(),
 }).superRefine((data, ctx) => {
-    // Validation for Walk-in
-    if (data.sender_id === WALK_IN_CUSTOMER_ID && (!data.walk_in_sender_name || data.walk_in_sender_name.trim().length < 2)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Name is required for the Walk-in Sender.', path: ['walk_in_sender_name'] });
-    }
-    if (data.receiver_id === WALK_IN_CUSTOMER_ID && (!data.walk_in_receiver_name || data.walk_in_receiver_name.trim().length < 2)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Name is required for the Walk-in Receiver.', path: ['walk_in_receiver_name'] });
-    }
-
-    // Validation for payment status conflict
     if (data.is_already_paid && data.is_free_of_cost) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'Shipment cannot be both Already Paid and Free of Cost.',
+            message: 'Shipment cannot be both Free and Paid.',
             path: ['is_free_of_cost'],
         });
     }
@@ -177,9 +158,9 @@ interface ShipmentData {
     vehicle_number_id: number;
     total_charges: number;
     total_delivery_charges: number;
+    created_at: string;
     walk_in_sender_name?: string;
     walk_in_receiver_name?: string;
-    created_at: string;
     goodsDetails?: { quantity: number; itemCatalog?: { item_description?: string } | null }[];
     payment_status?: string | null;
     station_expense: number;
@@ -204,8 +185,6 @@ const generateDefaultValues = (): ShipmentFormValues => ({
     sender_id: 0,
     receiver_id: 0,
     to_city_id: 0,
-    walk_in_sender_name: '',
-    walk_in_receiver_name: '',
     total_delivery_charges: 0.00,
     total_amount: 0.00,
     station_expense: 0.00,
@@ -219,7 +198,6 @@ const generateDefaultValues = (): ShipmentFormValues => ({
 });
 
 const findNameById = (data: DropdownData | null, listName: keyof DropdownData, id: number | null | undefined): string => {
-    // Treat 0 as valid id — only treat null/undefined as absent
     if (!data || id == null) return 'N/A';
     const list = data[listName] as DropdownItem[];
     const item = list.find(item => item.id === id);
@@ -228,7 +206,6 @@ const findNameById = (data: DropdownData | null, listName: keyof DropdownData, i
     if (listName === 'items') return item.item_description || 'Unknown Item';
     return item.name || 'Unknown Party/City';
 };
-
 
 export default function AddShipment() {
     const router = useRouter();
@@ -239,8 +216,6 @@ export default function AddShipment() {
     const [shipments, setShipments] = useState<ShipmentData[]>([]);
     const [isLoadingShipments, setIsLoadingShipments] = useState(false);
     const [isFetchingRegNum, setIsFetchingRegNum] = useState(false);
-    const [lastSavedShipment, setLastSavedShipment] = useState<any>(null);
-    const [showPrintOptions, setShowPrintOptions] = useState(false);
 
     // --- MODAL STATE ---
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -262,12 +237,12 @@ export default function AddShipment() {
         setIsLoadingShipments(true);
         try {
             const response = await fetch(`/api/shipments?date=${dateToFilter}`);
-            if (!response.ok) throw new Error('Failed to load shipment list.');
+            if (!response.ok) throw new Error('Failed to fetch shipments.');
             const list = await response.json();
             setShipments(list);
         } catch (error: any) {
             console.error("Shipments fetch error:", error);
-            toast.error({ title: 'Error Loading Shipments', description: 'Could not fetch the list of saved shipments.' });
+            toast.error({ title: 'Error loading shipments', description: 'Could not retrieve saved shipments list.' });
         } finally {
             setIsLoadingShipments(false);
         }
@@ -288,11 +263,10 @@ export default function AddShipment() {
     const totalDeliveryCharges = form.watch("total_delivery_charges");
     const isAlreadyPaid = form.watch("is_already_paid");
     const isFreeOfCost = form.watch("is_free_of_cost");
+    const bilityDate = form.watch("bility_date");
     const senderId = form.watch("sender_id");
     const receiverId = form.watch("receiver_id");
-    const bilityDate = form.watch("bility_date");
 
-    // Recalculate Total Expenses only (Total Amount is independent)
     useEffect(() => {
         const calculatedTotalExp = (Number(stationExpense) || 0) + (Number(bilityExpense) || 0) + (Number(stationLabour) || 0) + (Number(cartLabour) || 0);
         setValue("total_expenses", calculatedTotalExp);
@@ -312,25 +286,24 @@ export default function AddShipment() {
     const fetchDropdownData = async () => {
         try {
             const response = await fetch('/api/lists');
-            if (!response.ok) throw new Error('Failed to load dependency lists.');
+            if (!response.ok) throw new Error('Failed to fetch lists.');
             const lists = await response.json();
             setData(lists);
             return lists;
         } catch (error: any) {
             console.error("Data fetch error:", error);
-            toast.error({ title: 'Error Loading Data', description: error.message || 'Could not fetch lists. Check API /api/lists.' });
+            toast.error({ title: 'Error loading data', description: error.message || 'Could not retrieve lists.' });
         }
         return null;
     }
 
-    // Load initial dropdown data
     useEffect(() => {
         async function fetchInitialDataAndSetDefaults() {
             setIsLoadingData(true);
             const lists = await fetchDropdownData();
 
             if (lists?.parties?.length > 0) {
-                const defaultPartyId = lists.parties.find((p: any) => p.id === WALK_IN_CUSTOMER_ID)?.id || lists.parties[0].id;
+                const defaultPartyId = lists.parties[0].id;
                 setValue('sender_id', defaultPartyId, { shouldValidate: true });
                 setValue('receiver_id', defaultPartyId, { shouldValidate: true });
             }
@@ -342,7 +315,6 @@ export default function AddShipment() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Fetch next registration number when bility_date changes
     useEffect(() => {
         async function fetchNextRegNum() {
             if (!bilityDate) {
@@ -370,7 +342,6 @@ export default function AddShipment() {
         }
     }, [bilityDate, setValue]);
 
-    // --- Master Data Modal Logic ---
     const openMasterDataModal = (type: typeof modalType) => {
         setModalType(type);
         setModalInput({});
@@ -394,30 +365,35 @@ export default function AddShipment() {
             switch (modalType) {
                 case 'city':
                     if (!modalInput.cityName || modalInput.cityName.trim().length < 2) throw new Error('City name required.');
+                    if (data?.cities.some(c => c.name?.toLowerCase() === modalInput.cityName.trim().toLowerCase())) throw new Error('City already exists.');
                     endpoint = '/api/cities';
                     payload = { name: modalInput.cityName.trim() };
                     successMessage = `City ${modalInput.cityName} added successfully.`;
                     break;
                 case 'agency':
                     if (!modalInput.agencyName || modalInput.agencyName.trim().length < 2) throw new Error('Agency name required.');
+                    if (data?.agencies.some(a => a.name?.toLowerCase() === modalInput.agencyName.trim().toLowerCase())) throw new Error('Agency already exists.');
                     endpoint = '/api/agencies';
                     payload = { name: modalInput.agencyName.trim() };
                     successMessage = `Agency ${modalInput.agencyName} added successfully.`;
                     break;
                 case 'vehicle':
                     if (!modalInput.vehicleNumber || modalInput.vehicleNumber.trim().length < 2) throw new Error('Vehicle number required.');
+                    if (data?.vehicles.some(v => v.vehicleNumber?.toLowerCase() === modalInput.vehicleNumber.trim().toLowerCase())) throw new Error('Vehicle already exists.');
                     endpoint = '/api/vehicles';
                     payload = { vehicleNumber: modalInput.vehicleNumber.trim().toUpperCase() };
                     successMessage = `Vehicle ${modalInput.vehicleNumber} added successfully.`;
                     break;
                 case 'item':
                     if (!modalInput.description || modalInput.description.trim().length < 3) throw new Error('Item description required.');
+                    if (data?.items.some(i => i.item_description?.toLowerCase() === modalInput.description.trim().toLowerCase())) throw new Error('Item already exists.');
                     endpoint = '/api/items';
                     payload = { description: modalInput.description.trim() };
                     successMessage = `Item ${modalInput.description} added successfully.`;
                     break;
                 case 'party':
                     if (!modalInput.name || modalInput.name.trim().length < 3) throw new Error('Party name required.');
+                    if (data?.parties.some(p => p.name?.toLowerCase() === modalInput.name.trim().toLowerCase())) throw new Error('Party already exists.');
                     if (modalInput.openingBalance === undefined) throw new Error('Opening balance required.');
                     endpoint = '/api/parties';
                     payload = {
@@ -439,17 +415,15 @@ export default function AddShipment() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || `Failed to add ${modalType}.`);
+                throw new Error(errorData.message || `Failed to add data.`);
             }
 
             const newEntry = await response.json();
 
             toast.success({ title: "Success", description: successMessage });
 
-            // Update the local dropdown data
             const latestLists = await fetchDropdownData();
 
-            // Select the newly added item in the main form (coerce to number)
             const newIdRaw = newEntry.id ?? newEntry.register_number ?? null;
             const newIdNumber = newIdRaw != null ? Number(newIdRaw) : null;
 
@@ -462,11 +436,9 @@ export default function AddShipment() {
                         setValue('vehicle_number_id', newIdNumber, { shouldValidate: true });
                         break;
                     case 'item':
-                        // Place newly created item into the first goods detail
                         setValue('goods_details.0.item_id', newIdNumber, { shouldValidate: true });
                         break;
                     case 'city':
-                        // if you want to auto-select for departure/to city add logic here
                         break;
                 }
             }
@@ -476,7 +448,7 @@ export default function AddShipment() {
 
         } catch (error: any) {
             console.error(`Master Data Add Error (${modalType}):`, error);
-            toast.error({ title: `Error Adding ${modalType?.toUpperCase()}`, description: error.message });
+            toast.error({ title: `Error adding data`, description: error.message });
         } finally {
             setIsModalSubmitting(false);
         }
@@ -521,42 +493,9 @@ export default function AddShipment() {
             const result = await response.json();
             const regNum = result.register_number;
 
-            // Prepare printable data
-            const printableData = {
-                register_number: regNum,
-                bility_number: values.bility_number,
-                bility_date: values.bility_date,
-                departure_city: findNameById(data, 'cities', values.departure_city_id),
-                forwarding_agency: findNameById(data, 'agencies', values.forwarding_agency_id),
-                vehicle_number: findNameById(data, 'vehicles', values.vehicle_number_id),
-                sender_name: values.sender_id === WALK_IN_CUSTOMER_ID && values.walk_in_sender_name 
-                    ? values.walk_in_sender_name 
-                    : findNameById(data, 'parties', values.sender_id),
-                receiver_name: values.receiver_id === WALK_IN_CUSTOMER_ID && values.walk_in_receiver_name 
-                    ? values.walk_in_receiver_name 
-                    : findNameById(data, 'parties', values.receiver_id),
-                destination_city: values.to_city_id ? findNameById(data, 'cities', values.to_city_id) : 'Local',
-                item_type: values.goods_details[0]?.item_id 
-                    ? findNameById(data, 'items', values.goods_details[0].item_id)
-                    : 'N/A',
-                quantity: values.goods_details[0]?.quantity || 0,
-                total_delivery_charges: values.total_delivery_charges,
-                total_amount: values.total_amount,
-                payment_status: paymentStatusToSend === 'FREE' ? 'FREE' : paymentStatusToSend === 'ALREADY_PAID' ? 'PAID' : 'PENDING',
-                remarks: values.remarks,
-                station_expense: values.station_expense,
-                bility_expense: values.bility_expense,
-                station_labour: values.station_labour,
-                cart_labour: values.cart_labour,
-                total_expenses: values.total_expenses,
-            };
-
-            setLastSavedShipment(printableData);
-            setShowPrintOptions(true);
-
             toast.success({
                 title: t('shipment_save_button'),
-                description: `Registration #: ${regNum} | Bility No: ${values.bility_number} saved to database.`
+                description: `Reg #: ${regNum} | Bility No: ${values.bility_number} saved successfully.`
             });
 
             form.reset({ ...generateDefaultValues(), register_number: regNum });
@@ -568,31 +507,6 @@ export default function AddShipment() {
         }
     }, [form, paymentStatusToSend, toast, t, data]);
 
-    // Print handler functions
-    const handlePrintOnly = () => {
-        if (!lastSavedShipment) return;
-        const printWindow = window.open('', '', 'height=auto,width=auto');
-        if (printWindow) {
-            // Create a temporary container with the print content
-            const printContent = createPrintContent(lastSavedShipment);
-            printWindow.document.write(printContent);
-            printWindow.document.close();
-            printWindow.print();
-        }
-        setShowPrintOptions(false);
-    };
-
-    const handleSaveAndPrint = () => {
-        if (!lastSavedShipment) return;
-        handlePrintOnly();
-    };
-
-    const handleGoToDetailedPrint = () => {
-        if (!lastSavedShipment) return;
-        // Store the data in session storage for the print page
-        sessionStorage.setItem('shipmentPrintData', JSON.stringify(lastSavedShipment));
-        router.push('/shipments/printing');
-    };
 
     const createPrintContent = (shipmentData: any) => {
         const formatCurrency = (amount: number) => {
@@ -607,19 +521,20 @@ export default function AddShipment() {
         <!DOCTYPE html>
         <html>
         <head>
+            <meta charset="UTF-8">
             <title>Shipment Receipt</title>
             <style>
                 body { font-family: Arial, sans-serif; margin: 20px; }
                 .header { text-align: center; border-bottom: 2px solid black; padding-bottom: 20px; margin-bottom: 20px; }
-                .header h1 { margin: 0; font-size: 24px; }
+                .header h1 { margin: 0; font-size: 28px; }
                 .section { border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; }
-                .section-title { font-weight: bold; font-size: 14px; color: #666; text-transform: uppercase; margin-bottom: 10px; }
+                .section-title { font-weight: bold; font-size: 16px; color: #666; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;}
                 .section-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
                 .section-row-label { font-weight: bold; }
-                .section-row-value { font-size: 14px; }
+                .section-row-value { font-size: 16px; }
                 .financial { background-color: #fffacd; }
                 .expense { background-color: #ffe4b5; }
-                .footer { text-align: center; border-top: 2px solid black; padding-top: 20px; margin-top: 20px; font-size: 12px; color: #666; }
+                .footer { text-align: center; border-top: 2px solid black; padding-top: 20px; margin-top: 20px; font-size: 14px; color: #666; }
                 table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
                 th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
                 th { background-color: #f0f0f0; font-weight: bold; }
@@ -627,7 +542,7 @@ export default function AddShipment() {
         </head>
         <body>
             <div class="header">
-                <h1>SHIPMENT RECEIPT</h1>
+                <h1>Shipment Receipt</h1>
                 <p>Goods Management System</p>
             </div>
 
@@ -636,11 +551,11 @@ export default function AddShipment() {
                 <table>
                     <tr>
                         <td><strong>Registration Number:</strong></td>
-                        <td style="color: #0066cc; font-weight: bold; font-size: 16px;">${shipmentData.register_number}</td>
+                        <td style="color: #0066cc; font-weight: bold; font-size: 18px;">${shipmentData.register_number}</td>
                     </tr>
                     <tr>
                         <td><strong>Bility Number:</strong></td>
-                        <td style="color: #0066cc; font-weight: bold; font-size: 16px;">${shipmentData.bility_number}</td>
+                        <td style="color: #0066cc; font-weight: bold; font-size: 18px;">${shipmentData.bility_number}</td>
                     </tr>
                     <tr>
                         <td><strong>Bility Date:</strong></td>
@@ -663,9 +578,9 @@ export default function AddShipment() {
                         <td>${shipmentData.destination_city}</td>
                     </tr>
                     <tr>
-                        <td><strong>Agency:</strong></td>
+                        <td><strong>Forwarding Agency:</strong></td>
                         <td>${shipmentData.forwarding_agency}</td>
-                        <td><strong>Vehicle:</strong></td>
+                        <td><strong>Vehicle Number:</strong></td>
                         <td>${shipmentData.vehicle_number}</td>
                     </tr>
                 </table>
@@ -700,17 +615,17 @@ export default function AddShipment() {
             <div class="section financial">
                 <div class="section-title">Financial Details</div>
                 <div class="section-row">
-                    <span class="section-row-label">Total Delivery Charges:</span>
+                    <span class="section-row-label">Delivery Charges:</span>
                     <span class="section-row-value">${formatCurrency(shipmentData.total_delivery_charges)}</span>
                 </div>
                 <div class="section-row">
                     <span class="section-row-label">Total Amount:</span>
-                    <span class="section-row-value" style="font-weight: bold; font-size: 16px;">${formatCurrency(shipmentData.total_amount)}</span>
+                    <span class="section-row-value" style="font-weight: bold; font-size: 18px;">${formatCurrency(shipmentData.total_amount)}</span>
                 </div>
             </div>
 
             <div class="section expense">
-                <div class="section-title">Expense Breakdown</div>
+                <div class="section-title">Expense Details</div>
                 <div class="section-row">
                     <span>Station Expense:</span>
                     <span>${formatCurrency(shipmentData.station_expense)}</span>
@@ -729,7 +644,7 @@ export default function AddShipment() {
                 </div>
                 <div class="section-row" style="border-top: 2px solid #999; padding-top: 10px; margin-top: 10px;">
                     <span style="font-weight: bold;">Total Expenses:</span>
-                    <span style="font-weight: bold; font-size: 16px;">${formatCurrency(shipmentData.total_expenses)}</span>
+                    <span style="font-weight: bold; font-size: 18px;">${formatCurrency(shipmentData.total_expenses)}</span>
                 </div>
             </div>
 
@@ -741,7 +656,7 @@ export default function AddShipment() {
             ` : ''}
 
             <div class="footer">
-                <p>Printed on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                <p>Print Date: <span>${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></p>
                 <p>© Goods Management System. All Rights Reserved.</p>
             </div>
         </body>
@@ -749,7 +664,6 @@ export default function AddShipment() {
         `;
     };
 
-    // Prepare printable payload from a shipment row (from the shipments table)
     const preparePrintableFromShipment = (shipment: ShipmentData) => {
         const firstItemDesc = shipment.goodsDetails && shipment.goodsDetails.length > 0
             ? (shipment.goodsDetails[0].itemCatalog?.item_description || 'N/A')
@@ -799,14 +713,13 @@ export default function AddShipment() {
             }
         } catch (err) {
             console.error('Print row error:', err);
-            toast.error({ title: 'Print Error', description: 'Unable to print the selected shipment.' });
+            toast.error({ title: 'Print Error', description: 'Failed to print the selected shipment.' });
         }
     };
 
-    // Generate HTML for printing the entire shipments table
     const generateTablePrintHTML = () => {
         const tableDate = bilityDate ? new Date(bilityDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Today';
-        
+
         const tableRowsHTML = shipments.map((shipment, idx) => `
             <tr>
                 <td>${shipment.register_number}</td>
@@ -816,25 +729,25 @@ export default function AddShipment() {
                 <td>${findNameById(data, 'agencies', shipment.forwarding_agency_id)}</td>
                 <td>${findNameById(data, 'vehicles', shipment.vehicle_number_id)}</td>
                 <td>${shipment.sender_id === WALK_IN_CUSTOMER_ID && shipment.walk_in_sender_name
-                    ? shipment.walk_in_sender_name
-                    : findNameById(data, 'parties', shipment.sender_id)}</td>
+                ? shipment.walk_in_sender_name
+                : findNameById(data, 'parties', shipment.sender_id)}</td>
                 <td>${shipment.receiver_id === WALK_IN_CUSTOMER_ID && shipment.walk_in_receiver_name
-                    ? shipment.walk_in_receiver_name
-                    : findNameById(data, 'parties', shipment.receiver_id)}</td>
+                ? shipment.walk_in_receiver_name
+                : findNameById(data, 'parties', shipment.receiver_id)}</td>
                 <td>${shipment.to_city_id ? findNameById(data, 'cities', shipment.to_city_id) : 'Local'}</td>
                 <td>${shipment.created_at ? new Date(shipment.created_at).toLocaleDateString() : 'N/A'}</td>
                 <td>${shipment.goodsDetails && shipment.goodsDetails.length > 0
-                    ? shipment.goodsDetails.map(d => d.itemCatalog?.item_description).filter(Boolean).join(', ')
-                    : 'N/A'}</td>
+                ? shipment.goodsDetails.map(d => d.itemCatalog?.item_description).filter(Boolean).join(', ')
+                : 'N/A'}</td>
                 <td>${shipment.goodsDetails && shipment.goodsDetails.length > 0
-                    ? shipment.goodsDetails.reduce((t, d) => t + (Number(d.quantity) || 0), 0)
-                    : 'N/A'}</td>
+                ? shipment.goodsDetails.reduce((t, d) => t + (Number(d.quantity) || 0), 0)
+                : 'N/A'}</td>
                 <td style="text-align: right;">${formatCurrency(Number(shipment.total_delivery_charges || 0))}</td>
                 <td style="text-align: right; font-weight: bold;">
-                    ${shipment.payment_status === 'ALREADY_PAID' ? '<span style="color: #008000;">PAID</span>'
-                    : shipment.payment_status === 'FREE' ? '<span style="color: #0066cc;">FREE</span>'
+                    ${shipment.payment_status === 'ALREADY_PAID' ? `<span style="color: #008000;">PAID <br/><span style="font-size: 10px; font-weight: normal;">${formatCurrency(shipment.total_charges)}</span></span>`
+                : shipment.payment_status === 'FREE' ? `<span style="color: #0066cc;">FREE <br/><span style="font-size: 10px; font-weight: normal;">${formatCurrency(shipment.total_charges)}</span></span>`
                     : shipment.payment_status === 'PENDING' ? `<span style="color: #cc0000;">${formatCurrency(shipment.total_charges)}</span>`
-                    : formatCurrency(shipment.total_charges)}
+                        : formatCurrency(shipment.total_charges)}
                 </td>
             </tr>
         `).join('');
@@ -843,6 +756,7 @@ export default function AddShipment() {
         <!DOCTYPE html>
         <html>
         <head>
+            <meta charset="UTF-8">
             <title>Today's Shipments Report</title>
             <style>
                 body { 
@@ -858,16 +772,16 @@ export default function AddShipment() {
                 }
                 .header h1 { 
                     margin: 0; 
-                    font-size: 28px; 
+                    font-size: 32px; 
                     color: #333;
                 }
                 .header p { 
                     margin: 5px 0; 
-                    font-size: 14px; 
+                    font-size: 16px; 
                     color: #666;
                 }
                 .report-date {
-                    font-size: 16px;
+                    font-size: 18px;
                     font-weight: bold;
                     color: #0066cc;
                     text-align: center;
@@ -886,13 +800,13 @@ export default function AddShipment() {
                     padding: 12px; 
                     text-align: left;
                     font-weight: bold;
-                    font-size: 12px;
+                    font-size: 14px;
                     border: 1px solid #333;
                 }
                 td { 
                     padding: 10px; 
                     border: 1px solid #ddd; 
-                    font-size: 12px;
+                    font-size: 14px;
                 }
                 tr:nth-child(even) { 
                     background-color: #f9f9f9; 
@@ -905,12 +819,8 @@ export default function AddShipment() {
                     border-top: 2px solid #333;
                     padding-top: 15px;
                     margin-top: 30px;
-                    font-size: 11px;
+                    font-size: 14px;
                     color: #666;
-                }
-                .total-row {
-                    background-color: #e8f4f8;
-                    font-weight: bold;
                 }
                 .summary {
                     margin: 20px 0;
@@ -920,7 +830,7 @@ export default function AddShipment() {
                 }
                 .summary p {
                     margin: 5px 0;
-                    font-size: 13px;
+                    font-size: 16px;
                 }
                 @media print {
                     body { margin: 0; }
@@ -930,24 +840,24 @@ export default function AddShipment() {
         </head>
         <body>
             <div class="header">
-                <h1>TODAY'S BILITY REPORT</h1>
-                <p>Zikria Goods Transports Company</p>
+                <h1>Today's Bility Report</h1>
+                <p>Goods Transport Company</p>
             </div>
 
             <div class="report-date">
-                Report Date: ${tableDate}
+                Report Date: <span>${tableDate}</span>
             </div>
 
             <div class="summary">
                 <p><strong>Total Shipments:</strong> ${shipments.length}</p>
-                <p><strong>Total Delivery Charges:</strong> ${formatCurrency(shipments.reduce((s, sh) => s + (Number(sh.total_delivery_charges || 0)), 0))}</p>
-                <p><strong>Total Amount:</strong> ${formatCurrency(shipments.reduce((s, sh) => s + (Number(sh.total_charges || 0)), 0))}</p>
+                <p><strong>Total Delivery Charges:</strong> <span>${formatCurrency(shipments.reduce((s, sh) => s + (Number(sh.total_delivery_charges || 0)), 0))}</span></p>
+                <p><strong>Total Amount:</strong> <span>${formatCurrency(shipments.reduce((s, sh) => s + (Number(sh.total_charges || 0)), 0))}</span></p>
             </div>
 
             <table>
                 <thead>
                     <tr>
-                        <th>Reg No</th>
+                        <th>Registration No</th>
                         <th>Bility No</th>
                         <th>Date</th>
                         <th>Departure</th>
@@ -958,7 +868,7 @@ export default function AddShipment() {
                         <th>Destination</th>
                         <th>Current Date</th>
                         <th>Item Type</th>
-                        <th>Qty</th>
+                        <th>Quantity</th>
                         <th style="text-align: right;">Delivery Charges</th>
                         <th style="text-align: right;">Payment Status</th>
                     </tr>
@@ -969,8 +879,8 @@ export default function AddShipment() {
             </table>
 
             <div class="footer">
-                <p>Printed on: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                <p>© Switch2itech. All Rights Reserved.</p>
+                <p>Print Date: <span>${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></p>
+                <p>© Goods Management System. All Rights Reserved.</p>
             </div>
         </body>
         </html>
@@ -992,17 +902,17 @@ export default function AddShipment() {
             }
         } catch (err) {
             console.error('Print table error:', err);
-            toast.error({ title: 'Print Error', description: 'Unable to print the table.' });
+            toast.error({ title: 'Print Error', description: 'Failed to print the table.' });
         }
     };
 
     const modalContent = useMemo(() => {
         const titleMap: Record<string, string> = {
-            city: 'New City',
-            agency: 'New Forwarding Agency',
-            vehicle: 'New Vehicle',
-            party: 'New Party (Sender/Receiver)',
-            item: 'New Item Type',
+            city: t('nav_add_city'),
+            agency: t('nav_add_agency'),
+            vehicle: t('nav_add_vehicle'),
+            party: t('nav_add_party'),
+            item: t('nav_add_item_type'),
         };
 
         const currentTitle = modalType ? (titleMap[modalType] || 'Add Master Data') : 'Add Master Data';
@@ -1012,7 +922,7 @@ export default function AddShipment() {
                 <DialogHeader>
                     <DialogTitle className='text-xl text-blue-700'>{currentTitle}</DialogTitle>
                     <DialogDescription>
-                        Enter details for a new entry. It will be immediately available in the dropdowns.
+                        Enter details for the new entry. It will be immediately available in the lists.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleAddMasterData} className="space-y-4 pt-2">
@@ -1039,6 +949,7 @@ export default function AddShipment() {
                                 placeholder="e.g., Global Express Logistics"
                                 onChange={handleModalInputChange}
                                 value={modalInput.agencyName || ''}
+                                onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                 required
                                 autoFocus
                             />
@@ -1046,13 +957,14 @@ export default function AddShipment() {
                     )}
                     {modalType === 'vehicle' && (
                         <div className='space-y-2'>
-                            <Label htmlFor="vehicleNumber">Vehicle Registration Number</Label>
+                            <Label htmlFor="vehicleNumber">Vehicle Number</Label>
                             <Input
                                 id="vehicleNumber"
                                 name="vehicleNumber"
                                 placeholder="e.g., ABC-1234"
                                 onChange={handleModalInputChange}
                                 value={modalInput.vehicleNumber || ''}
+                                onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                 required
                                 autoFocus
                             />
@@ -1060,13 +972,14 @@ export default function AddShipment() {
                     )}
                     {modalType === 'item' && (
                         <div className='space-y-2'>
-                            <Label htmlFor="description">Item Type Description</Label>
+                            <Label htmlFor="description">Item Description</Label>
                             <Input
                                 id="description"
                                 name="description"
-                                placeholder="e.g., Electronics, Textiles"
+                                placeholder="e.g., Electronics, Garments"
                                 onChange={handleModalInputChange}
                                 value={modalInput.description || ''}
+                                onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                 required
                                 autoFocus
                             />
@@ -1082,6 +995,7 @@ export default function AddShipment() {
                                     placeholder="e.g., Acme Corp"
                                     onChange={handleModalInputChange}
                                     value={modalInput.name || ''}
+                                    onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                     required
                                     autoFocus
                                 />
@@ -1094,6 +1008,7 @@ export default function AddShipment() {
                                     placeholder="Address / Phone"
                                     onChange={handleModalInputChange}
                                     value={modalInput.contactInfo || ''}
+                                    onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                 />
                             </div>
                             <div className='space-y-2'>
@@ -1105,124 +1020,21 @@ export default function AddShipment() {
                                     placeholder="0.00"
                                     value={modalInput.openingBalance || '0.00'}
                                     onChange={handleModalInputChange}
+                                    onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                     required
                                 />
                             </div>
                         </>
                     )}
 
-                    <Button type="submit" className='w-full mt-4' disabled={isModalSubmitting}>
-                        {isModalSubmitting ? <><Loader2 className='h-4 w-4 animate-spin mr-2' /> Saving...</> : 'Save & Update List'}
+                    <Button type="submit" className='w-full mt-4 text-lg' disabled={isModalSubmitting}>
+                        {isModalSubmitting ? <><Loader2 className='h-4 w-4 animate-spin mr-2' /> Saving...</> : 'Save and Update'}
                     </Button>
                 </form>
             </DialogContent>
         );
-    }, [modalType, modalInput, isModalSubmitting, handleModalInputChange, handleAddMasterData]);
+    }, [modalType, modalInput, isModalSubmitting, handleModalInputChange, handleAddMasterData, t]);
 
-
-    // --- Searchable Combobox Component ---
-    const SearchableCombobox = ({
-        field,
-        labelTKey,
-        placeholderTKey,
-        listName,
-        onAddClick,
-        disabled = false
-    }: {
-        field: any;
-        labelTKey: string;
-        placeholderTKey: string;
-        listName: keyof DropdownData;
-        onAddClick: () => void;
-        disabled?: boolean;
-    }) => {
-        const [open, setOpen] = useState(false);
-        const items = data?.[listName] || [];
-
-        const getItemLabel = (item: DropdownItem) => {
-            if (listName === 'vehicles') return item.vehicleNumber || '';
-            if (listName === 'items') return item.item_description || '';
-            return item.name || '';
-        };
-
-        const selectedItem = items.find(item => item.id === field.value);
-        const selectedLabel = selectedItem ? getItemLabel(selectedItem) : '';
-
-        return (
-            <FormItem className="flex flex-col">
-                <div className='flex justify-between items-center'>
-                    <FormLabel>{t(labelTKey)}</FormLabel>
-                    <Button
-                        type='button'
-                        size='sm'
-                        variant='ghost'
-                        className='h-7 w-7 p-0 text-blue-600 hover:bg-blue-100'
-                        onClick={(e) => {
-                            e.preventDefault();
-                            onAddClick();
-                        }}
-                        title={`Add new ${listName.slice(0, -1)}`}
-                    >
-                        <Plus className='h-4 w-4' />
-                    </Button>
-                </div>
-                <Popover open={open} onOpenChange={setOpen}>
-                    <PopoverTrigger asChild>
-                        <FormControl>
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                disabled={disabled}
-                                className={cn(
-                                    "w-full justify-between",
-                                    !field.value && "text-muted-foreground"
-                                )}
-                            >
-                                {field.value && selectedLabel
-                                    ? selectedLabel
-                                    : t(placeholderTKey)}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0" align="start">
-                        <Command>
-                            <CommandInput placeholder={`Search ${listName}...`} />
-                            <CommandEmpty>No {listName} found.</CommandEmpty>
-                            <CommandGroup className="max-h-[200px] overflow-auto">
-                                {items.map((item) => {
-                                    const label = getItemLabel(item);
-                                    return (
-                                        <CommandItem
-                                            key={item.id}
-                                            value={label}
-                                            onSelect={() => {
-                                                field.onChange(item.id);
-                                                setOpen(false);
-                                            }}
-                                        >
-                                            <Check
-                                                className={cn(
-                                                    "mr-2 h-4 w-4",
-                                                    item.id === field.value
-                                                        ? "opacity-100"
-                                                        : "opacity-0"
-                                                )}
-                                            />
-                                            {label}
-                                        </CommandItem>
-                                    );
-                                })}
-                            </CommandGroup>
-                        </Command>
-                    </PopoverContent>
-                </Popover>
-                <FormMessage />
-            </FormItem>
-        );
-    };
-
-    // --- Render Logic ---
     const itemIsLoading = form.formState.isSubmitting;
     const isSenderWalkIn = senderId === WALK_IN_CUSTOMER_ID;
     const isReceiverWalkIn = receiverId === WALK_IN_CUSTOMER_ID;
@@ -1231,18 +1043,14 @@ export default function AddShipment() {
 
     if (isLoadingData) {
         return (
-            // This div now controls the full-screen layout
-           <div className='flex justify-center items-center min-h-screen'>
-    <div className='text-4xl font-extrabold text-blue-600 flex space-x-1'>
-        {/* We apply the bounce animation to each letter, 
-            using arbitrary values for 'animation-delay' to stagger them.
-        */}
-        <span className="animate-bounce [animation-delay:-0.45s]">Z</span>
-        <span className="animate-bounce [animation-delay:-0.30s]">G</span>
-        <span className="animate-bounce [animation-delay:-0.15s]">T</span>
-        <span className="animate-bounce">C</span>
-    </div>
-</div>
+            <div className='flex justify-center items-center min-h-screen'>
+                <div className='text-4xl font-extrabold text-blue-600 flex space-x-1'>
+                    <span className="animate-bounce [animation-delay:-0.45s]">Z</span>
+                    <span className="animate-bounce [animation-delay:-0.30s]">G</span>
+                    <span className="animate-bounce [animation-delay:-0.15s]">T</span>
+                    <span className="animate-bounce">C</span>
+                </div>
+            </div>
         );
     }
 
@@ -1254,8 +1062,8 @@ export default function AddShipment() {
                 </h2>
 
                 <div className="bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-lg">
-                    <span className="text-sm font-medium">Today's Date:</span>
-                    <span className="text-xl font-bold ml-2">
+                    <span className="text-sm font-medium mr-2">Today:</span>
+                    <span className="text-xl font-bold">
                         {new Date(today).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </span>
                 </div>
@@ -1266,65 +1074,62 @@ export default function AddShipment() {
                     onSubmit={form.handleSubmit(handleDirectSave)}
                     className='space-y-6 p-8 rounded-xl shadow-2xl border border-indigo-100 bg-white mb-10'
                 >
-                    {/* 1. Registration Number, Bility Number, Bility Date, Departure City */}
                     <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
                         <FormField control={form.control} name='register_number' render={({ field }) => (
-                            <FormItem>
+                            <FormItem className='hidden'>
                                 <FormLabel>{t('shipment_reg_num_label')}</FormLabel>
                                 <FormControl>
-                                    <Input placeholder={t('shipment_reg_num_placeholder')} {...field} readOnly disabled={isFetchingRegNum} />
+                                    <Input placeholder={t('shipment_reg_num_placeholder')} {...field} readOnly disabled={isFetchingRegNum} onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()} />
                                 </FormControl>
                                 {isFetchingRegNum && <div className="text-xs text-gray-400">{t('shipment_reg_num_loading')}</div>}
                                 <FormMessage />
                             </FormItem>
                         )} />
                         <FormField control={form.control} name='bility_number' render={({ field }) => (
-                            <FormItem><FormLabel>{t('shipment_bility_num_label')}</FormLabel><FormControl><Input placeholder={t('shipment_bility_num_placeholder')} {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>{t('shipment_bility_num_label')}</FormLabel><FormControl><Input placeholder={t('shipment_bility_num_placeholder')} {...field} onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()} /></FormControl><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name='bility_date' render={({ field }) => (
-                            <FormItem><FormLabel>{t('shipment_bility_date_label')}</FormLabel><FormControl><Input type='date' {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>{t('shipment_bility_date_label')}</FormLabel><FormControl><Input type='date' {...field} onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()} /></FormControl><FormMessage /></FormItem>
                         )} />
 
-                        {/* DEPARTURE CITY */}
                         <FormField control={form.control} name='departure_city_id' render={({ field }) => (
                             <SearchableDropdown
-                                label="Departure City"
+                                label={t('shipment_departure_city_label')}
                                 endpoint="/api/cities"
-                                placeholder="Select or add city"
+                                placeholder={t('shipment_departure_city_placeholder')}
                                 value={field.value}
                                 onChange={(name) => setCity(name)}
                                 onSelectItem={(it) => field.onChange(Number(it.id))}
                                 items={data?.cities}
+                                onNewItemAdded={fetchDropdownData}
                             />
-
                         )} />
                     </div>
 
-                    {/* 2. Forwarding Agency, Vehicle Number, Quantity, Item Type */}
                     <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-                        {/* FORWARDING AGENCY */}
                         <FormField control={form.control} name='forwarding_agency_id' render={({ field }) => (
                             <SearchableDropdown
-                                label="Forwading Agency"
+                                label={t('shipment_agency_label')}
                                 endpoint="/api/agencies"
-                                placeholder="Select or add agency"
+                                placeholder={t('shipment_agency_placeholder')}
                                 value={field.value}
                                 onChange={(name) => setAgency(name)}
                                 onSelectItem={(it) => field.onChange(Number(it.id))}
                                 items={data?.agencies}
+                                onNewItemAdded={fetchDropdownData}
                             />
                         )} />
-                        {/* VEHICLE NUMBER */}
                         <FormField control={form.control} name='vehicle_number_id' render={({ field }) => (
                             <SearchableDropdown
-                                label="Vehicle Number"
+                                label={t('shipment_vehicle_label')}
                                 endpoint="/api/vehicles"
-                                placeholder="Select or add vehicle"
+                                placeholder={t('shipment_vehicle_placeholder')}
                                 value={field.value}
                                 onChange={(name) => setVehicles(name)}
                                 onSelectItem={(it) => field.onChange(Number(it.id))}
                                 items={data?.vehicles}
                                 createPropertyName="vehicleNumber"
+                                onNewItemAdded={fetchDropdownData}
                             />
                         )} />
 
@@ -1338,80 +1143,77 @@ export default function AddShipment() {
                                         {...field}
                                         min={1}
                                         onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                                        onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                     />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
 
-                        {/* ITEM TYPE */}
                         <FormField control={form.control} name={`goods_details.0.item_id`} render={({ field }) => (
                             <SearchableDropdown
-                                label="Item Type"
+                                label={t('shipment_item_type_label')}
                                 endpoint="/api/items"
-                                placeholder="Select or add item type"
+                                placeholder={t('shipment_item_type_placeholder')}
                                 value={field.value}
                                 onChange={(name) => setItem(name)}
                                 onSelectItem={(it) => field.onChange(Number(it.id))}
                                 items={data?.items}
                                 createPropertyName="description"
+                                onNewItemAdded={fetchDropdownData}
                             />
                         )} />
-
                     </div>
 
-                    {/* 4. Sender, Receiver */}
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                        {/* SENDER */}
                         <FormField control={form.control} name='sender_id' render={({ field }) => (
-                           <SearchableDropdown
-                                label="Sender"
+                            <SearchableDropdown
+                                label={t('shipment_sender_label')}
                                 endpoint="/api/parties"
-                                placeholder="Select or add sender"
+                                placeholder={t('shipment_sender_placeholder')}
                                 value={field.value}
                                 onChange={(name) => setSender(name)}
                                 onSelectItem={(it) => field.onChange(Number(it.id))}
                                 items={data?.parties}
+                                onNewItemAdded={fetchDropdownData}
                             />
                         )} />
-                        {/* RECEIVER */}
                         <FormField control={form.control} name='receiver_id' render={({ field }) => (
                             <SearchableDropdown
-                                label="Receiver"
+                                label={t('shipment_receiver_label')}
                                 endpoint="/api/parties"
-                                placeholder="Select or add receiver"
+                                placeholder={t('shipment_receiver_placeholder')}
                                 value={field.value}
                                 onChange={(name) => setReciver(name)}
                                 onSelectItem={(it) => field.onChange(Number(it.id))}
                                 items={data?.parties}
+                                onNewItemAdded={fetchDropdownData}
                             />
                         )} />
                     </div>
 
-                    {/* Walk-in fields if needed */}
-                    {/* {(isSenderWalkIn || isReceiverWalkIn) && (
-                        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    {(isSenderWalkIn || isReceiverWalkIn) && (
+                        <div className='grid grid-cols-1 md:grid-cols-2 gap-4 pb-4'>
                             {isSenderWalkIn && <FormField control={form.control} name='walk_in_sender_name' render={({ field }) => (
-                                <FormItem><FormLabel>{t('shipment_walk_in_sender_label')}</FormLabel><FormControl><Input placeholder={t('shipment_walk_in_placeholder')} {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem className='hidden'><FormLabel>{t('shipment_walk_in_sender_label')}</FormLabel><FormControl><Input placeholder={t('shipment_walk_in_placeholder')} {...field} onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()} /></FormControl><FormMessage /></FormItem>
                             )} />}
                             {isReceiverWalkIn && <FormField control={form.control} name='walk_in_receiver_name' render={({ field }) => (
-                                <FormItem><FormLabel>{t('shipment_walk_in_receiver_label')}</FormLabel><FormControl><Input placeholder={t('shipment_walk_in_placeholder')} {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem className='hidden'><FormLabel>{t('shipment_walk_in_receiver_label')}</FormLabel><FormControl><Input placeholder={t('shipment_walk_in_placeholder')} {...field} onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()} /></FormControl><FormMessage /></FormItem>
                             )} />}
                         </div>
-                    )} */}
+                    )}
 
-                    {/* 5. Destination, Delivery Charges, Total Amount */}
                     <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-                        {/* DESTINATION CITY */}
                         <FormField control={form.control} name='to_city_id' render={({ field }) => (
                             <SearchableDropdown
-                                label="Destination City"
+                                label={t('shipment_dest_city_label')}
                                 endpoint="/api/cities"
-                                placeholder="Select or add city"
+                                placeholder={t('shipment_dest_city_placeholder')}
                                 value={field.value}
                                 onChange={(name) => setCity(name)}
                                 onSelectItem={(it) => field.onChange(Number(it.id))}
                                 items={data?.cities}
+                                onNewItemAdded={fetchDropdownData}
                             />
                         )} />
 
@@ -1425,15 +1227,15 @@ export default function AddShipment() {
                                         {...field}
                                         step='0.01'
                                         min='0'
-                                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                                        onChange={(e) => field.onChange(isNaN(e.target.valueAsNumber) ? 0 : e.target.valueAsNumber)}
                                         className='text-lg font-semibold text-blue-800 border-blue-300 focus:border-blue-500'
+                                        onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                     />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
 
-                        {/* TOTAL AMOUNT - Independent field */}
                         <FormField control={form.control} name='total_amount' render={({ field }) => (
                             <FormItem>
                                 <FormLabel>{t('shipment_total_amount_label')}</FormLabel>
@@ -1444,21 +1246,21 @@ export default function AddShipment() {
                                         {...field}
                                         step='0.01'
                                         min='0'
-                                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                                        onChange={(e) => field.onChange(isNaN(e.target.valueAsNumber) ? 0 : e.target.valueAsNumber)}
                                         className='text-lg font-semibold text-green-800 border-green-300 focus:border-green-500'
+                                        onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                     />
                                 </FormControl>
                                 <FormDescription className="text-xs">
-                                    Enter total amount manually (independent of expenses)
+                                    Manual input (independent of expenses)
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )} />
                     </div>
 
-                    {/* 6. Delivery Expense Fields */}
-                    <div className='grid grid-cols-1 md:grid-cols-5 gap-4 pt-4 border-t'>
-                        <h4 className='col-span-full text-lg font-bold text-gray-700'>Delivery Expenses (Data Entry)</h4>
+                    <div className='hidden grid-cols-1 md:grid-cols-5 gap-4 pt-4 border-t'>
+                        <h4 className='col-span-full text-lg font-bold text-gray-700'>{t('delivery_expenses_heading')}</h4>
 
                         <FormField
                             control={form.control}
@@ -1474,6 +1276,7 @@ export default function AddShipment() {
                                             step='0.01'
                                             min='0'
                                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                            onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -1494,6 +1297,7 @@ export default function AddShipment() {
                                             step='0.01'
                                             min='0'
                                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                            onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -1514,6 +1318,7 @@ export default function AddShipment() {
                                             step='0.01'
                                             min='0'
                                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                            onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -1534,6 +1339,7 @@ export default function AddShipment() {
                                             step='0.01'
                                             min='0'
                                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                            onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -1554,6 +1360,7 @@ export default function AddShipment() {
                                             step='0.01'
                                             readOnly
                                             className='bg-red-50 font-bold text-red-600'
+                                            onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()}
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -1562,7 +1369,6 @@ export default function AddShipment() {
                         />
                     </div>
 
-                    {/* 7. Payment Status Checkboxes */}
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t'>
                         <FormField
                             control={form.control}
@@ -1572,24 +1378,13 @@ export default function AddShipment() {
                                     <FormControl>
                                         <Checkbox
                                             checked={field.value}
-                                            onCheckedChange={(v) => {
-                                                const newValue = Boolean(v);
-                                                const currentCharges = form.getValues('total_delivery_charges') || 0;
-                                                if (newValue && !field.value) {
-                                                    // Checking: add 1
-                                                    setValue('total_delivery_charges', currentCharges + 1);
-                                                } else if (!newValue && field.value) {
-                                                    // Unchecking: subtract 1
-                                                    setValue('total_delivery_charges', Math.max(0, currentCharges - 1));
-                                                }
-                                                field.onChange(newValue);
-                                            }}
+                                            onCheckedChange={field.onChange}
                                             disabled={isFreeOfCost}
                                         />
                                     </FormControl>
                                     <div className="space-y-1 leading-none">
                                         <FormLabel className="text-base font-semibold cursor-pointer">
-                                            Is Already Paid (Cash Received)
+                                            {t('shipment_is_paid_label')}
                                         </FormLabel>
                                         <FormMessage />
                                     </div>
@@ -1604,24 +1399,13 @@ export default function AddShipment() {
                                     <FormControl>
                                         <Checkbox
                                             checked={field.value}
-                                            onCheckedChange={(v) => {
-                                                const newValue = Boolean(v);
-                                                const currentCharges = form.getValues('total_delivery_charges') || 0;
-                                                if (newValue && !field.value) {
-                                                    // Checking: add 1
-                                                    setValue('total_delivery_charges', currentCharges + 1);
-                                                } else if (!newValue && field.value) {
-                                                    // Unchecking: subtract 1
-                                                    setValue('total_delivery_charges', Math.max(0, currentCharges - 1));
-                                                }
-                                                field.onChange(newValue);
-                                            }}
+                                            onCheckedChange={field.onChange}
                                             disabled={isAlreadyPaid}
                                         />
                                     </FormControl>
                                     <div className="space-y-1 leading-none">
                                         <FormLabel className="text-base font-semibold cursor-pointer">
-                                            Is Free of Cost
+                                            {t('shipment_is_free_label')}
                                         </FormLabel>
                                         <FormMessage />
                                     </div>
@@ -1630,15 +1414,13 @@ export default function AddShipment() {
                         />
                     </div>
 
-                    {/* 8. Remarks */}
                     <FormField control={form.control} name='remarks' render={({ field }) => (
-                        <FormItem><FormLabel>{t('shipment_remarks_label')}</FormLabel><FormControl><Textarea placeholder={t('shipment_remarks_placeholder')} {...field} rows={3} /></FormControl><FormMessage /></FormItem>
+                        <FormItem className='hidden'><FormLabel>{t('shipment_remarks_label')}</FormLabel><FormControl><Textarea placeholder={t('shipment_remarks_placeholder')} {...field} rows={3} onFocus={(e) => e.target.select()} onClick={(e) => e.target.select()} /></FormControl><FormMessage /></FormItem>
                     )} />
-
 
                     <Button
                         type='submit'
-                        className='w-full bg-green-700 hover:bg-green-800 py-4 text-lg font-bold'
+                        className='w-full bg-green-700 hover:bg-green-800 py-4 text-xl font-bold'
                         disabled={itemIsLoading || !isFormValid || manualTotalAmount < 0}
                     >
                         {form.formState.isSubmitting ? t('shipment_saving_button') : t('shipment_save_button')}
@@ -1646,54 +1428,17 @@ export default function AddShipment() {
                 </form>
             </Form>
 
-            {/* Print Options Dialog */}
-            <Dialog open={showPrintOptions} onOpenChange={setShowPrintOptions}>
-                <DialogContent className='sm:max-w-[450px]'>
-                    <DialogHeader>
-                        <DialogTitle className='text-xl text-green-700'>Shipment Saved Successfully! 🎉</DialogTitle>
-                        <DialogDescription>
-                            Your shipment has been saved. What would you like to do next?
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-3 pt-4">
-                        <Button
-                            onClick={handlePrintOnly}
-                            className="w-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center gap-2 py-6"
-                            size="lg"
-                        >
-                            <Printer className="h-5 w-5" />
-                            Print Now
-                        </Button>
-                        <Button
-                            onClick={handleGoToDetailedPrint}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 py-6"
-                            size="lg"
-                        >
-                            <FileText className="h-5 w-5" />
-                            Detailed Print Page
-                        </Button>
-                        <Button
-                            onClick={() => setShowPrintOptions(false)}
-                            className="w-full bg-gray-500 hover:bg-gray-600 text-white py-6"
-                            size="lg"
-                        >
-                            Close
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
 
-            {/* Shipments Table */}
             <div className='mt-12 p-8 rounded-xl shadow-2xl border bg-white'>
                 <div className='flex justify-between items-center mb-6'>
-                    <h2 className='text-2xl font-extrabold'>Today's Shipments ({bilityDate ? new Date(bilityDate).toLocaleDateString() : 'Loading...'})</h2>
+                    <h2 className='text-2xl font-extrabold'>{t('shipment_section_saved_title')} ({bilityDate ? new Date(bilityDate).toLocaleDateString() : '...'})</h2>
                     {!isLoadingShipments && shipments.length > 0 && (
-                        <Button 
+                        <Button
                             onClick={handlePrintTable}
-                            className='bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2'
+                            className='bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 text-lg'
                             size='lg'
                         >
-                            <Printer className='h-5 w-5' />
+                            <Printer className='h-5 w-5 mr-2' />
                             Print Table
                         </Button>
                     )}
@@ -1708,7 +1453,6 @@ export default function AddShipment() {
                             <TableCaption>{t('shipment_table_caption')}</TableCaption>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>{t('shipment_table_reg_no')}</TableHead>
                                     <TableHead>{t('shipment_table_bility_no')}</TableHead>
                                     <TableHead>{t('shipment_table_date')}</TableHead>
                                     <TableHead>{t('shipment_table_departure')}</TableHead>
@@ -1717,10 +1461,11 @@ export default function AddShipment() {
                                     <TableHead>{t('shipment_table_sender')}</TableHead>
                                     <TableHead>{t('shipment_table_receiver')}</TableHead>
                                     <TableHead>{t('shipment_table_destination')}</TableHead>
-                                    <TableHead>Current Date</TableHead>
+                                    <TableHead>{t('shipment_table_created_date')}</TableHead>
                                     <TableHead>{t('shipment_table_item_type')}</TableHead>
                                     <TableHead>{t('shipment_table_quantity')}</TableHead>
-                                    <TableHead className='text-right'>Delivery Charges</TableHead>
+                                    <TableHead className='text-right'>{t('shipment_delivery_charges_label')}</TableHead>
+                                    <TableHead className='text-right'>{t('shipment_table_total_amount')}</TableHead>
                                     <TableHead className='text-right'>Payment Status</TableHead>
                                     <TableHead className='text-right'>Action</TableHead>
                                 </TableRow>
@@ -1728,7 +1473,6 @@ export default function AddShipment() {
                             <TableBody>
                                 {shipments.map((shipment, idx) => (
                                     <TableRow key={shipment.id ?? shipment.register_number ?? idx}>
-                                        <TableCell className='font-mono text-sm'>{shipment.register_number}</TableCell>
                                         <TableCell>{shipment.bility_number}</TableCell>
                                         <TableCell>{shipment.bility_date ? new Date(shipment.bility_date).toLocaleDateString() : 'N/A'}</TableCell>
                                         <TableCell>{findNameById(data, 'cities', shipment.departure_city_id)}</TableCell>
@@ -1754,7 +1498,7 @@ export default function AddShipment() {
                                             {shipment.goodsDetails && shipment.goodsDetails.length > 0
                                                 ? shipment.goodsDetails
                                                     .map(detail => detail.itemCatalog?.item_description)
-                                                    .filter(Boolean) // remove undefined/null
+                                                    .filter(Boolean)
                                                     .join(', ')
                                                 : 'N/A'
                                             }
@@ -1768,11 +1512,14 @@ export default function AddShipment() {
                                         <TableCell className='text-right'>
                                             {formatCurrency(Number(shipment.total_delivery_charges || 0))}
                                         </TableCell>
+                                        <TableCell className='text-right font-semibold'>
+                                            {formatCurrency(Number(shipment.total_charges || 0))}
+                                        </TableCell>
                                         <TableCell className='text-right font-bold'>
-                                            {shipment.payment_status === 'ALREADY_PAID' && <span className='text-green-600'>PAID</span>}
-                                            {shipment.payment_status === 'FREE' && <span className='text-blue-600'>FREE</span>}
-                                            {shipment.payment_status === 'PENDING' && <span className='text-red-600'>{formatCurrency(shipment.total_charges)}</span>}
-                                            {!shipment.payment_status && formatCurrency(shipment.total_charges)}
+                                            {shipment.payment_status === 'ALREADY_PAID' && <span className='text-green-600'>{t('shipment_is_paid_label')}</span>}
+                                            {shipment.payment_status === 'FREE' && <span className='text-blue-600'>{t('shipment_is_free_label')}</span>}
+                                            {shipment.payment_status === 'PENDING' && <span className='text-red-600'>PENDING</span>}
+                                            {!shipment.payment_status && <span className='text-gray-400'>-</span>}
                                         </TableCell>
                                         <TableCell className='text-right'>
                                             <div className='flex justify-end space-x-2'>
@@ -1788,11 +1535,6 @@ export default function AddShipment() {
                     </div>
                 )}
             </div>
-
-            {/* --- Master Data Dialog/Modal --- */}
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                {modalType && modalContent}
-            </Dialog>
         </div>
     );
 }

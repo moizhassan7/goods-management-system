@@ -11,7 +11,6 @@ const TripShipmentLogSchema = z.object({
   item_id: z.number().int().min(1, 'Item is required'),
   quantity: z.number().int().min(1),
   delivery_charges: z.number().min(0),
-  walk_in_receiver_name: z.string().optional(),
 });
 
 const TripLogSchema = z.object({
@@ -98,7 +97,7 @@ export async function POST(request: NextRequest) {
         trip_log_id: tripLog.id,
         bilty_number: log.bilty_number || '',
         serial_number: log.serial_number,
-        receiver_name: log.receiver_id === 1 ? (log.walk_in_receiver_name || 'Walk-in Customer') : (partyIdToName.get(log.receiver_id) || 'Unknown'),
+        receiver_name: partyIdToName.get(log.receiver_id) || 'Unknown',
         item_details: itemIdToDesc.get(log.item_id) || 'Unknown',
         quantity: log.quantity,
         delivery_charges: log.delivery_charges,

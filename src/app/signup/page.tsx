@@ -77,10 +77,11 @@ export default function SignupPage() {
       // Redirect to login page after successful signup
       router.push('/login');
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Signup Error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast.error('Signup Failed ⚠️', {
-        description: error.message,
+        description: errorMessage,
       });
     }
   }

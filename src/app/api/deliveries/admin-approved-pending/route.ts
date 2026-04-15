@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient, ApprovalStatus } from '@prisma/client'; 
+import { ApprovalStatus } from '@prisma/client'; 
 import { authenticate, Permissions } from '@/lib/auth';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 // Only SuperAdmin can access this endpoint (as defined in Permissions)
 export async function GET(request: Request) {
@@ -58,7 +57,5 @@ export async function GET(request: Request) {
             { error: 'Internal server error while fetching Admin-approved deliveries.' },
             { status: 500 }
         );
-    } finally {
-        await prisma.$disconnect();
     }
-}
+}

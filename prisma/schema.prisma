@@ -90,8 +90,6 @@ model Shipment {
   vehicle_number_id      Int
   sender_id              Int
   receiver_id            Int
-  walk_in_sender_name    String?              @db.VarChar(100)
-  walk_in_receiver_name  String?              @db.VarChar(100)
   total_charges          Decimal              @db.Decimal(10, 2)
   delivery_date          DateTime?            @db.Date
   remarks                String?

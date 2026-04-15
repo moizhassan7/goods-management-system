@@ -23,8 +23,6 @@ interface ShipmentRequestPayload {
     vehicle_number_id: number;
     sender_id: number;
     receiver_id: number;
-    walk_in_sender_name?: string;
-    walk_in_receiver_name?: string;
 
     total_delivery_charges: number;
     total_amount: number; // This value is mapped to the 'total_charges' DB column
@@ -115,8 +113,6 @@ export async function POST(request: Request) {
                             vehicle_number_id: payload.vehicle_number_id,
                             sender_id: payload.sender_id,
                             receiver_id: payload.receiver_id,
-                            walk_in_sender_name: payload.walk_in_sender_name,
-                            walk_in_receiver_name: payload.walk_in_receiver_name,
         
                             total_charges: finalBillAmount,
                             total_delivery_charges: totalDeliveryCharges,
@@ -149,7 +145,7 @@ export async function POST(request: Request) {
                                 shipment_id: register_number,
                                 credit_amount: finalBillAmount,
                                 debit_amount: new Prisma.Decimal(0),
-                                description: `Shipment Bill for Bility #${payload.bility_number}. Sender: ${payload.walk_in_sender_name || `Party ID: ${payload.sender_id}`}.`,
+                                description: `Shipment Bill for Bility #${payload.bility_number}. Sender: Party ID: ${payload.sender_id}.`,
                             },
                         }),
                     ] : []),
@@ -289,8 +285,6 @@ export async function GET(request: Request) {
                 vehicle_number_id: true,
                 sender_id: true,
                 receiver_id: true,
-                walk_in_sender_name: true,
-                walk_in_receiver_name: true,
                 total_charges: true,
                 delivery_date: true,
                 remarks: true,

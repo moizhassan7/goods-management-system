@@ -234,7 +234,7 @@ export async function PATCH(request: Request) {
                     updateData.status = LabourAssignmentStatus.DELIVERED;
                     updateData.delivered_date = deliveryDate;
 
-                    const receiverName = assignment.shipment.walk_in_receiver_name || assignment.shipment.receiver.name;
+                    const receiverName = assignment.shipment.receiver.name;
                     const receiverContact = assignment.shipment.receiver.contactInfo || 'N/A';
 
                     // Create the initial Delivery record with zero expenses

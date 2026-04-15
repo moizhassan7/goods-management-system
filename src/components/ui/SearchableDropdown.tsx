@@ -30,6 +30,8 @@ interface SearchableDropdownProps {
   onSelectItem?: (item: { id: string; name: string }) => void
   // property name to use when creating new items (e.g., 'vehicleNumber' for vehicles or 'description' for items)
   createPropertyName?: string
+  // called when a new item is successfully added to the database
+  onNewItemAdded?: () => void
 }
 
 export default function SearchableDropdown({
@@ -41,6 +43,7 @@ export default function SearchableDropdown({
   onChange,
   onSelectItem,
   createPropertyName,
+  onNewItemAdded,
 }: SearchableDropdownProps) {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<{ id: string; name: string }[]>([])
@@ -133,6 +136,7 @@ export default function SearchableDropdown({
       // notify consumers
       if (onChange) onChange(normalized.name)
       if (onSelectItem) onSelectItem(normalized)
+      if (onNewItemAdded) onNewItemAdded() // ✅ Notify parent to refresh other lists
       setSearch("")
       setOpen(false)
     } catch (error) {
@@ -164,11 +168,19 @@ export default function SearchableDropdown({
               placeholder={placeholder}
               value={search}
               onValueChange={setSearch}
+              onFocus={(e) => (e.target as HTMLInputElement).select()}
+              onClick={(e) => (e.target as HTMLInputElement).select()}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  e.preventDefault()
-                  // only attempt to add when an endpoint is configured; otherwise just select
-                  handleAddNew()
+                  if (e.ctrlKey) {
+                    // Ctrl + Enter -> Add as new item
+                    const trimmed = search.trim()
+                    if (trimmed) {
+                      e.preventDefault()
+                      handleAddNew()
+                    }
+                  }
+                  // Otherwise, let default Enter behavior (CMDK selection) happen
                 }
               }}
             />
@@ -180,7 +192,7 @@ export default function SearchableDropdown({
                     Saving...
                   </div>
                 ) : endpoint ? (
-                  `No results found. Press Enter to add "${search}".`
+                  `No results found. Press Ctrl+Enter to add "${search}".`
                 ) : (
                   `No results found. Add is disabled (no endpoint configured).`
                 )}

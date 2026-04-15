@@ -58,7 +58,6 @@ interface ShipmentData {
     sender: { name: string };
     receiver: { name: string };
     vehicle: { vehicleNumber: string };
-    walk_in_receiver_name: string | null;
     payment_status?: string | null; // NEW: Payment status field
 }
 
@@ -283,7 +282,7 @@ export default function ViewShipments() {
                                 <TableCaption>List of all registered shipments.</TableCaption>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Reg. No</TableHead>
+                                        {/* <TableHead>Reg. No</TableHead> */}
                                         <TableHead>Bilty No</TableHead>
                                         <TableHead>Bilty Date</TableHead>
                                         <TableHead>Created Date</TableHead>
@@ -302,11 +301,11 @@ export default function ViewShipments() {
                                 <TableBody>
                                     {shipments.map((shipment) => {
                                         const isDelivered = !!shipment.delivery_date;
-                                        const receiverDisplay = shipment.walk_in_receiver_name || shipment.receiver.name;
+                                        const receiverDisplay = shipment.receiver.name;
 
                                         return (
                                             <TableRow key={shipment.register_number} className={isDelivered ? 'bg-green-50/50 hover:bg-green-100' : 'hover:bg-yellow-50/50'}>
-                                                <TableCell className='font-mono text-sm'>{shipment.register_number}</TableCell>
+                                                {/* <TableCell className='font-mono text-sm'>{shipment.register_number}</TableCell> */}
                                                 <TableCell className='font-semibold'>{shipment.bility_number}</TableCell>
                                                 <TableCell>{shipment.bility_date ? new Date(shipment.bility_date).toLocaleDateString() : null}</TableCell>
                                                 <TableCell>
@@ -324,8 +323,8 @@ export default function ViewShipments() {
                                                 </TableCell>
                                                 {/* Payment Status / Charges Cell */}
                                                 <TableCell className='text-right font-bold'>
-                                                    {shipment.payment_status === 'ALREADY_PAID' && <span className='px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700'>PAID</span>}
-                                                    {shipment.payment_status === 'FREE' && <span className='px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700'>FREE</span>}
+                                                    {shipment.payment_status === 'ALREADY_PAID' && <div className='flex flex-col items-end gap-1'><span className='px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700'>PAID</span><span className='font-bold text-green-700'>{formatCurrency(shipment.total_charges)}</span></div>}
+                                                    {shipment.payment_status === 'FREE' && <div className='flex flex-col items-end gap-1'><span className='px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700'>FREE</span><span className='font-bold text-blue-700'>{formatCurrency(shipment.total_charges)}</span></div>}
                                                     {shipment.payment_status === 'PENDING' && <span className='font-bold text-green-700'>{formatCurrency(shipment.total_charges)}</span>}
                                                     {(!shipment.payment_status || shipment.payment_status === null) && <span className='font-bold text-green-700'>{formatCurrency(shipment.total_charges)}</span>}
                                                 </TableCell>

@@ -1,9 +1,8 @@
 // src/app/api/deliveries/pending-approvals/route.ts
 
 import { NextResponse } from 'next/server';
-import { PrismaClient, ApprovalStatus } from '@prisma/client'; 
-
-const prisma = new PrismaClient();
+import { ApprovalStatus } from '@prisma/client'; 
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
     try {

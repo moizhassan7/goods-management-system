@@ -85,8 +85,6 @@ interface ShipmentData {
     toCity?: { name: string; };
     sender?: { name: string; };
     receiver?: { name: string; contactInfo?: string; };
-    walk_in_sender_name?: string;
-    walk_in_receiver_name?: string;
     // *** NEW EXPENSE FIELDS ON SHIPMENT OBJECT ***
     station_expense: number;
     bility_expense: number;
@@ -418,11 +416,11 @@ export default function AddDelivery() {
             <div class="row">
                 <div class="field">
                     <div class="field-label">Sender:</div>
-                    <div class="field-value">${shipmentData.walk_in_sender_name || shipmentData.sender?.name || 'N/A'}</div>
+                    <div class="field-value">${shipmentData.sender?.name || 'N/A'}</div>
                 </div>
                 <div class="field">
                     <div class="field-label">Original Receiver:</div>
-                    <div class="field-value">${shipmentData.walk_in_receiver_name || shipmentData.receiver?.name || 'N/A'}</div>
+                    <div class="field-value">${shipmentData.receiver?.name || 'N/A'}</div>
                 </div>
             </div>
         </div>
@@ -602,14 +600,14 @@ export default function AddDelivery() {
                                     <div>
                                         <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_sender')}</label>
                                         <p className='text-lg'>
-                                            {shipmentData.walk_in_sender_name || shipmentData.sender?.name || 'N/A'}
+                                            {shipmentData.sender?.name || 'N/A'}
                                         </p>
                                     </div>
                                     <div>
                                         <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_reciver')}</label>
                                         <p className='text-lg'>
-                                                {shipmentData.walk_in_receiver_name || shipmentData.receiver?.name || 'N/A'}
-                                            </p>
+                                            {shipmentData.receiver?.name || 'N/A'}
+                                        </p>
                                     </div>
                                 </div>
                             </CardContent>

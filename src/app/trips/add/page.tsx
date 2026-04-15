@@ -23,9 +23,8 @@ const TripShipmentLogSchema = z.object({
   receiver_id: z.number().int().min(1, 'Receiver is required'),
   item_id: z.number().int().min(1, 'Item is required'),
   quantity: z.number().int().min(1),
-  delivery_charges: z.number().min(0),
-  walk_in_receiver_name: z.string().optional(),
   total_charges: z.number().min(0),
+  delivery_charges: z.number().min(0),
 });
 
 const TripLogFormSchema = z.object({
@@ -197,7 +196,6 @@ export default function AddTrip() {
           item_id: shipment.item_id,
           quantity: shipment.quantity,
           delivery_charges: shipment.delivery_charges,
-          walk_in_receiver_name: shipment.receiver_id === 1 ? shipment.receiver_name : undefined,
           total_charges: shipment.total_charges,
         }));
         
@@ -410,12 +408,12 @@ export default function AddTrip() {
                 <table className="w-full border-collapse border border-gray-300">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th className="border border-gray-300 px-4 py-2 text-left">Sr. #</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left">Bilty #</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left">Receiver</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left">Item Details</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left">Qty</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left">Total Charges (Rs.)</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left">{t('trip_table_sr_no') || 'Sr. #'}</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left">{t('delivery_bility_number_label') || 'Bilty #'}</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left">{t('shipment_receiver_label') || 'Receiver'}</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left">{t('trip_table_item_details') || 'Item Details'}</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left">{t('shipment_quantity_label') || 'Qty'}</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left">{t('trip_table_total_charges') || 'Total Charges (Rs.)'}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -424,9 +422,7 @@ export default function AddTrip() {
                         <td className="border border-gray-300 px-4 py-2 font-medium">{form.watch(`shipmentLogs.${index}.serial_number`)}</td>
                         <td className="border border-gray-300 px-4 py-2 font-mono">{form.watch(`shipmentLogs.${index}.bilty_number`)}</td>
                         <td className="border border-gray-300 px-4 py-2">
-                          {form.watch(`shipmentLogs.${index}.receiver_id`) === 1 
-                            ? form.watch(`shipmentLogs.${index}.walk_in_receiver_name`) || 'Walk-in'
-                            : findNameById(data, 'parties', form.watch(`shipmentLogs.${index}.receiver_id`))}
+                          {findNameById(data, 'parties', form.watch(`shipmentLogs.${index}.receiver_id`))}
                         </td>
                         <td className="border border-gray-300 px-4 py-2">{findNameById(data, 'items', form.watch(`shipmentLogs.${index}.item_id`))}</td>
                         <td className="border border-gray-300 px-4 py-2">{form.watch(`shipmentLogs.${index}.quantity`)}</td>
@@ -434,7 +430,7 @@ export default function AddTrip() {
                       </tr>
                     ))}
                     <tr className="bg-gray-100 font-bold">
-                      <td colSpan={5} className="border border-gray-300 px-4 py-2 text-right">Total Fare Collected:</td>
+                      <td colSpan={5} className="border border-gray-300 px-4 py-2 text-right">{t('trip_table_total_fare_collected') || 'Total Fare Collected:'}</td>
                       <td className="border border-gray-300 px-4 py-2">Rs. {totalFareFromLogs.toFixed(2)}</td>
                     </tr>
                   </tbody>

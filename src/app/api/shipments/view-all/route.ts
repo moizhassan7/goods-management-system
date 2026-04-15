@@ -25,13 +25,10 @@ export async function GET(request: Request) {
         // 1. Search Query Filtering
         if (query) {
             where.OR = [
-                // 1. Search by Bility Number
                 { bility_number: { contains: query } },
-                // 2. Search by Receiver Party Name (Prisma will automatically filter on related model field)
+                // 2. Search by Receiver Party Name
                 { receiver: { name: { contains: query } } },
-                // 3. Search by Walk-in Receiver Name
-                { walk_in_receiver_name: { contains: query } },
-                // Optional: Search by Register Number (if needed, typically an exact match)
+                // 3. Search by Register Number
                 { register_number: { contains: query } },
             ];
         }

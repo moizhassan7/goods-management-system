@@ -7,11 +7,11 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DollarSign, Truck, Package, Users, Hourglass, CheckCircle2, ChevronRight, Loader2, Factory, Car,AlertCircle } from 'lucide-react';
+import { DollarSign, Truck, Package, Users, Hourglass, CheckCircle2, ChevronRight, Loader2, Factory, Car, AlertCircle } from 'lucide-react';
 
 // Recharts components (already in package.json)
-import { 
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
+import {
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 
 // Custom Chart components from your repo
@@ -94,32 +94,32 @@ export default function DashboardPage() {
     const metrics = data?.keyMetrics || initialMetrics;
 
     const chartConfig = {
-      volume: {
-        label: "Shipment Volume",
-        color: "hsl(var(--chart-1))",
-      },
-      date: {
-        label: "Date",
-      }
+        volume: {
+            label: "Shipment Volume",
+            color: "hsl(var(--chart-1))",
+        },
+        date: {
+            label: "Date",
+        }
     };
 
 
     if (isLoading) {
         return (
-          <div className='flex justify-center items-center min-h-screen'>
-    <div className='text-4xl font-extrabold text-blue-600 flex space-x-1'>
-        {/* We apply the bounce animation to each letter, 
+            <div className='flex justify-center items-center min-h-screen'>
+                <div className='text-4xl font-extrabold text-blue-600 flex space-x-1'>
+                    {/* We apply the bounce animation to each letter, 
             using arbitrary values for 'animation-delay' to stagger them.
         */}
-        <span className="animate-bounce [animation-delay:-0.45s]">Z</span>
-        <span className="animate-bounce [animation-delay:-0.30s]">G</span>
-        <span className="animate-bounce [animation-delay:-0.15s]">T</span>
-        <span className="animate-bounce">C</span>
-    </div>
-</div>
+                    <span className="animate-bounce [animation-delay:-0.45s]">Z</span>
+                    <span className="animate-bounce [animation-delay:-0.30s]">G</span>
+                    <span className="animate-bounce [animation-delay:-0.15s]">T</span>
+                    <span className="animate-bounce">C</span>
+                </div>
+            </div>
         );
     }
-    
+
     // Fallback in case API fails
     if (!data) {
         return (
@@ -132,11 +132,11 @@ export default function DashboardPage() {
 
     return (
         <div className='p-8'>
-            <h1 className="text-4xl font-extrabold mb-8 text-gray-900">Logistics Overview</h1>
+            <h1 className="text-4xl font-extrabold mb-8 text-gray-900">Coming Soon</h1>
 
             {/* 1. KEY METRICS CARDS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6 mb-10">
-                
+            <div className="hidden grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6 mb-10">
+
                 {/* Total Revenue */}
                 <Card className='bg-green-50 border-green-200 shadow-lg transition-transform hover:scale-[1.02] cursor-pointer'>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -196,7 +196,7 @@ export default function DashboardPage() {
                         <p className="text-xs text-muted-foreground mt-1">Senders & Receivers</p>
                     </CardContent>
                 </Card>
-                
+
                 {/* Total Vehicles */}
                 <Card className='shadow-md transition-transform hover:scale-[1.02] cursor-pointer' onClick={() => router.push('/vehicles/view')}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -212,8 +212,8 @@ export default function DashboardPage() {
             </div>
 
             {/* 2. GRAPHS AND TABLES */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
+            <div className="hidden grid-cols-1 lg:grid-cols-3 gap-6">
+
                 {/* Shipment Volume Chart (2/3 width) */}
                 <Card className="lg:col-span-2 shadow-xl">
                     <CardHeader>
@@ -228,11 +228,11 @@ export default function DashboardPage() {
                                     <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                                     <YAxis stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                                     <Tooltip content={({ active, payload }) => <ChartTooltipContent indicator="dot" active={active} payload={payload} nameKey="date" labelKey="volume" />} />
-                                    <Area 
-                                        type="monotone" 
-                                        dataKey="volume" 
-                                        stroke="hsl(var(--chart-1))" 
-                                        fill="hsl(var(--chart-1) / 0.1)" 
+                                    <Area
+                                        type="monotone"
+                                        dataKey="volume"
+                                        stroke="hsl(var(--chart-1))"
+                                        fill="hsl(var(--chart-1) / 0.1)"
                                         strokeWidth={2}
                                         dot={{ fill: "hsl(var(--chart-1))", r: 4 }}
                                         activeDot={{ fill: "hsl(var(--chart-1))", r: 6 }}
@@ -263,7 +263,7 @@ export default function DashboardPage() {
                                     <TableRow key={agency.name}>
                                         <TableCell className="font-extrabold text-lg text-blue-600">{index + 1}</TableCell>
                                         <TableCell className="font-medium flex items-center gap-2">
-                                            <Factory className='w-4 h-4 text-gray-500'/>
+                                            <Factory className='w-4 h-4 text-gray-500' />
                                             {agency.name}
                                         </TableCell>
                                         <TableCell className='text-right font-bold'>{agency.count}</TableCell>
@@ -277,12 +277,12 @@ export default function DashboardPage() {
             </div>
 
             {/* 3. RECENT ACTIVITY TABLE */}
-            <Card className="mt-6 shadow-xl">
+            <Card className="hidden mt-6 shadow-xl">
                 <CardHeader className='flex-row items-center justify-between'>
                     <CardTitle>Recent Shipments</CardTitle>
                     <Button variant="ghost" size="sm" onClick={() => router.push('/shipments/view')}>
                         View All
-                        <ChevronRight className='w-4 h-4 ml-1'/>
+                        <ChevronRight className='w-4 h-4 ml-1' />
                     </Button>
                 </CardHeader>
                 <CardContent className='p-0'>
@@ -290,7 +290,7 @@ export default function DashboardPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Reg. No</TableHead>
+                                    {/* <TableHead>Reg. No</TableHead> */}
                                     <TableHead>Bilty No.</TableHead>
                                     <TableHead>From</TableHead>
                                     <TableHead>To</TableHead>
@@ -300,7 +300,7 @@ export default function DashboardPage() {
                             <TableBody>
                                 {data.recentShipments.map((shipment) => (
                                     <TableRow key={shipment.register_number}>
-                                        <TableCell className='font-mono text-sm'>{shipment.register_number}</TableCell>
+                                        {/* <TableCell className='font-mono text-sm'>{shipment.register_number}</TableCell> */}
                                         <TableCell>{shipment.bility_number}</TableCell>
                                         <TableCell>{shipment.departureCity.name}</TableCell>
                                         <TableCell>{shipment.toCity?.name || 'Local'}</TableCell>
