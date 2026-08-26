@@ -20,7 +20,7 @@ interface AuthContextType {
   user: UserSession | null;
   isLoading: boolean;
   logout: () => void;
-  // Function to manually update session after login to avoid full page refresh
+  setSessionUser: (user: UserSession | null) => void;
   refetchSession: () => Promise<void>;
 }
 
@@ -32,11 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // Function to fetch the session from the server (checking cookie)
-  const fetchSession = useCallback(async () => {
-    setIsLoading(true);
+  const fetchSession = useCallback(async (showLoader = true) => {
+    if (showLoader) setIsLoading(true);
     try {
-        // Hitting the session endpoint to validate the server-side cookie
-        const response = await fetch('/api/auth/session');
+        const response = await fetch('/api/auth/session', { cache: 'no-store' });
         if (response.ok) {
             const session: UserSession = await response.json();
             setUser(session);
@@ -47,14 +46,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Error fetching session:", error);
         setUser(null);
     } finally {
-        setIsLoading(false);
+        if (showLoader) setIsLoading(false);
     }
   }, []);
 
   // Initial session check on mount
   useEffect(() => {
-    fetchSession();
+    fetchSession(true);
   }, [fetchSession]);
+
+  const setSessionUser = useCallback((newUser: UserSession | null) => {
+    setUser(newUser);
+    setIsLoading(false);
+  }, []);
 
   // Logout handler
   const logout = useCallback(async () => {
@@ -69,16 +73,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     } catch (error) {
         console.error('Logout error:', error);
+        window.location.href = '/login';
     }
   }, []);
 
-  // Simple refetch wrapper
-  const refetchSession = async () => {
-      await fetchSession();
-  }
+  // Refetch wrapper without disrupting active UI with a full-screen loading flash
+  const refetchSession = useCallback(async () => {
+      await fetchSession(false);
+  }, [fetchSession]);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, logout, refetchSession }}>
+    <AuthContext.Provider value={{ user, isLoading, logout, setSessionUser, refetchSession }}>
       {children}
     </AuthContext.Provider>
   );

@@ -31,7 +31,7 @@ type LoginFormValues = z.infer<typeof LoginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { refetchSession } = useAuth();
+  const { setSessionUser } = useAuth();
   
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(LoginSchema),
@@ -57,13 +57,14 @@ export default function LoginPage() {
         throw new Error(data.message || 'Login credentials incorrect.');
       }
       
-      await refetchSession(); 
+      setSessionUser(data.user);
 
       toast.success('Authentication Successful', {
         description: `Welcome back, ${data.user.username} (${data.user.role}).`,
       });
 
-      router.push('/');
+      // Immediate clean redirect to dashboard on single click
+      window.location.href = '/';
 
     } catch (error: any) {
       console.error('Login Error:', error);

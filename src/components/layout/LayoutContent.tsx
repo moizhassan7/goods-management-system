@@ -43,18 +43,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     }
   }, [user, isAuthLoading, pathname, router]);
 
-  // --- Custom Close Confirmation ---
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = 'Do you want to close this tab?';
-    };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, []);
 
   // Show a clean loading screen while auth loads
   if (isAuthLoading) {
@@ -86,6 +75,24 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         <Toaster position="top-right" richColors />
         {isGlobalLoading && <CustomLoader />}
       </>
+    );
+  }
+
+  // Prevent flash of dashboard if unauthenticated on protected route
+  if (!user) {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-screen bg-slate-900 text-white">
+        <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center mb-4 shadow-sm">
+          <Truck className="w-6 h-6 text-white" />
+        </div>
+        <div className="text-sm font-bold tracking-tight text-white mb-1">
+          Zikria Goods and Transport
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+          Authenticating session...
+        </div>
+      </div>
     );
   }
 

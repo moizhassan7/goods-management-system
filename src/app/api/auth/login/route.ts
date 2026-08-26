@@ -42,19 +42,18 @@ export async function POST(request: NextRequest) {
         // 3. Create successful response
         const response = NextResponse.json({
             message: 'Login successful.',
-            user: { username: user.username, role: user.role }
+            user: { id: user.id, username: user.username, role: user.role }
         }, { status: 200 });
 
-        // 4. Set the session cookie (User ID is stored as the token for simplicity)
-        // This is a session-only cookie - it will be cleared when the browser closes
+        // 4. Set the session cookie with persistent 7-day maxAge
         response.cookies.set({
             name: AUTH_COOKIE_NAME,
             value: String(user.id),
             path: '/',
-            httpOnly: true, // Important for security
+            httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            // No maxAge specified = session cookie (cleared when browser closes)
+            maxAge: 60 * 60 * 24 * 7, // 7 days persistent session
         });
 
         return response;
