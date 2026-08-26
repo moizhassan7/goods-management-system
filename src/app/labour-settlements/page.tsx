@@ -681,14 +681,15 @@ export default function LabourSettlements() {
     }
 
     const getStatusBadge = (status: string) => {
-        const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
+        const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
             ASSIGNED: 'secondary',
             DELIVERED: 'default',
             COLLECTED: 'outline',
-            SETTLED: 'success' as 'default', 
+            SETTLED: 'default', 
             CANCELLED: 'destructive',
         };
-        return <Badge variant={variants[status] || 'secondary'}>{status}</Badge>;
+        const className = status === 'SETTLED' ? 'bg-green-600 hover:bg-green-700 text-white' : undefined;
+        return <Badge variant={variants[status] || 'secondary'} className={className}>{status}</Badge>;
     };
 
     const canDeliver = (assignment: LabourAssignment) => assignment.status === 'ASSIGNED';

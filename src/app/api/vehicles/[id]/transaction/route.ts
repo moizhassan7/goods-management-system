@@ -4,19 +4,14 @@ import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
-interface RouteProps {
-    params: {
-        id: string; // The vehicle ID
-    };
-}
-
 /**
  * Handles POST requests to record a generic manual transaction (Credit or Debit)
  * for a specific vehicle.
  * Endpoint: /api/vehicles/[id]/transaction
  */
-export async function POST(request: NextRequest, { params }: RouteProps) {
-    const vehicleId = parseInt(params.id, 10);
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const vehicleId = parseInt(id, 10);
 
     if (isNaN(vehicleId)) {
         return NextResponse.json(

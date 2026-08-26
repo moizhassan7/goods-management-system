@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------
+  # PostgreSQL Database Service
+  # ----------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: goods_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: goods
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d goods"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goods_network
+
+  # ----------------------------------------------------
+  # Goods Management ERP Web Application
+  # ----------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: goods_management_app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://postgres:password123@postgres:5432/goods?schema=public"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - goods_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  goods_network:
+    driver: bridge

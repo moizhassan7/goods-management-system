@@ -321,26 +321,26 @@ export async function PATCH(request: Request) {
                     updateData.settled_date = new Date();
 
                     // Create final transaction record using the FINAL collected_amount
+                    const finalCollectedAmount = assignment.collected_amount || new Prisma.Decimal(0);
                     await tx.transaction.create({
                         data: {
                             transaction_date: new Date(),
                             party_type: 'RECEIVER', 
                             party_ref_id: assignment.shipment.receiver_id,
                             shipment_id: assignment.shipment_id,
-                            credit_amount: assignment.collected_amount,
+                            credit_amount: finalCollectedAmount,
                             debit_amount: new Prisma.Decimal(0),
                             description: `Payment collected by labour person ${assignment.labourPerson.name} (Settled)`
                         }
                     });
                     
                     // Create Labour Payment History record for the full settled amount (for audit trail)
-                    const finalPaymentAmount = assignment.collected_amount;
-                    if (finalPaymentAmount.gt(0)) {
+                    if (finalCollectedAmount.gt(0)) {
                         await tx.labourPaymentHistory.create({
                             data: {
                                 labour_person_id: assignment.labour_person_id,
                                 shipment_id: assignment.shipment_id,
-                                amount_paid: finalPaymentAmount,
+                                amount_paid: finalCollectedAmount,
                                 payment_date: new Date(),
                                 payment_method: 'SETTLED',
                                 notes: `Final settlement: account balanced. ${notes || ''}`,

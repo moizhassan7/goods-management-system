@@ -1,11 +1,12 @@
 "use client";
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { toast } from 'sonner';
 
-// Import Shadcn UI components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -16,31 +17,24 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-// import { useToast } from '@/components/ui/use-toast'; 
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Users, ArrowLeft, Loader2, Check } from 'lucide-react';
 
-// --- 1. Define the Zod Schema for Validation ---
 const formSchema = z.object({
-  name: z.string().min(3, {
-    message: 'Party name must be at least 3 characters.',
+  name: z.string().min(2, {
+    message: 'Party name must be at least 2 characters.',
   }).max(100),
-  // Make the contact info optional but validate if provided
   contactInfo: z.string().max(200).optional(),
-  
-  // Validate that the balance is a string that looks like a decimal number (positive or negative)
   openingBalance: z.string().regex(/^-?\d+(\.\d{1,2})?$/, {
-    message: 'Must be a valid currency format (e.g., 100.00 or -50.50).',
+    message: 'Must be a valid decimal number (e.g. 100.00 or -50.00).',
   }),
 });
 
-// Define the TypeScript type
 type PartyFormValues = z.infer<typeof formSchema>;
 
-
-// --- 2. Define the Component ---
 export default function AddParty() {
-//   const { toast } = useToast();
+  const router = useRouter();
 
-  // Initialize React Hook Form
   const form = useForm<PartyFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -48,11 +42,9 @@ export default function AddParty() {
       contactInfo: '',
       openingBalance: '0.00',
     },
-    // Set validation mode to onChange for real-time feedback
     mode: 'onChange' 
   });
 
-  // --- 3. Define the Submission Handler ---
   async function onSubmit(values: PartyFormValues) {
     try {
       const response = await fetch('/api/parties', {
@@ -60,7 +52,6 @@ export default function AddParty() {
         headers: {
           'Content-Type': 'application/json',
         },
-        // Send data to the API route, matching the expected server payload
         body: JSON.stringify({ 
             name: values.name, 
             contactInfo: values.contactInfo,
@@ -73,117 +64,143 @@ export default function AddParty() {
         throw new Error(errorData.message || 'Failed to register party.');
       }
 
-      // Party added successfully
       const newParty = await response.json();
-      alert(`Party "${newParty.name}" registered successfully!`);
-    //   toast({
-    //     title: 'Party Registered Successfully 👥',
-    //     description: `"${newParty.name}" is now available as a sender/receiver.`,
-    //   });
+      toast.success('Party Registered Successfully', {
+        description: `"${newParty.name}" is now available in sender/receiver lists.`
+      });
 
-      // Reset the form after successful submission
       form.reset({
         name: '',
         contactInfo: '',
-        openingBalance: '0.00', // Reset balance to default
+        openingBalance: '0.00',
       }); 
+
+      router.push('/parties/view');
 
     } catch (error: any) {
       console.error('Submission Error:', error);
-      alert(`Error: ${error.message}`);
-    //   toast({
-    //     title: 'Error Registering Party',
-    //     description: error.message,
-    //     variant: 'destructive',
-    //   });
+      toast.error('Error Registering Party', {
+        description: error.message
+      });
     }
   }
 
-  // Determine button state
   const isSubmitting = form.formState.isSubmitting;
   const isValid = form.formState.isValid;
 
   return (
-    <div className='p-6 max-w-lg mx-auto bg-white min-h-screen'>
-      <h2 className='text-3xl font-extrabold mb-8 text-gray-900 border-b pb-2'>Register Sender/Receiver Party</h2>
-      
-      {/* Shadcn Form Wrapper */}
-      <Form {...form}>
-        <form 
-          onSubmit={form.handleSubmit(onSubmit)} 
-          className='space-y-6 p-8 rounded-xl shadow-2xl border border-indigo-100 bg-indigo-50'
+    <div className="space-y-5 max-w-xl mx-auto pb-10">
+      <div className="flex items-center justify-between">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/parties/view')}
+          className="rounded-lg text-xs font-medium gap-1 text-slate-600 hover:text-slate-900"
         >
-          
-          {/* Party Name */}
-          <FormField
-            control={form.control}
-            name='name'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className='font-semibold text-gray-700'>Party Name (Company/Individual)</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder='e.g., Acme Corp or John Doe' 
-                    {...field} 
-                    className='focus-visible:ring-indigo-500'
-                    autoFocus
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Directory
+        </Button>
+      </div>
 
-          {/* Contact Info */}
-          <FormField
-            control={form.control}
-            name='contactInfo'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className='font-semibold text-gray-700'>Contact Info (Address / Phone)</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder='e.g., 123 Main St, or 555-123-4567' 
-                    {...field} 
-                    className='focus-visible:ring-indigo-500'
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+      <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800 p-5">
+          <div className="w-9 h-9 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600 flex items-center justify-center mb-2 border border-purple-200 dark:border-purple-800">
+            <Users className="w-5 h-5" />
+          </div>
+          <CardTitle className="text-base font-extrabold text-slate-900 dark:text-white">
+            Register Sender / Receiver Party
+          </CardTitle>
+          <CardDescription className="text-xs text-slate-500">
+            Add a new client account to enable bilty party allocation
+          </CardDescription>
+        </CardHeader>
 
-          {/* Opening Balance */}
-          <FormField
-            control={form.control}
-            name='openingBalance'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className='font-semibold text-gray-700'>Opening Balance (e.g., -50.00 or 120.00)</FormLabel>
-                <FormControl>
-                  <Input 
-                    type='text' // Use type text to control decimal input with regex validation
-                    placeholder='0.00'
-                    {...field} 
-                    className='focus-visible:ring-indigo-500'
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <CardContent className="p-5">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Party / Business Name *
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g. Faisal Traders or John Doe" 
+                        {...field} 
+                        className="rounded-lg h-9 border-slate-200 dark:border-slate-700 text-xs"
+                        autoFocus
+                      />
+                    </FormControl>
+                    <FormMessage className="text-[11px]" />
+                  </FormItem>
+                )}
+              />
 
-          {/* Submit Button */}
-          <Button 
-            type='submit' 
-            variant={'default'}
-            className='w-full bg-indigo-600 hover:bg-indigo-700 transition-colors py-3 text-lg mt-6'
-            disabled={isSubmitting || !isValid}
-          >
-            {isSubmitting ? 'Registering...' : 'Register Party'}
-          </Button>
-        </form>
-      </Form>
+              <FormField
+                control={form.control}
+                name="contactInfo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Contact Information / Phone
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g. +92 300 1234567, City Market" 
+                        {...field} 
+                        className="rounded-lg h-9 border-slate-200 dark:border-slate-700 text-xs"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-[11px]" />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="openingBalance"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Opening Balance (Rs.) *
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="text" 
+                        placeholder="0.00"
+                        {...field} 
+                        className="rounded-lg h-9 border-slate-200 dark:border-slate-700 text-xs font-mono"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-[11px]" />
+                  </FormItem>
+                )}
+              />
+
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || !isValid}
+                className="w-full h-10 rounded-lg font-bold text-xs bg-purple-600 hover:bg-purple-700 text-white shadow-xs transition-colors mt-2 cursor-pointer gap-1.5"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Saving Party...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    Save & Register Party
+                  </>
+                )}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

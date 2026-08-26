@@ -1,4 +1,3 @@
-// src/moizhassan7/goods-management-system/goods-management-system-36a96deb04db0b296f5178c3c6a89a34c19278dd/src/app/login/page.tsx
 "use client";
 
 import React from 'react';
@@ -9,7 +8,6 @@ import * as z from 'zod';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
-// Reusing existing UI components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -21,7 +19,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useAuth } from '@/contexts/AuthContext'; // NEW: Import useAuth
+import { useAuth } from '@/contexts/AuthContext';
+import { Truck, Lock, User, Loader2, ArrowRight, ShieldCheck } from 'lucide-react';
 
 const LoginSchema = z.object({
   username: z.string().min(1, 'Username is required.'),
@@ -32,7 +31,7 @@ type LoginFormValues = z.infer<typeof LoginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { refetchSession } = useAuth(); // NEW: Get session refetch function
+  const { refetchSession } = useAuth();
   
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(LoginSchema),
@@ -55,24 +54,20 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Login failed.');
+        throw new Error(data.message || 'Login credentials incorrect.');
       }
       
-      // NEW: Notify the AuthContext to fetch the new session from the server
       await refetchSession(); 
 
-      toast.success('Login Successful', {
-        description: `Welcome, ${data.user.username}. You are logged in as ${data.user.role}.`,
+      toast.success('Authentication Successful', {
+        description: `Welcome back, ${data.user.username} (${data.user.role}).`,
       });
 
-      // Redirection logic is now handled by LayoutContent useEffect, 
-      // but we force a final move to '/' just in case.
       router.push('/');
-      // Removed router.refresh() as refetchSession handles state update
 
     } catch (error: any) {
       console.error('Login Error:', error);
-      toast.error('Login Failed ⚠️', {
+      toast.error('Authentication Error', {
         description: error.message,
       });
     }
@@ -81,62 +76,110 @@ export default function LoginPage() {
   const isSubmitting = form.formState.isSubmitting;
 
   return (
-    <div className='flex items-center justify-center min-h-screen bg-gray-100 p-4'>
-      <Card className='w-full max-w-md shadow-2xl'>
-        <CardHeader className='text-center'>
-          <CardTitle className='text-3xl font-extrabold text-green-700'>Log In</CardTitle>
-          <CardDescription>Access your account.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-              
-              <FormField
-                control={form.control}
-                name='username'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input placeholder='Enter your username' {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+    <div className="flex items-center justify-center min-h-screen bg-slate-900 p-4">
+      <div className="w-full max-w-sm space-y-4">
+        {/* Brand Header */}
+        <div className="text-center space-y-1.5 mb-2">
+          <div className="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-sm">
+            <Truck className="w-6 h-6" />
+          </div>
+          <h1 className="text-lg font-extrabold text-white tracking-tight">
+            Zikria Goods Transports
+          </h1>
+          <p className="text-xs text-slate-400 font-mono">
+            Logistics & Freight ERP System
+          </p>
+        </div>
 
-              <FormField
-                control={form.control}
-                name='password'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type='password' placeholder='Enter your password' {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        {/* Form Card */}
+        <Card className="rounded-xl border-slate-800 bg-slate-950 text-white shadow-xl overflow-hidden">
+          <CardHeader className="text-center pb-2 pt-5 px-5 border-b border-slate-850">
+            <CardTitle className="text-sm font-bold text-white uppercase tracking-wider">
+              Operator Sign In
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-400">
+              Enter credentials to access dispatch workstation
+            </CardDescription>
+          </CardHeader>
 
-              <Button 
-                type='submit' 
-                className='w-full bg-green-600 hover:bg-green-700 py-3 text-lg'
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Logging In...' : 'Log In'}
-              </Button>
-            </form>
-          </Form>
+          <CardContent className="p-5">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3.5">
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-bold text-slate-300">
+                        Username
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+                          <Input 
+                            placeholder="e.g. admin or operator" 
+                            {...field} 
+                            className="pl-9 h-9 rounded-lg bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 text-xs focus-visible:ring-blue-500"
+                            autoFocus
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[11px] text-rose-400" />
+                    </FormItem>
+                  )}
+                />
 
-          {/* <div className='mt-6 text-center text-sm'>
-            Don't have an account?{' '}
-            <Link href='/signup' className='text-blue-600 hover:underline font-semibold'>
-              Sign Up
-            </Link>
-          </div> */}
-        </CardContent>
-      </Card>
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-bold text-slate-300">
+                        Password
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+                          <Input 
+                            type="password" 
+                            placeholder="••••••••" 
+                            {...field} 
+                            className="pl-9 h-9 rounded-lg bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 text-xs focus-visible:ring-blue-500"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[11px] text-rose-400" />
+                    </FormItem>
+                  )}
+                />
+
+                <Button 
+                  type="submit" 
+                  className="w-full h-10 rounded-lg font-bold text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors mt-3 cursor-pointer gap-1.5"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Authenticating...
+                    </>
+                  ) : (
+                    <>
+                      Sign In to System
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+
+        {/* Footer */}
+        <p className="text-center text-[10px] text-slate-500 font-mono">
+          Zikria Goods Transports Company • Station ERP
+        </p>
+      </div>
     </div>
   );
 }

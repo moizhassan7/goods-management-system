@@ -1,5 +1,5 @@
 // src/moizhassan7/goods-management-system/goods-management-system-36a96deb04db0b296f5178c3c6a89a34c19278dd/src/lib/auth.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 // Assuming the user installs bcryptjs
 import * as bcrypt from 'bcryptjs'; 
@@ -53,8 +53,16 @@ const AUTH_COOKIE_NAME = 'goods_auth_session';
 /**
  * Retrieves the user session based on the stored cookie/session token.
  */
-export async function getSession(request: Request): Promise<UserSession | null> {
-    const userId = request.cookies.get(AUTH_COOKIE_NAME)?.value;
+export async function getSession(request: NextRequest | Request): Promise<UserSession | null> {
+    let userId: string | undefined;
+
+    if ('cookies' in request && typeof (request as NextRequest).cookies?.get === 'function') {
+        userId = (request as NextRequest).cookies.get(AUTH_COOKIE_NAME)?.value;
+    } else {
+        const cookieHeader = request.headers.get('cookie') || '';
+        const match = cookieHeader.match(new RegExp(`(?:^|; )${AUTH_COOKIE_NAME}=([^;]*)`));
+        userId = match ? decodeURIComponent(match[1]) : undefined;
+    }
 
     if (!userId || isNaN(parseInt(userId, 10))) return null;
 
@@ -83,10 +91,14 @@ export function checkPermission(currentUser: UserSession | null, requiredRoles: 
     return requiredRoles.includes(currentUser.role);
 }
 
+export type AuthResult = 
+    | { authorized: true; session: UserSession; response?: never }
+    | { authorized: false; response: NextResponse; session?: never };
+
 /**
  * Middleware-like function for API Routes
  */
-export async function authenticate(request: Request, requiredRoles: UserRole[]) {
+export async function authenticate(request: NextRequest | Request, requiredRoles: UserRole[]): Promise<AuthResult> {
     const session = await getSession(request);
 
     if (!session || !checkPermission(session, requiredRoles)) {
@@ -99,6 +111,6 @@ export async function authenticate(request: Request, requiredRoles: UserRole[]) 
     return {
         authorized: true,
         session: session,
-        response: null,
     };
 }
+

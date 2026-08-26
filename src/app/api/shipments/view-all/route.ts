@@ -60,6 +60,17 @@ export async function GET(request: Request) {
                 sender: { select: { name: true } },
                 receiver: { select: { name: true } },
                 vehicle: { select: { vehicleNumber: true } },
+                forwardingAgency: { select: { name: true } },
+                goodsDetails: {
+                    select: {
+                        quantity: true,
+                        itemCatalog: {
+                            select: {
+                                item_description: true,
+                            }
+                        }
+                    }
+                }
             },
             orderBy: { createdAt: 'desc' },
         });

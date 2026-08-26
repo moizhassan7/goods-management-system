@@ -57,33 +57,49 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Missing critical shipment data.' }, { status: 400 });
         }
 
-        // --- Auto-generate register_number with Retry Logic ---
+        // --- Auto-generate register_number with Max-Sequence & Retry Logic ---
         const bilityDate = new Date(payload.bility_date);
         const year = bilityDate.getFullYear();
         const month = (bilityDate.getMonth() + 1).toString().padStart(2, '0');
-        const monthStart = new Date(year, bilityDate.getMonth(), 1);
-        const monthEnd = new Date(year, bilityDate.getMonth() + 1, 0, 23, 59, 59, 999);
+        const prefix = `${year}${month}-`;
         
+        // Find highest existing register_number starting with this month prefix
+        const latestShipment = await prisma.shipment.findFirst({
+            where: {
+                register_number: {
+                    startsWith: prefix,
+                },
+            },
+            orderBy: {
+                register_number: 'desc',
+            },
+            select: {
+                register_number: true,
+            },
+        });
+
+        let baseNum = 1;
+        if (latestShipment?.register_number) {
+            const parts = latestShipment.register_number.split('-');
+            if (parts.length === 2) {
+                const parsed = parseInt(parts[1], 10);
+                if (!isNaN(parsed)) {
+                    baseNum = parsed + 1;
+                }
+            }
+        }
+
         let newShipment;
         let register_number = '';
-        const MAX_RETRIES = 5;
+        const MAX_RETRIES = 10;
 
         for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
             try {
-                // IMPORTANT: Recalculate count inside the loop for retries
-                const countForMonth = await prisma.shipment.count({
-                    where: {
-                        bility_date: {
-                            gte: monthStart,
-                            lte: monthEnd,
-                        },
-                    },
-                });
-                const nextCount = countForMonth + 1;
-                register_number = `${year}${month}-${nextCount.toString().padStart(4, '0')}`;
+                const nextSeq = baseNum + attempt;
+                register_number = `${prefix}${nextSeq.toString().padStart(4, '0')}`;
         
-                const finalBillAmount = new Prisma.Decimal(payload.total_amount);
-                const totalDeliveryCharges = new Prisma.Decimal(payload.total_delivery_charges);
+                const finalBillAmount = new Prisma.Decimal(payload.total_amount || 0);
+                const totalDeliveryCharges = new Prisma.Decimal(payload.total_delivery_charges || 0);
         
                 // Prepare remarks field to include payment status for persistence
                 let finalRemarks = payload.remarks || '';
@@ -101,7 +117,7 @@ export async function POST(request: Request) {
         
                 // 2. Begin Atomic Transaction
                 [newShipment] = await prisma.$transaction([
-                    // A) Create the main Shipment record (will throw P2002 if ID conflicts)
+                    // A) Create the main Shipment record
                     prisma.shipment.create({
                         data: {
                             register_number, 
@@ -117,13 +133,11 @@ export async function POST(request: Request) {
                             total_charges: finalBillAmount,
                             total_delivery_charges: totalDeliveryCharges,
 
-                            // *** SAVE NEW EXPENSE FIELDS ***
                             station_expense: new Prisma.Decimal(payload.station_expense || 0),
                             bility_expense: new Prisma.Decimal(payload.bility_expense || 0),
                             station_labour: new Prisma.Decimal(payload.station_labour || 0),
                             cart_labour: new Prisma.Decimal(payload.cart_labour || 0),
                             total_expenses: new Prisma.Decimal(payload.total_expenses || 0),
-                            // ********************************
         
                             remarks: finalRemarks, 
         
@@ -155,24 +169,14 @@ export async function POST(request: Request) {
                 break; 
 
             } catch (error) {
-                // Only catch P2002 (Unique constraint violation) for retry attempts
+                // Only catch P2002 (Unique constraint violation on register_number) for retry attempts
                 if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-                    // Check if the conflict is on the bility_number, which should stop immediate retries
-                    const isBilityConflict = error.meta?.target === 'Shipment_bility_number_key';
-                    
-                    if (isBilityConflict) {
-                        // Conflict on the bility number means the data is duplicated, not just a race condition
-                        throw new Error('Bility number already exists. Please use a unique identifier.');
-                    }
-                    
                     if (attempt < MAX_RETRIES - 1) {
-                         console.warn(`Race condition detected for registration number ${register_number}. Retrying...`);
-                        continue; // Retry with a new, incremented count
+                        console.warn(`Registration ID collision for ${register_number}. Auto-incrementing to next sequence...`);
+                        continue;
                     }
-                    // If max retries reached, throw generic registration ID conflict
-                    throw new Error('Failed to generate a unique registration ID after multiple attempts.');
+                    throw new Error('Failed to allocate a unique registration number after multiple attempts.');
                 }
-                // If it's another error, re-throw
                 throw error;
             }
         }
@@ -302,8 +306,10 @@ export async function GET(request: Request) {
                 goodsDetails: { 
                     select: { 
                         quantity: true, 
+                        item_name_id: true,
                         itemCatalog: { 
                             select: { 
+                                id: true,
                                 item_description: true 
                             } 
                         } 

@@ -1,13 +1,12 @@
-// components/AddAgency.tsx
 "use client";
 
-import React, { useEffect } from 'react';
+import React from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
-// Import Shadcn UI components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -19,10 +18,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { usePermission } from '@/hooks/use-permission'; // NEW: Import hook
-import { Loader2, AlertTriangle } from 'lucide-react'; // NEW: Import icons
+import { Building, ArrowLeft, Loader2, Check } from 'lucide-react';
 
-// --- 1. Define the Zod Schema for Validation ---
 const formSchema = z.object({
   agencyName: z.string().min(2, {
     message: 'Agency name must be at least 2 characters.',
@@ -31,146 +28,124 @@ const formSchema = z.object({
   }),
 });
 
-// Define the TypeScript type
 type AgencyFormValues = z.infer<typeof formSchema>;
 
-// Define the required permission for this page
-const REQUIRED_PERMISSION = 'MASTER_DATA_WRITE';
-
-
-// --- 2. Define the Component ---
 export default function AddAgency() {
   const router = useRouter();
-  const { hasPermission, isAuthLoading } = usePermission();
-  const allowed = hasPermission(REQUIRED_PERMISSION);
 
-  // --- Client-Side Access Check and Redirection ---
-  useEffect(() => {
-    if (!isAuthLoading && !allowed) {
-        // Redirect unauthorized users to the dashboard (or login if they are not logged in, but LayoutContent handles general auth)
-        // alert("Access Denied. You do not have permission to add Master Data.");
-        alert("Greeb Insan Jab Permission nii hai tuu qq Pagay lagta h...")
-        router.push('/');
-    }
-  }, [isAuthLoading, allowed, router]);
-
-
-  // Initialize React Hook Form
   const form = useForm<AgencyFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       agencyName: '',
     },
+    mode: 'onChange'
   });
 
-  // --- 3. Define the Submission Handler ---
   async function onSubmit(values: AgencyFormValues) {
     try {
-      // NOTE: API route will perform a server-side check as well
       const response = await fetch('/api/agencies', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // Send data to the API route
         body: JSON.stringify({ name: values.agencyName }),
       });
 
       if (!response.ok) {
-        // Parse the error message from the API response (e.g., 403 Forbidden)
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to add agency.');
       }
 
-      // Agency added successfully
       const newAgency = await response.json();
-      alert(`Agency "${newAgency.name}" added successfully!`);
+      toast.success('Agency Registered Successfully', {
+        description: `"${newAgency.name}" is now available in the forwarding agencies list.`
+      });
+
       form.reset(); 
+      router.push('/agency/view');
 
     } catch (error: any) {
       console.error('Submission Error:', error);
-      alert(`Error: ${error.message}`);
+      toast.error('Error Registering Agency', {
+        description: error.message
+      });
     }
   }
 
-  // Handle Loading/Unauthorized states for rendering
-  if (isAuthLoading) {
-      return (
-          <div className='flex items-center justify-center min-h-[50vh]'>
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              <p className='text-gray-600 ml-3'>Loading access controls...</p>
-          </div>
-      );
-  }
-
-  // If not allowed, useEffect handles redirection, but we render a message first
-  if (!allowed) {
-      return (
-          <div className='p-6 max-w-lg mx-auto'>
-              <Card className="bg-red-50 border-red-300">
-                  <CardHeader>
-                      <CardTitle className="text-red-700 flex items-center">
-                          <AlertTriangle className="h-5 w-5 mr-2" /> Access Denied
-                      </CardTitle>
-                      <CardDescription className="text-red-600">
-                          Your current user role does not have permission for this action.
-                      </CardDescription>
-                  </CardHeader>
-              </Card>
-          </div>
-      );
-  }
-
-
-  // Determine button state
   const isSubmitting = form.formState.isSubmitting;
   const isValid = form.formState.isValid;
 
-  // --- Main Component Render (only if authorized) ---
   return (
-    <div className='p-6 max-w-lg mx-auto bg-white min-h-screen'>
-      <h2 className='text-3xl font-extrabold mb-6 text-gray-900'>Register New Forwarding Agency</h2>
-      
-      {/* Shadcn Form Wrapper */}
-      <Card className="shadow-2xl border-0">
-        <Form {...form}>
-          <form 
-            onSubmit={form.handleSubmit(onSubmit)} 
-            className='space-y-6 p-8 rounded-xl border border-blue-100 bg-blue-50'
-          >
-            
-            {/* Form Field for Agency Name */}
-            <FormField
-              control={form.control}
-              name='agencyName'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className='font-semibold text-gray-700'>Agency Name</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder='e.g., Global Express Logistics' 
-                      {...field} 
-                      className='focus-visible:ring-blue-500'
-                      autoFocus
-                    />
-                  </FormControl>
-                  {/* Display validation errors */}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+    <div className="space-y-5 max-w-xl mx-auto pb-10">
+      <div className="flex items-center justify-between">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/agency/view')}
+          className="rounded-lg text-xs font-medium gap-1 text-slate-600 hover:text-slate-900"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Agencies
+        </Button>
+      </div>
 
-            {/* Submit Button */}
-            <Button 
-              type='submit' 
-              variant={'default'}
-              className='w-full bg-blue-600 hover:bg-blue-700 transition-colors py-3 text-lg'
-              disabled={isSubmitting || !isValid}
-            >
-              {isSubmitting ? 'Registering...' : 'Register Agency'}
-            </Button>
-          </form>
-        </Form>
+      <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800 p-5">
+          <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 flex items-center justify-center mb-2 border border-indigo-200 dark:border-indigo-800">
+            <Building className="w-5 h-5" />
+          </div>
+          <CardTitle className="text-base font-extrabold text-slate-900 dark:text-white">
+            Register Forwarding Agency
+          </CardTitle>
+          <CardDescription className="text-xs text-slate-500">
+            Add a logistics partner agency for freight routing and transit handling
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="p-5">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="agencyName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Agency / Company Name *
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g. Express Cargo Logistics" 
+                        {...field} 
+                        className="rounded-lg h-9 border-slate-200 dark:border-slate-700 text-xs"
+                        autoFocus
+                      />
+                    </FormControl>
+                    <FormMessage className="text-[11px]" />
+                  </FormItem>
+                )}
+              />
+
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || !isValid}
+                className="w-full h-10 rounded-lg font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors mt-2 cursor-pointer gap-1.5"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Registering Agency...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    Save & Register Agency
+                  </>
+                )}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
       </Card>
     </div>
   );

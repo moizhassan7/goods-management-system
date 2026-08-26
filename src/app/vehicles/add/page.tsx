@@ -1,12 +1,12 @@
-// components/AddVehicle.tsx
 "use client";
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { toast } from 'sonner';
 
-// Import Shadcn UI components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -17,9 +17,9 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-// import { useToast } from '@/components/ui/use-toast'; 
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ArrowLeft, Loader2, Check, Truck } from 'lucide-react';
 
-// --- 1. Define the Zod Schema for Validation ---
 const formSchema = z.object({
   vehicleNumber: z.string().min(2, {
     message: 'Vehicle number must be at least 2 characters.',
@@ -30,23 +30,19 @@ const formSchema = z.object({
   }),
 });
 
-// Define the TypeScript type
 type VehicleFormValues = z.infer<typeof formSchema>;
 
-
-// --- 2. Define the Component ---
 export default function AddVehicle() {
-//   const { toast } = useToast();
+  const router = useRouter();
 
-  // Initialize React Hook Form
   const form = useForm<VehicleFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       vehicleNumber: '',
     },
+    mode: 'onChange'
   });
 
-  // --- 3. Define the Submission Handler ---
   async function onSubmit(values: VehicleFormValues) {
     try {
       const response = await fetch('/api/vehicles', {
@@ -54,87 +50,109 @@ export default function AddVehicle() {
         headers: {
           'Content-Type': 'application/json',
         },
-        // Send data to the API route
         body: JSON.stringify({ vehicleNumber: values.vehicleNumber }),
       });
 
       if (!response.ok) {
-        // Parse the error message from the API response (e.g., 409 Conflict)
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to register vehicle.');
       }
 
-      // Vehicle added successfully
       const newVehicle = await response.json();
-      alert(`Vehicle "${newVehicle.vehicleNumber}" registered successfully!`);
-    //   toast({
-    //     title: 'Vehicle Registered Successfully 🚚',
-    //     description: `Vehicle number "${newVehicle.vehicleNumber}" is now available.`,
-    //   });
+      toast.success('Vehicle Registered Successfully', {
+        description: `Vehicle "${newVehicle.vehicleNumber}" added to active fleet.`
+      });
 
-      // Reset the form after successful submission
       form.reset(); 
+      router.push('/vehicles/view');
 
     } catch (error: any) {
       console.error('Submission Error:', error);
-      alert(`Error: ${error.message}`);
-    //   toast({
-    //     title: 'Error Registering Vehicle',
-    //     description: error.message,
-    //     variant: 'destructive',
-    //   });
+      toast.error('Error Registering Vehicle', {
+        description: error.message
+      });
     }
   }
 
-  // Determine button state
   const isSubmitting = form.formState.isSubmitting;
   const isValid = form.formState.isValid;
 
   return (
-    <div className='p-6 max-w-lg mx-auto bg-white min-h-screen'>
-      <h2 className='text-3xl font-extrabold mb-6 text-gray-900'>Add New Vehicle</h2>
-      
-      {/* Shadcn Form Wrapper */}
-      <Form {...form}>
-        <form 
-          onSubmit={form.handleSubmit(onSubmit)} 
-          className='space-y-6 p-8 rounded-xl shadow-2xl border border-teal-100 bg-teal-50'
+    <div className="space-y-5 max-w-xl mx-auto pb-10">
+      <div className="flex items-center justify-between">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/vehicles/view')}
+          className="rounded-lg text-xs font-medium gap-1 text-slate-600 hover:text-slate-900"
         >
-          
-          {/* Form Field for Vehicle Number */}
-          <FormField
-            control={form.control}
-            name='vehicleNumber'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className='font-semibold text-gray-700'>Vehicle Registration Number</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder='e.g., ABC-1234, KA-01-M-9999' 
-                    {...field} 
-                    // Automatically convert input to uppercase
-                    onChange={(e) => field.onChange(e.target.value.toUpperCase())} 
-                    className='focus-visible:ring-teal-500'
-                    autoFocus
-                  />
-                </FormControl>
-                {/* Display validation errors */}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Fleet Directory
+        </Button>
+      </div>
 
-          {/* Submit Button */}
-          <Button 
-            type='submit' 
-            variant={'default'}
-            className='w-full bg-teal-600 hover:bg-teal-700 transition-colors py-3 text-lg'
-            disabled={isSubmitting || !isValid}
-          >
-            {isSubmitting ? 'Registering...' : 'Register Vehicle'}
-          </Button>
-        </form>
-      </Form>
+      <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800 p-5">
+          <div className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-600 flex items-center justify-center mb-2 border border-teal-200 dark:border-teal-800">
+            <Truck className="w-5 h-5" />
+          </div>
+          <CardTitle className="text-base font-extrabold text-slate-900 dark:text-white">
+            Register New Fleet Vehicle
+          </CardTitle>
+          <CardDescription className="text-xs text-slate-500">
+            Enter the vehicle registration license plate to enable dispatch allocation
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="p-5">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="vehicleNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Vehicle Registration Number *
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g. LES-4521 or KHI-9988" 
+                        {...field} 
+                        onChange={(e) => field.onChange(e.target.value.toUpperCase())} 
+                        className="rounded-lg h-9 border-slate-200 dark:border-slate-700 font-mono text-xs font-bold uppercase tracking-wider"
+                        autoFocus
+                      />
+                    </FormControl>
+                    <p className="text-[10px] text-slate-400">
+                      Automatically formatted to uppercase.
+                    </p>
+                    <FormMessage className="text-[11px]" />
+                  </FormItem>
+                )}
+              />
+
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || !isValid}
+                className="w-full h-10 rounded-lg font-bold text-xs bg-teal-600 hover:bg-teal-700 text-white shadow-xs transition-colors mt-2 cursor-pointer gap-1.5"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Registering Vehicle...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    Save & Register Vehicle
+                  </>
+                )}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

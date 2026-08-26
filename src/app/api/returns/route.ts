@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { ReturnStatus } from "@prisma/client";
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const shipmentId = searchParams.get("shipmentId");
-    const status = searchParams.get("status");
+    const status = searchParams.get("status") as ReturnStatus | null;
 
     const where = {
       ...(shipmentId && { original_shipment_id: shipmentId }),

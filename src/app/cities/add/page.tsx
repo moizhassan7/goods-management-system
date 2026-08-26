@@ -1,11 +1,12 @@
-'use client'; // Required for client-side components in Next.js App Router
+"use client";
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { toast } from 'sonner';
 
-// Import Shadcn UI components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -16,9 +17,9 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-// import { useToast } from '@/components/ui/use-toast'; // Used for notifications
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { MapPin, ArrowLeft, Loader2, Check } from 'lucide-react';
 
-// --- 1. Define the Zod Schema for Validation ---
 const formSchema = z.object({
   cityName: z.string().min(2, {
     message: 'City name must be at least 2 characters.',
@@ -27,107 +28,125 @@ const formSchema = z.object({
   }),
 });
 
-// Define the TypeScript type based on the Zod schema
 type CityFormValues = z.infer<typeof formSchema>;
 
-
-// --- 2. Define the Component ---
 export default function AddCity() {
-//   const { toast } = useToast();
+  const router = useRouter();
 
-  // Initialize React Hook Form
   const form = useForm<CityFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       cityName: '',
     },
+    mode: 'onChange'
   });
 
-  // --- 3. Define the Submission Handler ---
   async function onSubmit(values: CityFormValues) {
-    // console.log(values); // Log form values
-
     try {
       const response = await fetch('/api/cities', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // Send data to the API route
         body: JSON.stringify({ name: values.cityName }),
       });
 
       if (!response.ok) {
-        // Parse the error message from the API response
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to add city.');
       }
 
-      // City added successfully
       const newCity = await response.json();
-      alert(`City "${newCity.name}" added successfully!`);
-      console.log('City Added:', newCity);
-    //   toast({
-    //     title: 'City Added Successfully 🎉',
-    //     description: `"${newCity.name}" has been added to the database.`,
-    //   });
+      toast.success('City Added Successfully', {
+        description: `"${newCity.name}" is now available as a transit hub.`
+      });
 
-      // Reset the form after successful submission
       form.reset(); 
+      router.push('/cities/view');
 
     } catch (error: any) {
       console.error('Submission Error:', error);
-      alert(`Error: ${error.message}`);
-
-    //   toast({
-    //     title: 'Error Adding City',
-    //     description: error.message,
-    //     variant: 'destructive',
-    //   });
+      toast.error('Error Adding City', {
+        description: error.message
+      });
     }
   }
 
-  return (
-    <div className='p-6 max-w-lg mx-auto'>
-      <h2 className='text-2xl font-bold mb-4'>Add New City</h2>
-      
-      {/* Shadcn Form Wrapper */}
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6 bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200'>
-          
-          {/* Form Field for City Name */}
-          <FormField
-            control={form.control}
-            name='cityName'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>City Name</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder='e.g., London, New York' 
-                    {...field} 
-                    // Automatically focus on the input when component mounts
-                    autoFocus
-                  />
-                </FormControl>
-                {/* Display validation errors */}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+  const isSubmitting = form.formState.isSubmitting;
+  const isValid = form.formState.isValid;
 
-          {/* Submit Button */}
-          <Button 
-            type='submit' 
-            variant={'default'}
-            // Disable button while submitting or if form data is invalid
-            disabled={form.formState.isSubmitting || !form.formState.isValid}
-          >
-            {form.formState.isSubmitting ? 'Adding City...' : 'Add City'}
-          </Button>
-        </form>
-      </Form>
+  return (
+    <div className="space-y-5 max-w-xl mx-auto pb-10">
+      <div className="flex items-center justify-between">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/cities/view')}
+          className="rounded-lg text-xs font-medium gap-1 text-slate-600 hover:text-slate-900"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Hubs
+        </Button>
+      </div>
+
+      <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800 p-5">
+          <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center mb-2 border border-blue-200 dark:border-blue-800">
+            <MapPin className="w-5 h-5" />
+          </div>
+          <CardTitle className="text-base font-extrabold text-slate-900 dark:text-white">
+            Register New Transit City
+          </CardTitle>
+          <CardDescription className="text-xs text-slate-500">
+            Add a departure or destination city to enable bilty route allocations
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="p-5">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="cityName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      City Name *
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g. Lahore, Karachi, Rawalpindi" 
+                        {...field} 
+                        className="rounded-lg h-9 border-slate-200 dark:border-slate-700 text-xs"
+                        autoFocus
+                      />
+                    </FormControl>
+                    <FormMessage className="text-[11px]" />
+                  </FormItem>
+                )}
+              />
+
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || !isValid}
+                className="w-full h-10 rounded-lg font-bold text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors mt-2 cursor-pointer gap-1.5"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Adding City...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    Save & Register City
+                  </>
+                )}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-

@@ -21,7 +21,7 @@ export async function PATCH(
         const { action, approvedBy } = body;
 
         // MODIFIED: Update validation to include the intermediate status APPROVED_BY_ADMIN
-        const validActions = [ApprovalStatus.APPROVED, ApprovalStatus.REJECTED, ApprovalStatus.APPROVED_BY_ADMIN];
+        const validActions: ApprovalStatus[] = [ApprovalStatus.APPROVED, ApprovalStatus.REJECTED, ApprovalStatus.APPROVED_BY_ADMIN];
         
         if (!action || !validActions.includes(action as ApprovalStatus)) {
             return NextResponse.json(

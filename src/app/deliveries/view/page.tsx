@@ -153,7 +153,7 @@ export default function ViewDeliveries() {
                                         <TableHead>Station Lab</TableHead>
                                         <TableHead>Cart Lab</TableHead>
                                         <TableHead className='text-right'>Total Expenses</TableHead>
-                                        <TableHead className='text-right'>Delivery Charges</TableHead>
+                                        <TableHead className='text-right'>Chota Karaya</TableHead>
                                         <TableHead className='text-right'>Total (Delivery + Expense)</TableHead>
                                     </TableRow>
                                 </TableHeader>

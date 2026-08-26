@@ -9,7 +9,7 @@
   "shipment_bility_date_label": "Bilty Date",
   "shipment_departure_city_label": "Departure City",
   "shipment_departure_city_placeholder": "Select City",
-  "shipment_table_created_date": "Created Date",
+  "shipment_table_created_date": "Entry Date",
   "shipment_agency_label": "Forwarding Agency",
   "shipment_agency_placeholder": "Select Agency",
   "shipment_vehicle_label": "Vehicle Number",
@@ -167,5 +167,7 @@
   "trip_save_button": "Save Trip Log",
   "trip_saving_button": "Saving...",
   "trip_log": "Trip Log",
-  "trip_registered_success": "Registered Successfully 🚀"
+  "trip_registered_success": "Registered Successfully 🚀",
+  "nav_edit_security": "Edit Security",
+  "nav_set_edit_password": "Edit Password"
 }

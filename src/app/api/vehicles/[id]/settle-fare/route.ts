@@ -4,19 +4,14 @@ import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
-interface RouteProps {
-    params: {
-        id: string; // The vehicle ID
-    };
-}
-
 /**
  * Handles PATCH requests to settle an outstanding trip fare for a vehicle.
  * This creates a CREDIT transaction and updates the corresponding TripLog status.
  * Endpoint: /api/vehicles/[id]/settle-fare
  */
-export async function PATCH(request: NextRequest, { params }: RouteProps) {
-    const vehicleId = parseInt(params.id, 10);
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const vehicleId = parseInt(id, 10);
 
     if (isNaN(vehicleId)) {
         return NextResponse.json(

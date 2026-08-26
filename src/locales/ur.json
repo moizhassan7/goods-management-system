@@ -164,5 +164,7 @@
   "trip_save_button": "سفر کا ریکارڈ محفوظ کریں",
   "trip_saving_button": "محفوظ ہو رہا ہے...",
   "trip_log": "سفر کا ریکارڈ",
-  "trip_registered_success": "کامیابی سے درج ہو گیا"
+  "trip_registered_success": "کامیابی سے درج ہو گیا",
+  "nav_edit_security": "ایڈٹ سیکیورٹی",
+  "nav_set_edit_password": "ایڈٹ پاس ورڈ"
 }

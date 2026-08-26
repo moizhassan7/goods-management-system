@@ -2,19 +2,13 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
-// Define the shape of the URL parameters
-interface Params {
-    params: {
-        id: string; // The vehicle ID
-    };
-}
-
 /**
  * Handles GET requests to retrieve a single Vehicle and its Transaction ledger.
  * Endpoint: /api/vehicles/[id]
  */
-export async function GET(request: Request, { params }: Params) {
-    const vehicleId = parseInt(params.id, 10);
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const vehicleId = parseInt(id, 10);
 
     if (isNaN(vehicleId)) {
         return NextResponse.json(

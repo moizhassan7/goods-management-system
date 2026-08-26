@@ -15,6 +15,7 @@ import {
   Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useTranslation } from '@/lib/i18n';
 
 const TripShipmentLogSchema = z.object({
   id: z.string().optional(),
@@ -113,6 +114,7 @@ const percentageOptions = [
 ];
 
 export default function AddTrip() {
+  const { t } = useTranslation();
   const [data, setData] = useState<DropdownData | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [loadingShipments, setLoadingShipments] = useState(false);

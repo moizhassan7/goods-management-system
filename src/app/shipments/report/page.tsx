@@ -1,5 +1,3 @@
-// src/app/shipments/report/page.tsx
-
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -9,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; 
+import { FileText, Printer, Filter, Loader2, ArrowRight, Package, DollarSign, BarChart3 } from 'lucide-react';
 
 type City = { id: number; name: string };
 type Vehicle = { id: number; vehicleNumber: string };
@@ -24,18 +23,12 @@ type Shipment = {
   receiver: { name: string };
   vehicle: { vehicleNumber: string };
   goodsDetails: { quantity: number; charges: number }[];
-  payment_status?: string | null; // NEW: Payment status field
+  payment_status?: string | null;
 };
 
-// Helper function for currency formatting (reuse logic)
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-PK', {
-        style: 'currency',
-        currency: 'PKR',
-        minimumFractionDigits: 2,
-    }).format(amount);
+    return `Rs. ${Number(amount || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
-
 
 export default function ShipmentsReportPage() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
@@ -85,176 +78,222 @@ export default function ShipmentsReportPage() {
   const totals = useMemo(() => {
     if (!Array.isArray(shipments)) return { totalShipments: 0, totalCharges: 0, totalQuantity: 0 };
     return shipments.reduce((acc, shipment) => {
-      const totalQuantity = shipment.goodsDetails.reduce((sum, gd) => sum + gd.quantity, 0);
-      
-      // Only include charges if the shipment is PENDING or status is missing
+      const totalQuantity = shipment.goodsDetails ? shipment.goodsDetails.reduce((sum, gd) => sum + gd.quantity, 0) : 0;
       const chargeAmount = (shipment.payment_status === 'PENDING' || !shipment.payment_status) 
         ? Number(shipment.total_charges || 0) : 0;
 
       return {
         totalShipments: acc.totalShipments + 1,
-        totalCharges: acc.totalCharges + chargeAmount, // Sum only charges for PENDING
+        totalCharges: acc.totalCharges + chargeAmount,
         totalQuantity: acc.totalQuantity + totalQuantity,
       };
     }, { totalShipments: 0, totalCharges: 0, totalQuantity: 0 });
   }, [shipments]);
 
   return (
-    <div className='p-6 max-w-6xl mx-auto'>
-      <h2 className='text-3xl font-bold mb-6 text-gray-800 border-b pb-2'>Shipments Report</h2>
+    <div className="space-y-5 max-w-6xl mx-auto pb-10">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
+              Bilty Consignments Audit Report
+            </h2>
+            <p className="text-xs text-slate-500">
+              Filtered financial audit summaries, freight totals, and consignment quantities
+            </p>
+          </div>
+        </div>
 
-      {/* FILTERS CARD - New Structure */}
-      <Card className='shadow-lg mb-8'>
-        <CardHeader>
-            <CardTitle className='text-xl text-blue-800'>Report Filters</CardTitle>
-            <CardDescription>Select criteria and load the report data.</CardDescription>
+        {shipments.length > 0 && (
+          <Button
+            onClick={() => window.print()}
+            variant="outline"
+            size="sm"
+            className="rounded-lg text-xs font-semibold gap-1.5 h-8 border-slate-200 dark:border-slate-700"
+          >
+            <Printer className="w-3.5 h-3.5 text-slate-500" />
+            Print Report Sheet
+          </Button>
+        )}
+      </div>
+
+      {/* Filter Panel */}
+      <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
+        <CardHeader className="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 py-2.5 px-4">
+          <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+            <Filter className="w-3.5 h-3.5 text-blue-600" />
+            Report Parameters
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-            <div className='grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4'>
-                <div>
-                <div className='grid gap-2'>
-                    <Label>Start Date</Label>
-                    <Input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                </div>
-                </div>
-                <div>
-                <div className='grid gap-2'>
-                    <Label>End Date</Label>
-                    <Input type='date' value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-                </div>
-                </div>
-                <div>
-                <div className='grid gap-2'>
-                    <Label>Departure City</Label>
-                    <Select value={departureCityId ? String(departureCityId) : 'all'} onValueChange={(v) => setDepartureCityId(v === 'all' ? 0 : parseInt(v))}>
-                    <SelectTrigger>
-                        <SelectValue placeholder='All' />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value='all'>All</SelectItem>
-                        {cities.map(c => (
-                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                    </Select>
-                </div>
-                </div>
-                <div>
-                <div className='grid gap-2'>
-                    <Label>To City</Label>
-                    <Select value={toCityId ? String(toCityId) : 'all'} onValueChange={(v) => setToCityId(v === 'all' ? 0 : parseInt(v))}>
-                    <SelectTrigger>
-                        <SelectValue placeholder='All' />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value='all'>All</SelectItem>
-                        {cities.map(c => (
-                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                    </Select>
-                </div>
-                </div>
-                <div>
-                <div className='grid gap-2'>
-                    <Label>Vehicle</Label>
-                    <Select value={vehicleId ? String(vehicleId) : 'all'} onValueChange={(v) => setVehicleId(v === 'all' ? 0 : parseInt(v))}>
-                    <SelectTrigger>
-                        <SelectValue placeholder='All' />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value='all'>All</SelectItem>
-                        {vehicles.map(v => (
-                        <SelectItem key={v.id} value={String(v.id)}>{v.vehicleNumber}</SelectItem>
-                        ))}
-                    </SelectContent>
-                    </Select>
-                </div>
-                </div>
-                <div className='flex items-end'>
-                    <Button className='w-full' onClick={fetchReport} disabled={loading}>
-                        {loading ? 'Loading...' : 'Load Report'}
-                    </Button>
-                </div>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Start Date</Label>
+              <Input 
+                type="date" 
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)} 
+                className="h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs font-mono"
+              />
             </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">End Date</Label>
+              <Input 
+                type="date" 
+                value={endDate} 
+                onChange={(e) => setEndDate(e.target.value)} 
+                className="h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Departure City</Label>
+              <Select value={departureCityId ? String(departureCityId) : 'all'} onValueChange={(v) => setDepartureCityId(v === 'all' ? 0 : parseInt(v))}>
+                <SelectTrigger className="h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent className="rounded-lg">
+                  <SelectItem value="all">All Cities</SelectItem>
+                  {cities.map(c => (
+                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Destination City</Label>
+              <Select value={toCityId ? String(toCityId) : 'all'} onValueChange={(v) => setToCityId(v === 'all' ? 0 : parseInt(v))}>
+                <SelectTrigger className="h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent className="rounded-lg">
+                  <SelectItem value="all">All Cities</SelectItem>
+                  {cities.map(c => (
+                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Fleet Truck</Label>
+              <Select value={vehicleId ? String(vehicleId) : 'all'} onValueChange={(v) => setVehicleId(v === 'all' ? 0 : parseInt(v))}>
+                <SelectTrigger className="h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent className="rounded-lg">
+                  <SelectItem value="all">All Vehicles</SelectItem>
+                  {vehicles.map(v => (
+                    <SelectItem key={v.id} value={String(v.id)}>{v.vehicleNumber}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button 
+              onClick={fetchReport} 
+              disabled={loading}
+              className="h-9 rounded-lg font-bold text-xs bg-blue-600 hover:bg-blue-700 shadow-xs"
+            >
+              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+              Run Report
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
-
       {!loading && shipments.length > 0 && (
-        <div className='space-y-6'>
-          {/* RESULTS TABLE CARD - New Structure */}
-          <Card className='shadow-lg'>
-            <CardHeader>
-                <CardTitle className='text-xl text-gray-800'>Shipment Details ({shipments.length} Records)</CardTitle>
-            </CardHeader>
-            <CardContent className='p-0'>
-                <div className='overflow-x-auto'>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Shipment ID</TableHead>
-                                <TableHead>Bilty #</TableHead>
-                                <TableHead>Sender</TableHead>
-                                <TableHead>Receiver</TableHead>
-                                <TableHead>From</TableHead>
-                                <TableHead>To</TableHead>
-                                <TableHead>Vehicle</TableHead>
-                                <TableHead className='text-right'>Payment Status / Charges</TableHead> {/* MODIFIED HEADER */}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {shipments.map((shipment) => (
-                                <TableRow key={shipment.register_number}>
-                                    <TableCell>{shipment.register_number}</TableCell>
-                                    <TableCell>{shipment.bility_number}</TableCell>
-                                    <TableCell>{shipment.sender.name}</TableCell>
-                                    <TableCell>{shipment.receiver.name}</TableCell>
-                                    <TableCell>{shipment.departureCity.name}</TableCell>
-                                    <TableCell>{shipment.toCity?.name || '-'}</TableCell>
-                                    <TableCell>{shipment.vehicle.vehicleNumber}</TableCell>
-                                    {/* MODIFIED CELL: Display Status or Charges */}
-                                    <TableCell className='text-right font-bold'>
-                                        {shipment.payment_status === 'ALREADY_PAID' && <span className='px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700'>PAID</span>}
-                                        {shipment.payment_status === 'FREE' && <span className='px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700'>FREE</span>}
-                                        {(shipment.payment_status === 'PENDING' || !shipment.payment_status) && <span className='font-bold text-green-700'>{formatCurrency(shipment.total_charges)}</span>}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </CardContent>
-          </Card>
+        <div className="space-y-4">
+          {/* Executive Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Bilties</span>
+              <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5 tabular-nums">{totals.totalShipments}</div>
+            </div>
 
+            <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Bara Karaya</span>
+              <div className="text-xl font-black text-emerald-700 dark:text-emerald-400 mt-0.5 font-mono tabular-nums">{formatCurrency(totals.totalCharges)}</div>
+            </div>
 
-          {/* TOTALS CARD - New Structure */}
-          <Card className='bg-blue-50 border-blue-200 shadow-xl'>
-            <CardHeader>
-                <CardTitle className='text-lg text-blue-800'>Report Summary</CardTitle>
+            <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Cargo Quantity</span>
+              <div className="text-xl font-black text-blue-700 dark:text-blue-400 mt-0.5 font-mono tabular-nums">{totals.totalQuantity} Units</div>
+            </div>
+          </div>
+
+          {/* Results Table */}
+          <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 py-3 px-4">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                Report Breakdown ({shipments.length} Records)
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-                <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-                    <div>
-                        <div className='text-gray-600'>Total Shipments</div>
-                        <div className='font-extrabold text-2xl text-blue-900'>{totals.totalShipments}</div>
-                    </div>
-                    <div>
-                        <div className='text-gray-600'>Total Charges (Due/Received)</div>
-                        <div className='font-extrabold text-2xl text-green-700'>{formatCurrency(totals.totalCharges)}</div>
-                    </div>
-                    <div>
-                        <div className='text-gray-600'>Total Quantity Shipped</div>
-                        <div className='font-extrabold text-2xl text-orange-700'>{totals.totalQuantity}</div>
-                    </div>
-                </div>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-slate-50 dark:bg-slate-800/60">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4">Bilty #</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Sender Party</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Receiver Party</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Transit Route</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Vehicle</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right pr-4">Status / Freight</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {shipments.map((shipment) => (
+                      <TableRow key={shipment.register_number} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs">
+                        <TableCell className="pl-4 font-bold text-slate-900 dark:text-white">
+                          <span className="font-mono text-blue-700 dark:text-blue-400">{shipment.bility_number}</span>
+                          <span className="block text-[10px] text-slate-400 font-mono">#{shipment.register_number}</span>
+                        </TableCell>
+                        <TableCell className="font-semibold text-slate-800 dark:text-slate-200">{shipment.sender.name}</TableCell>
+                        <TableCell className="font-semibold text-slate-800 dark:text-slate-200">{shipment.receiver.name}</TableCell>
+                        <TableCell className="text-slate-600 dark:text-slate-300">
+                          <div className="flex items-center gap-1">
+                            <span>{shipment.departureCity.name}</span>
+                            <ArrowRight className="w-3 h-3 text-slate-400" />
+                            <span className="font-bold text-slate-900 dark:text-white">{shipment.toCity?.name || 'Local'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                          {shipment.vehicle.vehicleNumber}
+                        </TableCell>
+                        <TableCell className="text-right pr-4 font-mono font-bold text-slate-900 dark:text-white tabular-nums">
+                          {shipment.payment_status === 'ALREADY_PAID' ? (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                              PAID
+                            </span>
+                          ) : shipment.payment_status === 'FREE' ? (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-800">
+                              FREE
+                            </span>
+                          ) : (
+                            formatCurrency(shipment.total_charges)
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </div>
       )}
 
       {!loading && shipments.length === 0 && (
-        <div className='p-4 text-gray-600'>No shipments found for the selected criteria.</div>
+        <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400">
+          <p className="text-xs">No report data compiled. Select parameters above and click &quot;Run Report&quot;.</p>
+        </div>
       )}
     </div>
   );

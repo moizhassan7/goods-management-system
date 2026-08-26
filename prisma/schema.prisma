@@ -82,7 +82,7 @@ model Transaction {
 
 model Shipment {
   register_number        String               @id @db.VarChar(50)
-  bility_number          String               @unique @db.VarChar(50)
+  bility_number          String               @db.VarChar(50)
   bility_date            DateTime             @db.Date
   departure_city_id      Int
   to_city_id             Int?
@@ -325,4 +325,14 @@ enum LabourAssignmentStatus {
   DELIVERED
   COLLECTED
   SETTLED
+}
+
+model SystemSetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique @db.VarChar(100)
+  value     String   @db.Text
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("System_Settings")
 }

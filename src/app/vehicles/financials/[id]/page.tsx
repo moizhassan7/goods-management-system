@@ -53,7 +53,7 @@ const formatCurrency = (amount: number) => {
 export default function VehicleFinancialsPage() {
   
     const params = useParams();
-    const id = params.id as string;
+    const id = params?.id ? (Array.isArray(params.id) ? params.id[0] : params.id) : '';
     const vehicleId = parseInt(id, 10);
     
     const [ledgerData, setLedgerData] = useState<LedgerData | null>(null);

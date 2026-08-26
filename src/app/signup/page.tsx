@@ -1,4 +1,3 @@
-// src/moizhassan7/goods-management-system/goods-management-system-36a96deb04db0b296f5178c3c6a89a34c19278dd/src/app/signup/page.tsx
 "use client";
 
 import React from 'react';
@@ -9,7 +8,6 @@ import * as z from 'zod';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
-// Reusing existing UI components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -22,8 +20,8 @@ import {
 } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Truck, UserPlus, Lock, User, Loader2, ArrowRight } from 'lucide-react';
 
-// Define roles, mirroring lib/auth.ts (or Prisma schema)
 export enum UserRole {
     OPERATOR = 'OPERATOR',
     ADMIN = 'ADMIN',
@@ -31,11 +29,10 @@ export enum UserRole {
 }
 
 const SignupSchema = z.object({
-  username: z.string().min(3, 'Username is required.'),
+  username: z.string().min(3, 'Username must be at least 3 characters.'),
   password: z.string().min(8, 'Password must be at least 8 characters.'),
-  // NEW: Role field added to schema
   role: z.nativeEnum(UserRole, {
-    errorMap: () => ({ message: 'A valid role is required.' }),
+    message: 'A valid role is required.',
   }),
 });
 
@@ -49,7 +46,6 @@ export default function SignupPage() {
     defaultValues: {
       username: '',
       password: '',
-      // Default to Operator if no selection is made
       role: UserRole.OPERATOR, 
     },
   });
@@ -70,17 +66,16 @@ export default function SignupPage() {
         throw new Error(data.message || 'Signup failed.');
       }
 
-      toast.success('Registration Successful', {
-        description: `User ${values.username} created as ${data.user.role}. Redirecting to login...`,
+      toast.success('Account Created Successfully', {
+        description: `User ${values.username} registered with role ${data.user.role}.`,
       });
 
-      // Redirect to login page after successful signup
       router.push('/login');
 
     } catch (error: unknown) {
       console.error('Signup Error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      toast.error('Signup Failed ⚠️', {
+      toast.error('Registration Error', {
         description: errorMessage,
       });
     }
@@ -89,88 +84,139 @@ export default function SignupPage() {
   const isSubmitting = form.formState.isSubmitting;
 
   return (
-    <div className='flex items-center justify-center min-h-screen bg-gray-100 p-4'>
-      <Card className='w-full max-w-md shadow-2xl'>
-        <CardHeader className='text-center'>
-          <CardTitle className='text-3xl font-extrabold text-blue-700'>Create Account</CardTitle>
-          <CardDescription>Register for Zikria Goods Transports System. First user defaults to **SUPERADMIN**.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-              
-              <FormField
-                control={form.control}
-                name='username'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input placeholder='Enter your username' {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name='password'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type='password' placeholder='Enter a strong password (min 8 chars)' {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* NEW: Role Selection Field */}
-              <FormField
-                control={form.control}
-                name='role'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Desired Role</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder='Select Role' />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.values(UserRole).map((role) => (
-                          <SelectItem key={role} value={role}>
-                            {role} {role === UserRole.SUPERADMIN && ' (First User Only)'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <Button 
-                type='submit' 
-                className='w-full bg-blue-600 hover:bg-blue-700 py-3 text-lg'
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Registering...' : 'Sign Up'}
-              </Button>
-            </form>
-          </Form>
-
-          <div className='mt-6 text-center text-sm'>
-            Already have an account?{' '}
-            <Link href='/login' className='text-blue-600 hover:underline font-semibold'>
-              Log In
-            </Link>
+    <div className="flex items-center justify-center min-h-screen bg-slate-900 p-4">
+      <div className="w-full max-w-sm space-y-4">
+        {/* Brand Header */}
+        <div className="text-center space-y-1.5 mb-2">
+          <div className="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-sm">
+            <Truck className="w-6 h-6" />
           </div>
-        </CardContent>
-      </Card>
+          <h1 className="text-lg font-extrabold text-white tracking-tight">
+            Zikria Goods Transports
+          </h1>
+          <p className="text-xs text-slate-400 font-mono">
+            Register System Operator
+          </p>
+        </div>
+
+        {/* Form Card */}
+        <Card className="rounded-xl border-slate-800 bg-slate-950 text-white shadow-xl overflow-hidden">
+          <CardHeader className="text-center pb-2 pt-5 px-5 border-b border-slate-850">
+            <CardTitle className="text-sm font-bold text-white uppercase tracking-wider">
+              Create Account
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-400">
+              Fill in credentials to assign ERP system access
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="p-5">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3.5">
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-bold text-slate-300">
+                        Username
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+                          <Input 
+                            placeholder="e.g. jdoe" 
+                            {...field} 
+                            className="pl-9 h-9 rounded-lg bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 text-xs focus-visible:ring-blue-500"
+                            autoFocus
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[11px] text-rose-400" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-bold text-slate-300">
+                        Password (min 8 chars)
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+                          <Input 
+                            type="password" 
+                            placeholder="••••••••" 
+                            {...field} 
+                            className="pl-9 h-9 rounded-lg bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 text-xs focus-visible:ring-blue-500"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[11px] text-rose-400" />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-bold text-slate-300">
+                        System Permission Role
+                      </FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-9 rounded-lg bg-slate-900 border-slate-700 text-white text-xs">
+                            <SelectValue placeholder="Select Role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="rounded-lg border-slate-800 bg-slate-900 text-white">
+                          {Object.values(UserRole).map((role) => (
+                            <SelectItem key={role} value={role} className="text-xs">
+                              {role} {role === UserRole.SUPERADMIN && ' (Root Admin)'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage className="text-[11px] text-rose-400" />
+                    </FormItem>
+                  )}
+                />
+
+                <Button 
+                  type="submit" 
+                  className="w-full h-10 rounded-lg font-bold text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors mt-3 cursor-pointer gap-1.5"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Creating Account...
+                    </>
+                  ) : (
+                    <>
+                      Register Account
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </Button>
+              </form>
+            </Form>
+
+            <div className="mt-4 text-center text-xs text-slate-400">
+              Already have an account?{' '}
+              <Link href="/login" className="text-blue-400 hover:underline font-semibold">
+                Sign In
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -267,7 +267,7 @@ export default function SuperAdminDeliveryApprovalPage() {
                                             <TableHead className="font-bold text-left py-3 px-6">Receiver</TableHead>
                                             <TableHead className="font-bold text-left py-3 px-6">Delivery Date</TableHead>
                                             <TableHead className="font-bold text-right py-3 px-6">Total Expenses</TableHead>
-                                            <TableHead className="font-bold text-right py-3 px-6">Delivery Charges</TableHead>
+                                            <TableHead className="font-bold text-right py-3 px-6">Chota Karaya</TableHead>
                                             <TableHead className="font-bold text-right py-3 px-6 text-blue-700">Total Payable</TableHead>
                                             <TableHead className="font-bold text-center py-3 px-6">Approved By</TableHead>
                                             <TableHead className="font-bold text-center py-3 px-6">Actions</TableHead>
@@ -335,7 +335,7 @@ export default function SuperAdminDeliveryApprovalPage() {
                                                                                     <span className="font-medium text-red-600">{formatCurrency(delivery.total_expenses)}</span>
                                                                                 </div>
                                                                                 <div className="flex justify-between">
-                                                                                    <span>Delivery Charges:</span>
+                                                                                    <span>Chota Karaya:</span>
                                                                                     <span className="font-medium text-green-600">{formatCurrency(delivery.total_delivery_charges)}</span>
                                                                                 </div>
                                                                                 <div className="flex justify-between pt-1 border-t border-green-200 mt-2">

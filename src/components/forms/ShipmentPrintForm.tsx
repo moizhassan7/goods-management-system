@@ -193,11 +193,11 @@ const ShipmentPrintForm = ({ data, onSave, onSaveAndPrint, onPrint }: ShipmentPr
                         <p className="text-xs uppercase font-semibold text-gray-500 mb-3">Financial Details</p>
                         <div className="space-y-3">
                             <div className="flex justify-between border-b pb-2">
-                                <span className="text-gray-700 font-semibold">Total Delivery Charges:</span>
+                                <span className="text-gray-700 font-semibold">Chota Karaya:</span>
                                 <span className="text-gray-900 font-bold text-lg">{formatCurrency(data.total_delivery_charges)}</span>
                             </div>
                             <div className="flex justify-between border-b pb-2">
-                                <span className="text-gray-700 font-semibold">Total Amount:</span>
+                                <span className="text-gray-700 font-semibold">Bara Karaya:</span>
                                 <span className="text-gray-900 font-bold text-lg">{formatCurrency(data.total_amount)}</span>
                             </div>
                         </div>

@@ -12,25 +12,18 @@ import {
   CommandEmpty,
 } from "@/components/ui/command"
 import { Button } from "@/components/ui/button"
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react"
-// import { useToast } from "@/hooks/use-toast"
+import { Check, ChevronsUpDown, Loader2, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface SearchableDropdownProps {
   label: string
   endpoint?: string
   placeholder?: string
-  // optional pre-fetched items - if provided this will be used instead of fetching from endpoint
   items?: Array<{ id: number | string; name?: string; vehicleNumber?: string; item_description?: string }>
-  // value may be id (number|string) or a plain string to support legacy usage
   value?: string | number | null
-  // called with the display string (legacy)
   onChange?: (value: string) => void
-  // called when an item is selected (preferred) with normalized item { id, name }
   onSelectItem?: (item: { id: string; name: string }) => void
-  // property name to use when creating new items (e.g., 'vehicleNumber' for vehicles or 'description' for items)
   createPropertyName?: string
-  // called when a new item is successfully added to the database
   onNewItemAdded?: () => void
 }
 
@@ -49,12 +42,9 @@ export default function SearchableDropdown({
   const [items, setItems] = useState<{ id: string; name: string }[]>([])
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(false)
-  // const { toast } = useToast()
 
-  // If `items` prop is provided, use it; otherwise fetch from endpoint
   useEffect(() => {
     if (Array.isArray(itemsProp) && itemsProp.length > 0) {
-      // normalize incoming items to { id: string, name: string }
       const normalized = (itemsProp as any[]).map((it) => ({
         id: String(it.id),
         name: it.name ?? it.vehicleNumber ?? it.item_description ?? '',
@@ -69,7 +59,6 @@ export default function SearchableDropdown({
       try {
         const res = await fetch(endpoint as string)
         const data = await res.json()
-        // try to normalize if returned objects have different shapes
         const normalized = (Array.isArray(data) ? data : []).map((it: any) => ({
           id: String(it.id ?? it.register_number ?? ''),
           name: it.name ?? it.vehicleNumber ?? it.item_description ?? it.register_number ?? '',
@@ -98,15 +87,12 @@ export default function SearchableDropdown({
     )
 
     if (exists) {
-      // If already exists → just select the matching item
       const matched = items.find((it) => it.name.toLowerCase() === trimmed.toLowerCase())!
       handleSelect(matched)
       return
     }
 
-    // If no endpoint is provided we can't POST a new entry from here.
     if (!endpoint) {
-      // fallback: just select the typed value (no server-side add)
       if (onChange) onChange(trimmed)
       if (onSelectItem) onSelectItem({ id: '', name: trimmed })
       setSearch("")
@@ -116,7 +102,6 @@ export default function SearchableDropdown({
 
     try {
       setLoading(true)
-      // Build the request body based on the createPropertyName prop or fallback to 'name'
       const requestBody = createPropertyName 
         ? { [createPropertyName]: trimmed }
         : { name: trimmed }
@@ -130,13 +115,14 @@ export default function SearchableDropdown({
       if (!res.ok) throw new Error("Failed to add item")
 
       const newItem = await res.json()
-      // normalize returned item
-      const normalized = { id: String(newItem.id ?? newItem.register_number ?? ''), name: newItem.name ?? newItem.vehicleNumber ?? newItem.item_description ?? newItem.register_number ?? trimmed }
-      setItems((prev) => [...prev, normalized]) // ✅ instantly add new item locally
-      // notify consumers
+      const normalized = { 
+        id: String(newItem.id ?? newItem.register_number ?? ''), 
+        name: newItem.name ?? newItem.vehicleNumber ?? newItem.item_description ?? newItem.register_number ?? trimmed 
+      }
+      setItems((prev) => [...prev, normalized])
       if (onChange) onChange(normalized.name)
       if (onSelectItem) onSelectItem(normalized)
-      if (onNewItemAdded) onNewItemAdded() // ✅ Notify parent to refresh other lists
+      if (onNewItemAdded) onNewItemAdded()
       setSearch("")
       setOpen(false)
     } catch (error) {
@@ -149,65 +135,89 @@ export default function SearchableDropdown({
   const selectedLabel = items.find((it) => String(it.id) === String(value))?.name
 
   return (
-    <div className="w-full">
-      <label className="text-sm font-medium mb-1 block">{label}</label>
+    <div className="w-full space-y-1.5">
+      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">{label}</label>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
             role="combobox"
-            className="w-full justify-between"
+            className={cn(
+              "w-full justify-between rounded-xl h-10 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-2xs text-left",
+              !selectedLabel && "text-slate-400 dark:text-slate-500 font-normal"
+            )}
           >
-            {selectedLabel ?? (typeof value === 'string' && value ? value : placeholder)}
-            <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+            <span className="truncate">
+              {selectedLabel ?? (typeof value === 'string' && value ? value : placeholder)}
+            </span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[300px] p-0">
+        <PopoverContent className="w-[320px] p-0 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-hidden" align="start">
           <Command>
             <CommandInput
               placeholder={placeholder}
               value={search}
               onValueChange={setSearch}
+              className="h-10 text-xs"
               onFocus={(e) => (e.target as HTMLInputElement).select()}
               onClick={(e) => (e.target as HTMLInputElement).select()}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   if (e.ctrlKey) {
-                    // Ctrl + Enter -> Add as new item
                     const trimmed = search.trim()
                     if (trimmed) {
                       e.preventDefault()
                       handleAddNew()
                     }
                   }
-                  // Otherwise, let default Enter behavior (CMDK selection) happen
                 }
               }}
             />
-            <CommandList>
-              <CommandEmpty>
+            <CommandList className="max-h-60 p-1">
+              <CommandEmpty className="p-3 text-center text-xs text-slate-500">
                 {loading ? (
-                  <div className="flex items-center justify-center py-2">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
+                  <div className="flex items-center justify-center py-2 text-blue-600 gap-2 font-medium">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving to system...
                   </div>
                 ) : endpoint ? (
-                  `No results found. Press Ctrl+Enter to add "${search}".`
+                  <div className="space-y-2">
+                    <p className="text-slate-500">No match found for &quot;{search}&quot;</p>
+                    {search.trim() && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={handleAddNew}
+                        className="w-full text-xs font-semibold gap-1.5 h-8 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add &quot;{search}&quot;
+                      </Button>
+                    )}
+                  </div>
                 ) : (
-                  `No results found. Add is disabled (no endpoint configured).`
+                  `No records found.`
                 )}
               </CommandEmpty>
-              {items.map((item) => (
-                <CommandItem key={item.id} onSelect={() => handleSelect(item)}>
-                  <Check
+              {items.map((item) => {
+                const isSelected = String(value) === item.id
+                return (
+                  <CommandItem 
+                    key={item.id} 
+                    onSelect={() => handleSelect(item)}
                     className={cn(
-                      'mr-2 h-4 w-4',
-                      String(value) === item.id ? 'opacity-100' : 'opacity-0'
+                      "px-3 py-2 text-xs rounded-xl cursor-pointer transition-colors flex items-center justify-between",
+                      isSelected ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-semibold" : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
                     )}
-                  />
-                  {item.name}
-                </CommandItem>
-              ))}
+                  >
+                    <span className="truncate">{item.name}</span>
+                    {isSelected && (
+                      <Check className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                    )}
+                  </CommandItem>
+                )
+              })}
             </CommandList>
           </Command>
         </PopoverContent>

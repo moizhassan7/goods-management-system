@@ -44,7 +44,8 @@ export async function POST(request: NextRequest) {
             }
 
             // 2. Calculate the new total collected amount
-            const newCollectedAmount = assignment.collected_amount.plus(amountDecimal);
+            const currentCollected = assignment.collected_amount || new Prisma.Decimal(0);
+            const newCollectedAmount = currentCollected.plus(amountDecimal);
 
             // 3. Log the payment to LabourPaymentHistory (for the ledger)
             await tx.labourPaymentHistory.create({
@@ -73,8 +74,9 @@ export async function POST(request: NextRequest) {
             timeout: 30000, 
         });
 
+        const totalPaid = updatedAssignment.collected_amount ? updatedAssignment.collected_amount.toFixed(2) : '0.00';
         return NextResponse.json({
-            message: `Payment of $${amountDecimal.toFixed(2)} recorded successfully. Total paid is now $${updatedAssignment.collected_amount.toFixed(2)}.`,
+            message: `Payment of $${amountDecimal.toFixed(2)} recorded successfully. Total paid is now $${totalPaid}.`,
             assignment: updatedAssignment,
         }, { status: 200 });
 

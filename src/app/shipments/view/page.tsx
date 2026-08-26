@@ -1,19 +1,35 @@
-// src/app/shipments/view/page.tsx
-
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import {
-    Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Loader2, RefreshCw } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { 
+    Search, Loader2, RefreshCw, Truck, Package, Calendar, 
+    DollarSign, ArrowRight, CheckCircle2, Clock, Filter, X,
+    MoreVertical, Pencil, Printer, Lock, ShieldCheck, KeyRound, Eye, EyeOff
+} from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 
-// Re-implement a local useToast based on sonner, assuming the component/hook is in use
 export interface Toast {
     id: string;
     title?: string;
@@ -22,7 +38,7 @@ export interface Toast {
 }
 
 export function useToast() {
-    return {
+    return useMemo(() => ({
         toast: {
             success: (toast: Omit<Toast, 'id'>) => {
                 sonnerToast.success(toast.title, {
@@ -39,49 +55,42 @@ export function useToast() {
             },
         },
         toasts: [],
-    };
+    }), []);
 }
-
 
 interface ShipmentData {
     register_number: string;
     bility_number: string;
-    bility_date: string; // Already mapped to YYYY-MM-DD in API
+    bility_date: string;
+    createdAt?: string;
+    created_day?: string;
     total_charges: number;
-    // --- ADDED FIELDS ---
-    total_delivery_charges: number; // Added for the new column
-    createdAt: string; // Assumed creation timestamp from API for "Current Date"
-    // --------------------
-    delivery_date: string | null; // Already mapped to YYYY-MM-DD or null in API
+    total_delivery_charges: number;
+    delivery_date: string | null;
     departureCity: { name: string };
     toCity: { name: string } | null;
     sender: { name: string };
     receiver: { name: string };
     vehicle: { vehicleNumber: string };
-    payment_status?: string | null; // NEW: Payment status field
+    payment_status?: string | null;
+    forwardingAgency?: { name: string };
+    goodsDetails?: { quantity: number; itemCatalog?: { item_description?: string } | null }[];
 }
 
-// NEW: Interface for filter data (Vehicles)
 interface Vehicle {
     id: number;
     vehicleNumber: string;
 }
 
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-PK', {
-        style: 'currency',
-        currency: 'PKR',
-        minimumFractionDigits: 2,
-    }).format(amount);
+    return `Rs. ${Number(amount || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
-// Helper to get start and end date for the current month
 const getCurrentMonthDateRange = () => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-    // Format to YYYY-MM-DD
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
     return {
@@ -91,11 +100,11 @@ const getCurrentMonthDateRange = () => {
 };
 
 export default function ViewShipments() {
+    const router = useRouter();
     const { toast } = useToast();
     const [shipments, setShipments] = useState<ShipmentData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Filter States
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [vehicleId, setVehicleId] = useState<number | 'all'>('all');
     const [startDate, setStartDate] = useState<string>(getCurrentMonthDateRange().startDate);
@@ -108,20 +117,10 @@ export default function ViewShipments() {
         setIsLoading(true);
         try {
             const params = new URLSearchParams();
-            if (query) {
-                params.append('query', query);
-            }
-            // Include date range filters
-            if (currentStartDate) {
-                params.append('startDate', currentStartDate);
-            }
-            if (currentEndDate) {
-                params.append('endDate', currentEndDate);
-            }
-            // Include vehicle filter
-            if (currentVehicleId !== 'all') {
-                params.append('vehicleId', String(currentVehicleId));
-            }
+            if (query) params.append('query', query);
+            if (currentStartDate) params.append('startDate', currentStartDate);
+            if (currentEndDate) params.append('endDate', currentEndDate);
+            if (currentVehicleId !== 'all') params.append('vehicleId', String(currentVehicleId));
 
             const response = await fetch(`/api/shipments/view-all?${params.toString()}`);
 
@@ -134,8 +133,7 @@ export default function ViewShipments() {
             setShipments(data);
         } catch (error: any) {
             console.error("Shipments fetch error:", error);
-            toast.error({
-                title: 'Fetch Error',
+            sonnerToast.error('Fetch Error', {
                 description: error.message || 'Could not load shipment records.',
             });
             setShipments([]);
@@ -144,7 +142,6 @@ export default function ViewShipments() {
         }
     }, []);
 
-    // Load initial data (including filters) on mount
     useEffect(() => {
         async function loadFilters() {
             try {
@@ -156,84 +153,366 @@ export default function ViewShipments() {
             }
         }
         loadFilters();
+    }, []);
 
-        // Initial fetch: Load current month's shipments
-        const { startDate: initialStart, endDate: initialEnd } = getCurrentMonthDateRange();
-        fetchShipments(debouncedSearchTerm, initialStart, initialEnd, vehicleId);
-
-        // The dependency array will manage subsequent fetches via debouncedSearchTerm and the button click handler.
-    }, []); // Empty dependency array for component mount only
-
-    // Debounce logic for search (unmodified)
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearchTerm(searchTerm);
-        }, 500); // 500ms delay
+        }, 400);
 
-        return () => {
-            clearTimeout(handler);
-        };
+        return () => clearTimeout(handler);
     }, [searchTerm]);
 
-    // Fetch data whenever debouncedSearchTerm changes (other filters remain fixed unless explicitly changed via form/button)
     useEffect(() => {
         fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId);
     }, [debouncedSearchTerm, fetchShipments, startDate, endDate, vehicleId]);
 
-
     const handleFilterLoad = () => {
-        // Force a fetch using current filter states
-        fetchShipments(searchTerm, startDate, endDate, vehicleId);
-    }
+        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId);
+    };
 
+    const handleResetFilters = () => {
+        const range = getCurrentMonthDateRange();
+        setStartDate(range.startDate);
+        setEndDate(range.endDate);
+        setVehicleId('all');
+        setSearchTerm('');
+        fetchShipments('', range.startDate, range.endDate, 'all');
+    };
+
+    // Calculate Summary Stats
+    const stats = useMemo(() => {
+        const totalBiltyCount = shipments.length;
+        const totalBaraKaraya = shipments.reduce((sum, s) => sum + (Number(s.total_charges) || 0), 0);
+        const totalChotaKaraya = shipments.reduce((sum, s) => sum + (Number(s.total_delivery_charges) || 0), 0);
+        const deliveredCount = shipments.filter(s => !!s.delivery_date).length;
+
+        return {
+            totalBiltyCount,
+            totalBaraKaraya,
+            totalChotaKaraya,
+            deliveredCount,
+        };
+    }, [shipments]);
+
+    const createPrintContent = (shipmentData: any) => {
+        return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Shipment Receipt - ${shipmentData.bility_number}</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; color: #0f172a; }
+                .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }
+                .header h1 { margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase; }
+                .header p { margin: 2px 0 0; font-size: 12px; color: #475569; }
+                .section { border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; }
+                .section-title { font-weight: 700; font-size: 11px; color: #475569; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px; }
+                table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                td { padding: 4px 0; vertical-align: top; }
+                .val-highlight { font-weight: 700; color: #1d4ed8; font-size: 14px; font-family: monospace; }
+                .financial-box { background: #f8fafc; border: 1px solid #cbd5e1; }
+                .total-line { font-size: 14px; font-weight: 800; border-top: 1px solid #cbd5e1; padding-top: 6px; margin-top: 6px; display: flex; justify-content: space-between; }
+                .footer { text-align: center; border-top: 1px dashed #cbd5e1; padding-top: 10px; margin-top: 16px; font-size: 10px; color: #94a3b8; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Zikria Goods Transports Company</h1>
+                <p>Consignment & Bilty Receipt</p>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Registration & Bilty</div>
+                <table>
+                    <tr>
+                        <td width="30%"><strong>Bilty Number:</strong></td>
+                        <td width="30%" class="val-highlight">${shipmentData.bility_number}</td>
+                        <td width="20%"><strong>Reg. Number:</strong></td>
+                        <td width="20%" style="font-family: monospace;">${shipmentData.register_number}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Bilty Date:</strong></td>
+                        <td>${new Date(shipmentData.bility_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                        <td><strong>Payment:</strong></td>
+                        <td style="font-weight: 700;">${shipmentData.payment_status}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Route & Vehicle</div>
+                <table>
+                    <tr>
+                        <td width="25%"><strong>From:</strong></td>
+                        <td width="25%">${shipmentData.departure_city}</td>
+                        <td width="25%"><strong>To:</strong></td>
+                        <td width="25%">${shipmentData.destination_city}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Agency:</strong></td>
+                        <td>${shipmentData.forwarding_agency}</td>
+                        <td><strong>Vehicle:</strong></td>
+                        <td><strong style="font-family: monospace;">${shipmentData.vehicle_number}</strong></td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Parties</div>
+                <table>
+                    <tr>
+                        <td width="50%"><strong>Sender:</strong> ${shipmentData.sender_name}</td>
+                        <td width="50%"><strong>Receiver:</strong> ${shipmentData.receiver_name}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Goods</div>
+                <table>
+                    <tr>
+                        <td><strong>Item:</strong> ${shipmentData.item_type}</td>
+                        <td><strong>Quantity:</strong> ${shipmentData.quantity} Units</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section financial-box">
+                <div class="section-title">Billing</div>
+                <table>
+                    <tr>
+                        <td>Chota Karaya:</td>
+                        <td style="text-align: right;">${formatCurrency(shipmentData.total_delivery_charges)}</td>
+                    </tr>
+                </table>
+                <div class="total-line">
+                    <span>Bara Karaya:</span>
+                    <span>${formatCurrency(shipmentData.total_amount)}</span>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>Printed on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} • Zikria Goods Transports ERP</p>
+            </div>
+        </body>
+        </html>
+        `;
+    };
+
+    const handlePrintShipmentRow = (shipment: ShipmentData) => {
+        try {
+            const firstItemDesc = shipment.goodsDetails && shipment.goodsDetails.length > 0
+                ? (shipment.goodsDetails[0].itemCatalog?.item_description || 'General Freight')
+                : 'General Freight';
+
+            const totalQuantity = shipment.goodsDetails && shipment.goodsDetails.length > 0
+                ? shipment.goodsDetails.reduce((s, d) => s + (Number(d.quantity) || 0), 0)
+                : 1;
+
+            const printableData = {
+                register_number: shipment.register_number,
+                bility_number: shipment.bility_number,
+                bility_date: shipment.bility_date,
+                departure_city: shipment.departureCity?.name || 'Main Hub',
+                forwarding_agency: shipment.forwardingAgency?.name || 'Direct',
+                vehicle_number: shipment.vehicle?.vehicleNumber || 'Unassigned',
+                sender_name: shipment.sender?.name || 'Direct Client',
+                receiver_name: shipment.receiver?.name || 'Direct Receiver',
+                destination_city: shipment.toCity?.name || 'Local',
+                item_type: firstItemDesc,
+                quantity: totalQuantity,
+                total_delivery_charges: shipment.total_delivery_charges ?? 0,
+                total_amount: shipment.total_charges ?? 0,
+                payment_status: shipment.payment_status === 'FREE' ? 'FREE' : shipment.payment_status === 'ALREADY_PAID' ? 'PAID' : 'PENDING',
+            };
+
+            const printWindow = window.open('', '', 'height=650,width=800');
+            if (printWindow) {
+                const html = createPrintContent(printableData);
+                printWindow.document.write(html);
+                printWindow.document.close();
+                printWindow.focus();
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                }, 300);
+            }
+        } catch (e: any) {
+            toast.error({ title: "Print Error", description: e.message || "Failed to generate receipt." });
+        }
+    };
+
+    // Password Security Modal State for Bilty Edit
+    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    const [targetShipmentToEdit, setTargetShipmentToEdit] = useState<ShipmentData | null>(null);
+    const [passwordInput, setPasswordInput] = useState('');
+    const [showPasswordInModal, setShowPasswordInModal] = useState(false);
+    const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+
+    const handleRequestEdit = (shipment: ShipmentData) => {
+        setTargetShipmentToEdit(shipment);
+        setPasswordInput('');
+        setPasswordError(null);
+        setIsPasswordModalOpen(true);
+    };
+
+    const handleVerifyAndProceed = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!passwordInput || passwordInput.trim().length === 0) {
+            setPasswordError('Please enter the edit password.');
+            return;
+        }
+        setIsVerifyingPassword(true);
+        setPasswordError(null);
+        try {
+            const res = await fetch('/api/settings/verify-edit-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: passwordInput.trim() }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setIsPasswordModalOpen(false);
+                setPasswordInput('');
+                if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('bilty_edit_auth', 'true');
+                }
+                if (targetShipmentToEdit) {
+                    router.push(`/shipments/add?edit=${encodeURIComponent(targetShipmentToEdit.register_number)}`);
+                }
+            } else {
+                setPasswordError(data.message || 'Incorrect edit password. Access denied.');
+            }
+        } catch (err: any) {
+            setPasswordError('Verification failed. Please try again.');
+        } finally {
+            setIsVerifyingPassword(false);
+        }
+    };
 
     return (
-        <div className='p-6 max-w-[1400px] mx-auto bg-gray-50 min-h-screen'>
-            <h2 className='text-3xl font-extrabold mb-8 text-gray-900 border-b pb-2'>All Blity Records</h2>
+        <div className="space-y-4 max-w-7xl mx-auto pb-10">
+            {/* Header with Title & Refresh */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                        <Search className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h1 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            Search & View Bilty Consignments
+                        </h1>
+                        <p className="text-xs text-slate-500">
+                            Search, filter, view details, print receipts, and edit bilties.
+                        </p>
+                    </div>
+                </div>
 
-            {/* Search and Filter Card */}
-            <Card className='shadow-lg mb-8'>
-                <CardHeader>
-                    <CardTitle className='text-xl text-blue-800'>Search & Filter</CardTitle>
-                    <CardDescription>Filter blity number by date range, vehicle, or search by Party/Bilty.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className='grid grid-cols-1 lg:grid-cols-5 gap-4 items-end'>
-                        {/* 1. Search Bar */}
-                        <div className='lg:col-span-2 relative flex-1'>
-                            <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400' />
+                <div className="flex items-center gap-2">
+                    <Button
+                        onClick={() => fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId)}
+                        variant="outline"
+                        size="sm"
+                        disabled={isLoading}
+                        className="rounded-lg text-xs font-semibold gap-1.5 h-8 border-slate-200 dark:border-slate-700 shadow-2xs"
+                    >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                        Refresh List
+                    </Button>
+                </div>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Consignments</p>
+                    <p className="text-lg font-mono font-extrabold text-slate-900 dark:text-white mt-0.5">{stats.totalBiltyCount}</p>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Chota Karaya</p>
+                    <p className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300 mt-1">{formatCurrency(stats.totalChotaKaraya)}</p>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Bara Karaya</p>
+                    <p className="text-sm font-mono font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">{formatCurrency(stats.totalBaraKaraya)}</p>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Delivered Status</p>
+                    <p className="text-lg font-mono font-extrabold text-blue-700 dark:text-blue-400 mt-0.5">{stats.deliveredCount} / {stats.totalBiltyCount}</p>
+                </div>
+            </div>
+
+            {/* Filter Control Card */}
+            <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900">
+                <CardContent className="p-3.5 sm:p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                        {/* Search Input */}
+                        <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                Search Consignment
+                            </label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                                <Input
+                                    placeholder="Bilty #, Party, Reg..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-9 h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs"
+                                />
+                                {searchTerm && (
+                                    <button 
+                                        onClick={() => setSearchTerm('')}
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Start Date */}
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                Start Date
+                            </label>
                             <Input
-                                placeholder='Search Bilty #, or Receiver Name...'
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className='pl-10 pr-4'
-                                disabled={isLoading}
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs font-mono"
                             />
                         </div>
 
-                        {/* 2. Date Filters */}
-                        <div className='grid gap-2'>
-                            <label className='text-sm font-medium'>Start Date</label>
-                            <Input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                        </div>
-                        <div className='grid gap-2'>
-                            <label className='text-sm font-medium'>End Date</label>
-                            <Input type='date' value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                        {/* End Date */}
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                End Date
+                            </label>
+                            <Input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs font-mono"
+                            />
                         </div>
 
-                        {/* 3. Vehicle Filter */}
-                        <div className='grid gap-2'>
-                            <label className='text-sm font-medium'>Vehicle Number</label>
+                        {/* Vehicle Selector */}
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                Fleet Truck
+                            </label>
                             <Select
                                 value={String(vehicleId)}
                                 onValueChange={(v) => setVehicleId(v === 'all' ? 'all' : parseInt(v))}
-                                disabled={isLoading}
                             >
-                                <SelectTrigger>
-                                    <SelectValue placeholder='All Vehicles' />
+                                <SelectTrigger className="h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs">
+                                    <SelectValue placeholder="All Vehicles" />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value='all'>All Vehicles</SelectItem>
+                                <SelectContent className="rounded-lg">
+                                    <SelectItem value="all">All Vehicles</SelectItem>
                                     {vehicles.map((v) => (
                                         <SelectItem key={v.id} value={String(v.id)}>
                                             {v.vehicleNumber}
@@ -243,96 +522,215 @@ export default function ViewShipments() {
                             </Select>
                         </div>
 
-                        {/* 4. Load Button */}
-                        <Button
-                            onClick={handleFilterLoad}
-                            className='lg:col-span-1 h-9'
-                            disabled={isLoading}
-                        >
-                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : 'Apply Filters'}
-                        </Button>
+                        {/* Action Buttons */}
+                        <div className="flex gap-1.5">
+                            <Button
+                                onClick={handleFilterLoad}
+                                className="flex-1 h-9 rounded-lg font-bold text-xs bg-blue-600 hover:bg-blue-700"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Apply'}
+                            </Button>
+                            <Button
+                                onClick={handleResetFilters}
+                                variant="outline"
+                                className="h-9 px-2.5 rounded-lg text-xs font-medium border-slate-200 dark:border-slate-700"
+                                title="Reset filters"
+                            >
+                                Reset
+                            </Button>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Shipments Table Card */}
-            <Card className='shadow-lg'>
-                <CardHeader>
-                    <CardTitle className='text-2xl text-gray-800'>Blity Details</CardTitle>
-                    <CardDescription>{shipments.length} records currently displayed.</CardDescription>
+            {/* Security Verification Dialog for Bilty Edit */}
+            <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
+                <DialogContent className="sm:max-w-md rounded-xl p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xl">
+                    <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center font-bold">
+                                <ShieldCheck className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-base font-extrabold text-slate-900 dark:text-white">
+                                    Security Authorization Required
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-slate-500">
+                                    بلٹی میں ترمیم کے لیے پاس ورڈ درج کریں
+                                </DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    
+                    <form onSubmit={handleVerifyAndProceed} className="space-y-4 pt-2">
+                        {targetShipmentToEdit && (
+                            <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                                <div>
+                                    <span className="text-slate-500">Editing Bilty: </span>
+                                    <span className="font-mono font-bold text-slate-900 dark:text-white">#{targetShipmentToEdit.bility_number}</span>
+                                </div>
+                                <div className="font-mono text-slate-500">
+                                    Reg: #{targetShipmentToEdit.register_number}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="viewEditPasswordInput" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                Enter Edit Password *
+                            </Label>
+                            <div className="relative">
+                                <Input
+                                    id="viewEditPasswordInput"
+                                    type={showPasswordInModal ? "text" : "password"}
+                                    placeholder="Enter authorization password"
+                                    value={passwordInput}
+                                    onChange={(e) => {
+                                        setPasswordInput(e.target.value);
+                                        setPasswordError(null);
+                                    }}
+                                    autoFocus
+                                    className="h-10 rounded-lg text-xs font-mono pr-10 border-slate-200 dark:border-slate-700"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPasswordInModal(!showPasswordInModal)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                >
+                                    {showPasswordInModal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                            </div>
+                            {passwordError && (
+                                <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+                                    {passwordError}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                type="button"
+                                onClick={() => setIsPasswordModalOpen(false)}
+                                className="rounded-lg text-xs"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                size="sm"
+                                type="submit"
+                                disabled={isVerifyingPassword}
+                                className="rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+                            >
+                                {isVerifyingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
+                                Verify & Edit
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Results Table Card */}
+            <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 dark:border-slate-800 py-3 px-4">
+                    <div>
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                            Consignment Records ({shipments.length})
+                        </CardTitle>
+                        <CardDescription className="text-[11px] text-slate-500">
+                            Showing filtered freight consignments
+                        </CardDescription>
+                    </div>
                 </CardHeader>
-                <CardContent className='p-0'>
+                <CardContent className="p-0">
                     {isLoading ? (
-                       <div className='flex justify-center items-center min-h-screen'>
-    <div className='text-4xl font-extrabold text-blue-600 flex space-x-1'>
-        {/* We apply the bounce animation to each letter, 
-            using arbitrary values for 'animation-delay' to stagger them.
-        */}
-        <span className="animate-bounce [animation-delay:-0.45s]">Z</span>
-        <span className="animate-bounce [animation-delay:-0.30s]">G</span>
-        <span className="animate-bounce [animation-delay:-0.15s]">T</span>
-        <span className="animate-bounce">C</span>
-    </div>
-</div>
+                        <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                            <Loader2 className="w-6 h-6 animate-spin text-blue-600 mb-1" />
+                            <p className="text-xs">Querying database...</p>
+                        </div>
                     ) : shipments.length === 0 ? (
-                        <p className="text-center text-gray-500 py-8">No shipments found matching the criteria.</p>
+                        <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                            <p className="text-xs font-medium">No matching bilty records found</p>
+                        </div>
                     ) : (
-                        <div className='overflow-x-auto'>
+                        <div className="overflow-x-auto">
                             <Table>
-                                <TableCaption>List of all registered shipments.</TableCaption>
-                                <TableHeader>
-                                    <TableRow>
-                                        {/* <TableHead>Reg. No</TableHead> */}
-                                        <TableHead>Bilty No</TableHead>
-                                        <TableHead>Bilty Date</TableHead>
-                                        <TableHead>Created Date</TableHead>
-                                        <TableHead>Sender</TableHead>
-                                        <TableHead>Receiver</TableHead>
-                                        <TableHead>From</TableHead>
-                                        <TableHead>To</TableHead>
-                                        {/* --- NEW COLUMNS ADDED --- */}
-                                        {/* ------------------------- */}
-                                        <TableHead>Vehicle</TableHead>
-                                        <TableHead className='text-right'>Delivery Charges</TableHead>
-                                        <TableHead className='text-right'>Payment Status / Charges</TableHead>
-                                        <TableHead>Status</TableHead>
+                                <TableHeader className="bg-slate-50 dark:bg-slate-800/60">
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4">Bilty #</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Bilty Date</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Created Date</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Departure</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Destination</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Vehicle</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Sender</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Receiver</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Chota Karaya</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Bara Karaya</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-center pr-4">Action</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {shipments.map((shipment) => {
-                                        const isDelivered = !!shipment.delivery_date;
-                                        const receiverDisplay = shipment.receiver.name;
+                                        const createdVal = shipment.createdAt || shipment.created_day;
 
                                         return (
-                                            <TableRow key={shipment.register_number} className={isDelivered ? 'bg-green-50/50 hover:bg-green-100' : 'hover:bg-yellow-50/50'}>
-                                                {/* <TableCell className='font-mono text-sm'>{shipment.register_number}</TableCell> */}
-                                                <TableCell className='font-semibold'>{shipment.bility_number}</TableCell>
-                                                <TableCell>{shipment.bility_date ? new Date(shipment.bility_date).toLocaleDateString() : null}</TableCell>
-                                                <TableCell>
-                                                    {/* Format the creation timestamp to a local date string */}
-                                                    {shipment.createdAt ? new Date(shipment.createdAt).toLocaleDateString() : null}
+                                            <TableRow 
+                                                key={shipment.register_number} 
+                                                className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors"
+                                            >
+                                                <TableCell className="pl-4 font-mono font-bold text-slate-900 dark:text-white">
+                                                    <span>{shipment.bility_number}</span>
+                                                    <span className="block text-[10px] text-slate-400 font-mono">#{shipment.register_number}</span>
                                                 </TableCell>
-                                                <TableCell>{shipment.sender.name}</TableCell>
-                                                <TableCell className='font-medium'>{receiverDisplay}</TableCell>
-                                                <TableCell>{shipment.departureCity.name}</TableCell>
+                                                <TableCell className="font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap text-[11px]">
+                                                    {shipment.bility_date ? new Date(shipment.bility_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                                                </TableCell>
+                                                <TableCell className="font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap text-[11px]">
+                                                    {createdVal ? new Date(createdVal).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                                                </TableCell>
+                                                <TableCell>{shipment.departureCity?.name || 'Main Hub'}</TableCell>
                                                 <TableCell>{shipment.toCity?.name || 'Local'}</TableCell>
-                                                <TableCell>{shipment.vehicle.vehicleNumber}</TableCell>
-                                                <TableCell className='text-right'>
-                                                    {/* Format and display the delivery charges */}
-                                                    {formatCurrency(shipment.total_delivery_charges)}
+                                                <TableCell className="font-mono font-semibold">{shipment.vehicle?.vehicleNumber || '-'}</TableCell>
+                                                <TableCell className="max-w-[110px] truncate">{shipment.sender?.name || '-'}</TableCell>
+                                                <TableCell className="max-w-[110px] truncate">{shipment.receiver?.name || '-'}</TableCell>
+                                                <TableCell className="text-right font-mono font-semibold text-slate-700 dark:text-slate-300">
+                                                    {formatCurrency(Number(shipment.total_delivery_charges || 0))}
                                                 </TableCell>
-                                                {/* Payment Status / Charges Cell */}
-                                                <TableCell className='text-right font-bold'>
-                                                    {shipment.payment_status === 'ALREADY_PAID' && <div className='flex flex-col items-end gap-1'><span className='px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700'>PAID</span><span className='font-bold text-green-700'>{formatCurrency(shipment.total_charges)}</span></div>}
-                                                    {shipment.payment_status === 'FREE' && <div className='flex flex-col items-end gap-1'><span className='px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700'>FREE</span><span className='font-bold text-blue-700'>{formatCurrency(shipment.total_charges)}</span></div>}
-                                                    {shipment.payment_status === 'PENDING' && <span className='font-bold text-green-700'>{formatCurrency(shipment.total_charges)}</span>}
-                                                    {(!shipment.payment_status || shipment.payment_status === null) && <span className='font-bold text-green-700'>{formatCurrency(shipment.total_charges)}</span>}
+                                                <TableCell className="text-right font-mono font-bold text-slate-900 dark:text-white">
+                                                    {formatCurrency(Number(shipment.total_charges || 0))}
                                                 </TableCell>
-
-                                                <TableCell>
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${isDelivered ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}`}>
-                                                        {isDelivered ? 'DELIVERED' : 'IN TRANSIT'}
-                                                    </span>
+                                                <TableCell className="text-center pr-4">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-7 w-7 p-0 rounded text-slate-600 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                                title="Options"
+                                                            >
+                                                                <MoreVertical className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-36 rounded-lg shadow-md border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs">
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleRequestEdit(shipment)}
+                                                                className="gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-200 focus:bg-blue-50 focus:text-blue-700 dark:focus:bg-blue-950/40 dark:focus:text-blue-300 py-1.5"
+                                                            >
+                                                                <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                                                                Edit Bilty
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() => handlePrintShipmentRow(shipment)}
+                                                                className="gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800 py-1.5"
+                                                            >
+                                                                <Printer className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                                                                Print Receipt
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </TableCell>
                                             </TableRow>
                                         );

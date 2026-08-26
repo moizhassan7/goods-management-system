@@ -333,7 +333,7 @@ export default function DeliveryApprovalPage() {
                                                                                     <span className="font-medium text-red-600">{formatCurrency(delivery.total_expenses)}</span>
                                                                                 </div>
                                                                                 <div className="flex justify-between">
-                                                                                    <span>Delivery Charges:</span>
+                                                                                    <span>Chota Karaya:</span>
                                                                                     <span className="font-medium text-green-600">{formatCurrency(delivery.total_delivery_charges)}</span>
                                                                                 </div>
                                                                                 <div className="flex justify-between pt-1 border-t border-green-200 mt-2">
