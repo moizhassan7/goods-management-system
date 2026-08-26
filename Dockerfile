@@ -37,19 +37,22 @@ ENV HOSTNAME="0.0.0.0"
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy static assets & standalone server output
+# Copy static assets, prisma, seed, and standalone server output
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 COPY --from=deps /app/node_modules ./node_modules
 
 # Automatically leverage output traces to reduce image size
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+RUN chmod +x ./docker-entrypoint.sh
+
 USER nextjs
 
 EXPOSE 9050
 
-# Start Next.js standalone server on port 9050
-CMD ["node", "server.js"]
+# Run entrypoint script (auto-migrates DB & starts Next.js)
+ENTRYPOINT ["sh", "./docker-entrypoint.sh"]
