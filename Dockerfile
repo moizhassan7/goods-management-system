@@ -1,6 +1,6 @@
 # ==========================================
 # Multi-Stage Production Dockerfile
-# Zikria Goods and Transport ERP
+# Zikria Goods and Transport ERP (Port 9050)
 # ==========================================
 
 # 1. Base image
@@ -30,7 +30,7 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=9050
 ENV HOSTNAME="0.0.0.0"
 
 # Add a non-root system user
@@ -49,7 +49,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 9050
 
-# Start Next.js standalone server
+# Start Next.js standalone server on port 9050
 CMD ["node", "server.js"]

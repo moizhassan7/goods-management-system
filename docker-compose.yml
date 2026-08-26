@@ -25,7 +25,7 @@ services:
       - goods_network
 
   # ----------------------------------------------------
-  # Goods Management ERP Web Application
+  # Goods Management ERP Web Application (Port 9050)
   # ----------------------------------------------------
   app:
     build:
@@ -34,9 +34,10 @@ services:
     container_name: goods_management_app
     restart: always
     ports:
-      - "3000:3000"
+      - "9050:9050"
     environment:
       NODE_ENV: production
+      PORT: 9050
       DATABASE_URL: "postgresql://postgres:password123@postgres:5432/goods?schema=public"
     depends_on:
       postgres:
