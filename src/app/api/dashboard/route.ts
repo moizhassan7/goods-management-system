@@ -8,22 +8,42 @@ import { LabourAssignmentStatus } from '@prisma/client';
  */
 export async function GET() {
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const todayDate = new Date();
+        const startOfToday = new Date(todayDate);
+        startOfToday.setHours(0, 0, 0, 0);
+        const endOfToday = new Date(todayDate);
+        endOfToday.setHours(23, 59, 59, 999);
+
+        const isoTodayStr = new Date().toISOString().split('T')[0];
+        const startOfIsoToday = new Date(isoTodayStr + 'T00:00:00.000Z');
+        const endOfIsoToday = new Date(isoTodayStr + 'T23:59:59.999Z');
+
+        const lastWeek = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
 
         // --- 1. Key Metrics (Count & Financial Totals) ---
         const [
             totalShipments,
+            todayShipments,
             pendingDeliveries,
             totalParties,
             totalVehicles,
             totalReturns,
             pendingLabourSettlements,
-            totalShipmentCharges
+            shipmentTotals
         ] = await prisma.$transaction([
             // Total Shipments
             prisma.shipment.count(),
+            // Today's Shipments
+            prisma.shipment.count({
+                where: {
+                    OR: [
+                        { bility_date: { gte: startOfIsoToday, lte: endOfIsoToday } },
+                        { bility_date: { gte: startOfToday, lte: endOfToday } },
+                        { created_day: { gte: startOfIsoToday, lte: endOfIsoToday } },
+                        { createdAt: { gte: startOfToday, lte: endOfToday } }
+                    ]
+                }
+            }),
             // Pending Deliveries for Approval
             prisma.delivery.count({ where: { approval_status: 'PENDING' } }),
             // Total Parties
@@ -34,9 +54,17 @@ export async function GET() {
             prisma.returnShipment.count(),
             // Pending Labour Settlements (Collected but not Settled)
             prisma.labourAssignment.count({ where: { status: LabourAssignmentStatus.COLLECTED } }),
-            // Total Charges (Sum of all shipment charges)
-            prisma.shipment.aggregate({ _sum: { total_charges: true } }),
+            // Total Charges & Delivery Charges Aggregate
+            prisma.shipment.aggregate({
+                _sum: {
+                    total_charges: true,
+                    total_delivery_charges: true,
+                }
+            }),
         ]);
+
+        const totalBaraKaraya = Number(shipmentTotals._sum.total_charges || 0);
+        const totalChotaKaraya = Number(shipmentTotals._sum.total_delivery_charges || 0);
 
         // --- 2. Top Performing Agencies (Shipment Count) ---
         const topAgencies = await prisma.agency.findMany({
@@ -91,12 +119,15 @@ export async function GET() {
         return NextResponse.json({
             keyMetrics: {
                 totalShipments: totalShipments,
+                todayShipments: todayShipments,
                 pendingApprovals: pendingDeliveries,
                 totalParties: totalParties,
                 totalVehicles: totalVehicles,
                 totalReturns: totalReturns,
                 pendingLabourSettlements: pendingLabourSettlements,
-                totalRevenue: Number(totalShipmentCharges._sum.total_charges || 0),
+                totalRevenue: totalBaraKaraya,
+                totalBaraKaraya: totalBaraKaraya,
+                totalChotaKaraya: totalChotaKaraya,
             },
             topAgencies: topAgencies.map(a => ({
                 name: a.name,

@@ -53,7 +53,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
           <Truck className="w-6 h-6 text-white" />
         </div>
         <div className="text-sm font-bold tracking-tight text-white mb-1">
-          Zikria Goods and Transport
+          Zikria Goods Transport Company
         </div>
         <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
@@ -64,7 +64,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   }
 
   const isLoginPage = publicPaths.includes(pathname || '');
-  
+
   if (isLoginPage) {
     return (
       <>
@@ -86,7 +86,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
           <Truck className="w-6 h-6 text-white" />
         </div>
         <div className="text-sm font-bold tracking-tight text-white mb-1">
-          Zikria Goods and Transport
+          Zikria Goods Transport Company
         </div>
         <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
@@ -110,10 +110,10 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   // --- Authenticated Dashboard Layout ---
   return (
     <>
-      <LanguageSetter /> 
+      <LanguageSetter />
       <div className="flex min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-        
+
         <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ease-in-out ${isCollapsed ? 'ml-16' : 'ml-64'}`}>
           {/* Crisp Enterprise Top Header */}
           <header className="sticky top-0 z-20 flex justify-between items-center px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-2xs">
@@ -123,7 +123,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
               </div>
               <div>
                 <div className="text-xs font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>Zikria Goods and Transport</span>
+                  <span>Zikria Goods Transport Company</span>
                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     Online
@@ -134,7 +134,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                 </p>
               </div>
             </div>
-            
+
             {/* Right: Date pill + User Pill & Logout */}
             {user && (
               <div className="flex items-center gap-3">
@@ -156,10 +156,10 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                     </span>
                   </div>
 
-                  <Button 
-                    onClick={logout} 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    onClick={logout}
+                    variant="outline"
+                    size="sm"
                     className="h-8 px-2.5 text-slate-700 hover:text-red-700 hover:bg-red-50 dark:text-slate-300 dark:hover:bg-red-950/40 border-slate-200 dark:border-slate-700 rounded-lg transition-colors text-xs font-medium"
                     title="Logout"
                   >
@@ -170,7 +170,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
               </div>
             )}
           </header>
-          
+
           {/* Main Workspace Content Area */}
           <main className="flex-1 p-4 sm:p-5 lg:p-6 overflow-y-auto">
             {children}

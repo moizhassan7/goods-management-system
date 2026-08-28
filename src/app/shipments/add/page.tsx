@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,9 +26,9 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
-    Plus, Loader2, Check, Printer, FileText, Truck, MapPin, 
-    Building, Package, Users, DollarSign, Calendar, 
+import {
+    Plus, Loader2, Check, Printer, FileText, Truck, MapPin,
+    Building, Package, Users, DollarSign, Calendar,
     CreditCard, ArrowRight, CheckCircle2, ChevronDown, ChevronUp,
     MoreVertical, Pencil, X, RotateCcw, Lock, ShieldCheck, KeyRound, Eye, EyeOff
 } from 'lucide-react';
@@ -117,6 +117,15 @@ const ShipmentFormSchema = z.object({
             code: z.ZodIssueCode.custom,
             message: 'Shipment cannot be both Free and Paid.',
             path: ['is_free_of_cost'],
+        });
+    }
+    const chota = Number(data.total_delivery_charges) || 0;
+    const bara = Number(data.total_amount) || 0;
+    if (chota <= 0 && bara <= 0 && !data.is_already_paid && !data.is_free_of_cost) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Please enter Chota Karaya, Bara Karaya, or select Already Paid / Free of Cost.',
+            path: ['total_amount'],
         });
     }
 });
@@ -251,15 +260,37 @@ export default function AddShipment() {
 
     const { setValue } = form;
 
+    const bilityNumberInputRef = useRef<HTMLInputElement | null>(null);
+
+    const focusBilityNumber = useCallback(() => {
+        setTimeout(() => {
+            const inputEl = (document.getElementById('bility_number_input') as HTMLInputElement | null) || bilityNumberInputRef.current;
+            if (inputEl) {
+                inputEl.focus();
+                inputEl.select?.();
+            } else {
+                form.setFocus('bility_number');
+            }
+        }, 100);
+    }, [form]);
+
     const stationExpense = form.watch("station_expense");
     const bilityExpense = form.watch("bility_expense");
     const stationLabour = form.watch("station_labour");
     const cartLabour = form.watch("cart_labour");
+    const totalDeliveryCharges = form.watch("total_delivery_charges");
+    const totalAmount = form.watch("total_amount");
     const isAlreadyPaid = form.watch("is_already_paid");
     const isFreeOfCost = form.watch("is_free_of_cost");
     const bilityDate = form.watch("bility_date");
     const senderId = form.watch("sender_id");
     const receiverId = form.watch("receiver_id");
+
+    const hasFreightOrPayment = useMemo(() => {
+        const chota = Number(totalDeliveryCharges) || 0;
+        const bara = Number(totalAmount) || 0;
+        return chota > 0 || bara > 0 || Boolean(isAlreadyPaid) || Boolean(isFreeOfCost);
+    }, [totalDeliveryCharges, totalAmount, isAlreadyPaid, isFreeOfCost]);
 
     useEffect(() => {
         const calculatedTotalExp = (Number(stationExpense) || 0) + (Number(bilityExpense) || 0) + (Number(stationLabour) || 0) + (Number(cartLabour) || 0);
@@ -296,9 +327,9 @@ export default function AddShipment() {
     const handleEditShipment = useCallback((shipment: ShipmentData) => {
         setEditingShipmentId(shipment.register_number);
 
-        const isAlreadyPaid = shipment.payment_status === 'ALREADY_PAID' || 
+        const isAlreadyPaid = shipment.payment_status === 'ALREADY_PAID' ||
             (shipment.remarks?.includes('PAYMENT_STATUS:ALREADY_PAID') ?? false);
-        const isFreeOfCost = shipment.payment_status === 'FREE' || 
+        const isFreeOfCost = shipment.payment_status === 'FREE' ||
             (shipment.remarks?.includes('PAYMENT_STATUS:FREE') ?? false);
 
         const cleanRemarks = (shipment.remarks || '').replace(/PAYMENT_STATUS:\w+\s*/, '');
@@ -336,7 +367,8 @@ export default function AddShipment() {
         sonnerToast.info('Editing Mode Active', {
             description: `Loaded Bilty #${shipment.bility_number} (Reg #${shipment.register_number}) into the form.`,
         });
-    }, [form]);
+        focusBilityNumber();
+    }, [form, focusBilityNumber]);
 
     // Password Security Modal State for Bilty Edit
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -352,7 +384,8 @@ export default function AddShipment() {
         sonnerToast.info('Editing Cancelled', {
             description: 'Form reset to new bilty registration.',
         });
-    }, [form]);
+        focusBilityNumber();
+    }, [form, focusBilityNumber]);
 
     const handleRequestEdit = useCallback((shipment: ShipmentData) => {
         if (typeof window !== 'undefined' && sessionStorage.getItem('bilty_edit_auth') === 'true') {
@@ -400,16 +433,11 @@ export default function AddShipment() {
     useEffect(() => {
         async function fetchInitialDataAndSetDefaults() {
             setIsLoadingData(true);
-            const lists = await fetchDropdownData();
-
-            if (lists?.parties?.length > 0) {
-                const defaultPartyId = lists.parties[0].id;
-                setValue('sender_id', defaultPartyId, { shouldValidate: true });
-                setValue('receiver_id', defaultPartyId, { shouldValidate: true });
-            }
+            await fetchDropdownData();
 
             fetchShipments(today);
             setIsLoadingData(false);
+            focusBilityNumber();
 
             // Check if ?edit=register_number is present in URL
             if (typeof window !== 'undefined') {
@@ -437,32 +465,34 @@ export default function AddShipment() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    useEffect(() => {
-        async function fetchNextRegNum() {
-            if (!bilityDate) {
-                setValue('register_number', '');
-                return;
-            }
-            setIsFetchingRegNum(true);
-            try {
-                const res = await fetch(`/api/shipments/next-register-number?bility_date=${bilityDate}`);
-                if (res.ok) {
-                    const { register_number } = await res.json();
-                    setValue('register_number', register_number);
-                } else {
-                    setValue('register_number', '');
-                }
-            } catch {
-                setValue('register_number', '');
-            } finally {
-                setIsFetchingRegNum(false);
-            }
+    const fetchNextRegNum = useCallback(async (targetDate?: string) => {
+        const dateToUse = targetDate || bilityDate;
+        if (!dateToUse) {
+            setValue('register_number', '');
+            return;
         }
+        setIsFetchingRegNum(true);
+        try {
+            const res = await fetch(`/api/shipments/next-register-number?bility_date=${dateToUse}`);
+            if (res.ok) {
+                const { register_number } = await res.json();
+                setValue('register_number', register_number);
+            } else {
+                setValue('register_number', '');
+            }
+        } catch {
+            setValue('register_number', '');
+        } finally {
+            setIsFetchingRegNum(false);
+        }
+    }, [bilityDate, setValue]);
+
+    useEffect(() => {
         fetchNextRegNum();
         if (bilityDate) {
             fetchShipments(bilityDate);
         }
-    }, [bilityDate, setValue, fetchShipments]);
+    }, [bilityDate, fetchNextRegNum, fetchShipments]);
 
     const openMasterDataModal = (type: typeof modalType) => {
         setModalType(type);
@@ -569,6 +599,16 @@ export default function AddShipment() {
 
     const handleDirectSave = useCallback(async (values: ShipmentFormValues) => {
         try {
+            const chota = Number(values.total_delivery_charges) || 0;
+            const bara = Number(values.total_amount) || 0;
+            if (chota <= 0 && bara <= 0 && !values.is_already_paid && !values.is_free_of_cost) {
+                toast.error({
+                    title: "Freight / Payment Required",
+                    description: "Please enter Chota Karaya, Bara Karaya, or select Already Paid / Free of Cost.",
+                });
+                return;
+            }
+
             const { register_number, is_already_paid, is_free_of_cost, ...restValues } = values;
 
             const payloadToSend = {
@@ -616,14 +656,21 @@ export default function AddShipment() {
             });
 
             setEditingShipmentId(null);
-            form.reset({ ...generateDefaultValues(), register_number: regNum });
+            form.reset({
+                ...generateDefaultValues(),
+                bility_date: values.bility_date || today,
+                sender_id: 0,
+                receiver_id: 0,
+            });
+            fetchNextRegNum(values.bility_date || today);
             fetchShipments(values.bility_date);
+            focusBilityNumber();
 
         } catch (error: any) {
             console.error('Submission Error:', error);
             toast.error({ title: editingShipmentId ? 'Error Updating Bilty' : 'Error Saving Bilty', description: error.message });
         }
-    }, [form, paymentStatusToSend, toast, data, editingShipmentId, fetchShipments]);
+    }, [form, paymentStatusToSend, toast, editingShipmentId, fetchShipments, fetchNextRegNum, focusBilityNumber]);
 
     const onInvalid = useCallback((errors: any) => {
         console.error("Form Validation Errors:", errors);
@@ -783,15 +830,228 @@ export default function AddShipment() {
         };
     };
 
+    const createDaySheetPrintContent = (shipmentsList: ShipmentData[], sheetDate: string) => {
+        let totalQty = 0;
+        let totalChota = 0;
+        let totalBara = 0;
+
+        const rowsHtml = shipmentsList.map((s, idx) => {
+            const firstItemDesc = s.goodsDetails && s.goodsDetails.length > 0
+                ? (s.goodsDetails[0].itemCatalog?.item_description || 'N/A')
+                : 'N/A';
+            const qty = s.goodsDetails && s.goodsDetails.length > 0
+                ? s.goodsDetails.reduce((sum, d) => sum + (Number(d.quantity) || 0), 0)
+                : 0;
+            const chota = Number(s.total_delivery_charges || 0);
+            const bara = Number(s.total_charges || 0);
+
+            totalQty += qty;
+            totalChota += chota;
+            totalBara += bara;
+
+            const fromCity = findNameById(data, 'cities', s.departure_city_id);
+            const toCity = s.to_city_id ? findNameById(data, 'cities', s.to_city_id) : 'Local';
+            const vehicle = findNameById(data, 'vehicles', s.vehicle_number_id);
+            const sender = s.sender_id === WALK_IN_CUSTOMER_ID && s.walk_in_sender_name
+                ? s.walk_in_sender_name
+                : findNameById(data, 'parties', s.sender_id);
+            const receiver = s.receiver_id === WALK_IN_CUSTOMER_ID && s.walk_in_receiver_name
+                ? s.walk_in_receiver_name
+                : findNameById(data, 'parties', s.receiver_id);
+            const paymentStatus = s.payment_status === 'FREE' ? 'FREE' : s.payment_status === 'ALREADY_PAID' ? 'PAID' : 'PENDING';
+
+            return `
+                <tr>
+                    <td style="text-align: center;">${idx + 1}</td>
+                    <td style="font-family: monospace; font-weight: bold;">${s.bility_number}</td>
+                    <td style="font-family: monospace;">#${s.register_number}</td>
+                    <td style="font-weight: 600; font-family: monospace;">${vehicle}</td>
+                    <td>${sender}</td>
+                    <td>${receiver}</td>
+                    <td>${fromCity} &rarr; ${toCity}</td>
+                    <td>${firstItemDesc}</td>
+                    <td style="text-align: center; font-weight: bold;">${qty}</td>
+                    <td style="text-align: right; font-family: monospace;">Rs. ${chota.toLocaleString('en-PK')}</td>
+                    <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. ${bara.toLocaleString('en-PK')}</td>
+                    <td style="text-align: center; font-size: 10px; font-weight: bold;">${paymentStatus}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const formattedDate = sheetDate ? new Date(sheetDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : new Date().toLocaleDateString();
+
+        return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Daily Dispatch Sheet - ${sheetDate || 'Today'}</title>
+            <style>
+                @page { size: landscape; margin: 10mm; }
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
+                    margin: 0; 
+                    padding: 12px; 
+                    color: #0f172a; 
+                    background: #fff;
+                }
+                .header { 
+                    text-align: center; 
+                    border-bottom: 2px solid #0f172a; 
+                    padding-bottom: 8px; 
+                    margin-bottom: 12px; 
+                }
+                .header h1 { 
+                    margin: 0; 
+                    font-size: 22px; 
+                    font-weight: 900; 
+                    letter-spacing: 0.5px;
+                    text-transform: uppercase; 
+                }
+                .header p { 
+                    margin: 3px 0 0; 
+                    font-size: 13px; 
+                    color: #475569; 
+                    font-weight: 700;
+                }
+                .meta-bar {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    background: #f8fafc;
+                    border: 1px solid #cbd5e1;
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                    margin-bottom: 10px;
+                    font-size: 12px;
+                }
+                table.sheet-table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    font-size: 11px; 
+                }
+                table.sheet-table th { 
+                    background-color: #f1f5f9; 
+                    color: #0f172a; 
+                    font-weight: 800; 
+                    text-transform: uppercase; 
+                    font-size: 10px; 
+                    border: 1px solid #94a3b8; 
+                    padding: 6px 4px; 
+                    text-align: left;
+                }
+                table.sheet-table td { 
+                    border: 1px solid #cbd5e1; 
+                    padding: 5px 4px; 
+                    vertical-align: middle; 
+                }
+                table.sheet-table tr:nth-child(even) { 
+                    background-color: #f8fafc; 
+                }
+                .totals-row td {
+                    background-color: #e2e8f0 !important;
+                    font-weight: 900;
+                    font-size: 11px;
+                    border-top: 2px solid #334155;
+                    border-bottom: 2px solid #334155;
+                }
+                .signatures {
+                    margin-top: 35px;
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: #334155;
+                }
+                .sig-box {
+                    border-top: 1px dashed #64748b;
+                    width: 180px;
+                    text-align: center;
+                    padding-top: 4px;
+                }
+                .footer { 
+                    text-align: center; 
+                    border-top: 1px solid #e2e8f0; 
+                    padding-top: 6px; 
+                    margin-top: 20px; 
+                    font-size: 9px; 
+                    color: #64748b; 
+                }
+                @media print {
+                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Zikria Goods Transport Company</h1>
+                <p>Daily Dispatch Sheet / Day Roznamcha (روزنامچہ)</p>
+            </div>
+
+            <div class="meta-bar">
+                <div><strong>Dispatch Date:</strong> ${formattedDate}</div>
+                <div><strong>Total Bilties:</strong> ${shipmentsList.length}</div>
+                <div><strong>Print Generated:</strong> ${new Date().toLocaleTimeString()}</div>
+            </div>
+
+            <table class="sheet-table">
+                <thead>
+                    <tr>
+                        <th style="width: 30px; text-align: center;">Sr #</th>
+                        <th style="width: 70px;">Bilty #</th>
+                        <th style="width: 70px;">Reg #</th>
+                        <th style="width: 90px;">Vehicle</th>
+                        <th>Sender Party</th>
+                        <th>Receiver Party</th>
+                        <th>Route</th>
+                        <th>Goods Description</th>
+                        <th style="width: 40px; text-align: center;">Qty</th>
+                        <th style="width: 80px; text-align: right;">Chota Karaya</th>
+                        <th style="width: 80px; text-align: right;">Bara Karaya</th>
+                        <th style="width: 55px; text-align: center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                    <tr class="totals-row">
+                        <td colspan="8" style="text-align: right; padding-right: 8px;">GRAND TOTALS:</td>
+                        <td style="text-align: center; font-weight: 900;">${totalQty}</td>
+                        <td style="text-align: right; font-family: monospace;">Rs. ${totalChota.toLocaleString('en-PK')}</td>
+                        <td style="text-align: right; font-family: monospace;">Rs. ${totalBara.toLocaleString('en-PK')}</td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="signatures">
+                <div class="sig-box">Prepared By (Operator)</div>
+                <div class="sig-box">Checked By (Manager)</div>
+                <div class="sig-box">Authorized Signature</div>
+            </div>
+
+            <div class="footer">
+                Printed from Zikria Goods Management System &bull; Confidential
+            </div>
+        </body>
+        </html>
+        `;
+    };
+
     const handlePrintShipmentRow = (shipment: ShipmentData) => {
         try {
             const printableData = preparePrintableFromShipment(shipment);
-            const printWindow = window.open('', '', 'height=650,width=800');
+            const printWindow = window.open('', '_blank', 'height=650,width=800');
             if (printWindow) {
                 const html = createPrintContent(printableData);
+                printWindow.document.open();
                 printWindow.document.write(html);
                 printWindow.document.close();
-                printWindow.print();
+                printWindow.focus();
+                setTimeout(() => {
+                    printWindow.print();
+                }, 250);
+            } else {
+                toast.error({ title: 'Popup Blocked', description: 'Please allow popups in your browser to print receipt.' });
             }
         } catch (err) {
             console.error('Print row error:', err);
@@ -804,7 +1064,24 @@ export default function AddShipment() {
             toast.error({ title: 'No Data', description: 'There are no shipments to print for the selected date.' });
             return;
         }
-        window.print();
+        try {
+            const printWindow = window.open('', '_blank', 'height=750,width=1050');
+            if (printWindow) {
+                const html = createDaySheetPrintContent(shipments, bilityDate);
+                printWindow.document.open();
+                printWindow.document.write(html);
+                printWindow.document.close();
+                printWindow.focus();
+                setTimeout(() => {
+                    printWindow.print();
+                }, 250);
+            } else {
+                toast.error({ title: 'Popup Blocked', description: 'Please allow popups in your browser to print the Day Sheet.' });
+            }
+        } catch (err) {
+            console.error('Day Sheet Print error:', err);
+            toast.error({ title: 'Print Error', description: 'Failed to generate Day Sheet print preview.' });
+        }
     };
 
     const isFormValid = form.formState.isValid;
@@ -823,8 +1100,8 @@ export default function AddShipment() {
             {/* Minimal Sub-header: Date & Quick Add */}
             <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-1.5 text-xs font-mono text-slate-600 dark:text-slate-400">
-                    <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Dispatch Date: <strong className="text-slate-900 dark:text-white font-bold">{bilityDate || 'Today'}</strong></span>
+                    {/* <Calendar className="w-3.5 h-3.5 text-blue-600" /> */}
+                    {/* <span>Dispatch Date: <strong className="text-slate-900 dark:text-white font-bold">{bilityDate || 'Today'}</strong></span> */}
                 </div>
 
                 <Button
@@ -843,7 +1120,7 @@ export default function AddShipment() {
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleDirectSave, onInvalid)} className="space-y-4">
                     <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 p-4 sm:p-5 space-y-4">
-                        
+
                         {/* Editing Mode Indicator */}
                         {editingShipmentId && (
                             <div className="flex items-center justify-between p-2.5 px-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs">
@@ -865,7 +1142,6 @@ export default function AddShipment() {
                                 </Button>
                             </div>
                         )}
-
                         {/* Row 1: Bilty details and Departure */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <FormField control={form.control} name="bility_number" render={({ field }) => (
@@ -874,11 +1150,16 @@ export default function AddShipment() {
                                         Bilty Number <span className="text-red-500">*</span>
                                     </FormLabel>
                                     <FormControl>
-                                        <Input 
-                                            placeholder="e.g. 10452" 
-                                            {...field} 
+                                        <Input
+                                            id="bility_number_input"
+                                            placeholder="e.g. 10452"
+                                            {...field}
+                                            ref={(e) => {
+                                                field.ref(e);
+                                                bilityNumberInputRef.current = e;
+                                            }}
                                             className="rounded-lg h-9 border-slate-200 dark:border-slate-700 text-xs font-mono font-bold"
-                                            onFocus={(e) => e.currentTarget.select()} 
+                                            onFocus={(e) => e.currentTarget.select()}
                                         />
                                     </FormControl>
                                     <FormMessage className="text-[11px]" />
@@ -891,9 +1172,9 @@ export default function AddShipment() {
                                         Bilty Date <span className="text-red-500">*</span>
                                     </FormLabel>
                                     <FormControl>
-                                        <Input 
-                                            type="date" 
-                                            {...field} 
+                                        <Input
+                                            type="date"
+                                            {...field}
                                             className="rounded-lg h-9 border-slate-200 dark:border-slate-700 text-xs"
                                         />
                                     </FormControl>
@@ -930,7 +1211,7 @@ export default function AddShipment() {
 
                             <FormField control={form.control} name="vehicle_number_id" render={({ field }) => (
                                 <SearchableDropdown
-                                    label="Fleet Vehicle (License Plate) *"
+                                    label="Vehicle Number (License Plate) *"
                                     endpoint="/api/vehicles"
                                     placeholder="Select truck license plate"
                                     value={field.value}
@@ -942,8 +1223,30 @@ export default function AddShipment() {
                             )} />
                         </div>
 
-                        {/* Row 3: Cargo & Quantity */}
+                        {/* Row 3: Quantity & Cargo Description */}
                         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                            <div className="sm:col-span-1">
+                                <FormField control={form.control} name="goods_details.0.quantity" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                            Quantity (Units/Boxes) *
+                                        </FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                min={1}
+                                                placeholder="1"
+                                                {...field}
+                                                onChange={(e) => field.onChange(e.target.valueAsNumber || 1)}
+                                                className="rounded-lg h-9 border-slate-200 dark:border-slate-700 text-xs font-mono font-bold"
+                                                onFocus={(e) => e.currentTarget.select()}
+                                            />
+                                        </FormControl>
+                                        <FormMessage className="text-[11px]" />
+                                    </FormItem>
+                                )} />
+                            </div>
+
                             <div className="sm:col-span-3">
                                 <FormField control={form.control} name="goods_details.0.item_id" render={({ field }) => (
                                     <SearchableDropdown
@@ -958,26 +1261,6 @@ export default function AddShipment() {
                                     />
                                 )} />
                             </div>
-
-                            <FormField control={form.control} name="goods_details.0.quantity" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                        Quantity (Units/Boxes) *
-                                    </FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            min={1}
-                                            placeholder="1"
-                                            {...field}
-                                            onChange={(e) => field.onChange(e.target.valueAsNumber || 1)}
-                                            className="rounded-lg h-9 border-slate-200 dark:border-slate-700 text-xs font-mono font-bold"
-                                            onFocus={(e) => e.currentTarget.select()} 
-                                        />
-                                    </FormControl>
-                                    <FormMessage className="text-[11px]" />
-                                </FormItem>
-                            )} />
                         </div>
 
                         {/* Row 4: Sender & Receiver Parties and Destination */}
@@ -1035,7 +1318,7 @@ export default function AddShipment() {
                                             {...field}
                                             onChange={(e) => field.onChange(isNaN(e.target.valueAsNumber) ? 0 : e.target.valueAsNumber)}
                                             className="rounded-lg h-9 border-slate-200 dark:border-slate-700 text-xs font-mono font-semibold"
-                                            onFocus={(e) => e.currentTarget.select()} 
+                                            onFocus={(e) => e.currentTarget.select()}
                                         />
                                     </FormControl>
                                     <FormMessage className="text-[11px]" />
@@ -1045,7 +1328,7 @@ export default function AddShipment() {
                             <FormField control={form.control} name="total_amount" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                        Bara Karaya (Rs.) *
+                                        Bara Karaya (Rs.)
                                     </FormLabel>
                                     <FormControl>
                                         <Input
@@ -1056,7 +1339,7 @@ export default function AddShipment() {
                                             {...field}
                                             onChange={(e) => field.onChange(isNaN(e.target.valueAsNumber) ? 0 : e.target.valueAsNumber)}
                                             className="rounded-lg h-9 border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/20 text-sm font-mono font-extrabold text-emerald-800 dark:text-emerald-300"
-                                            onFocus={(e) => e.currentTarget.select()} 
+                                            onFocus={(e) => e.currentTarget.select()}
                                         />
                                     </FormControl>
                                     <FormMessage className="text-[11px]" />
@@ -1070,7 +1353,7 @@ export default function AddShipment() {
                                 control={form.control}
                                 name="is_already_paid"
                                 render={({ field }) => (
-                                    <button 
+                                    <button
                                         type="button"
                                         disabled={Boolean(isFreeOfCost)}
                                         onClick={() => {
@@ -1082,8 +1365,8 @@ export default function AddShipment() {
                                         }}
                                         className={cn(
                                             "w-full text-left p-2.5 rounded-lg border transition-colors flex items-center justify-between",
-                                            field.value 
-                                                ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500" 
+                                            field.value
+                                                ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500"
                                                 : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700",
                                             isFreeOfCost ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
                                         )}
@@ -1094,7 +1377,7 @@ export default function AddShipment() {
                                             </div>
                                             <div>
                                                 <p className="text-xs font-bold text-slate-900 dark:text-white">Already Paid</p>
-                                                <p className="text-[10px] text-slate-500">Freight settled upfront</p>
+                                                <p className="text-[10px] text-slate-500">Paid By Sender</p>
                                             </div>
                                         </div>
                                         <div className={cn(
@@ -1111,7 +1394,7 @@ export default function AddShipment() {
                                 control={form.control}
                                 name="is_free_of_cost"
                                 render={({ field }) => (
-                                    <button 
+                                    <button
                                         type="button"
                                         disabled={Boolean(isAlreadyPaid)}
                                         onClick={() => {
@@ -1123,8 +1406,8 @@ export default function AddShipment() {
                                         }}
                                         className={cn(
                                             "w-full text-left p-2.5 rounded-lg border transition-colors flex items-center justify-between",
-                                            field.value 
-                                                ? "bg-blue-50 dark:bg-blue-950/30 border-blue-500" 
+                                            field.value
+                                                ? "bg-blue-50 dark:bg-blue-950/30 border-blue-500"
                                                 : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700",
                                             isAlreadyPaid ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
                                         )}
@@ -1166,12 +1449,14 @@ export default function AddShipment() {
                         )}
                         <Button
                             type="submit"
-                            disabled={form.formState.isSubmitting}
+                            disabled={form.formState.isSubmitting || !hasFreightOrPayment}
                             className={cn(
-                                "w-full h-10 rounded-lg text-white font-bold text-xs shadow-xs transition-colors gap-2 cursor-pointer",
-                                editingShipmentId 
-                                    ? "bg-amber-600 hover:bg-amber-700" 
-                                    : "bg-blue-600 hover:bg-blue-700"
+                                "w-full h-10 rounded-lg text-white font-bold text-xs shadow-xs transition-colors gap-2",
+                                !hasFreightOrPayment
+                                    ? "bg-slate-300 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-60 border border-slate-200 dark:border-slate-700 shadow-none hover:bg-slate-300 dark:hover:bg-slate-800"
+                                    : editingShipmentId
+                                        ? "bg-amber-600 hover:bg-amber-700 cursor-pointer"
+                                        : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
                             )}
                         >
                             {form.formState.isSubmitting ? (
@@ -1321,7 +1606,7 @@ export default function AddShipment() {
                             </div>
                         </div>
                     </DialogHeader>
-                    
+
                     <form onSubmit={handleVerifyAndProceed} className="space-y-4 pt-2">
                         {targetShipmentToEdit && (
                             <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
@@ -1431,7 +1716,7 @@ export default function AddShipment() {
                                     <TableRow className="hover:bg-transparent">
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4">Bilty #</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Bilty Date</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Created Date</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Entry Date</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Departure</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Destination</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Vehicle</TableHead>
@@ -1449,8 +1734,8 @@ export default function AddShipment() {
                                             : '-';
 
                                         return (
-                                            <TableRow 
-                                                key={s.register_number} 
+                                            <TableRow
+                                                key={s.register_number}
                                                 className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors"
                                             >
                                                 <TableCell className="pl-4 font-mono font-bold text-slate-900 dark:text-white">

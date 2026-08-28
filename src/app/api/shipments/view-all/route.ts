@@ -22,27 +22,59 @@ export async function GET(request: Request) {
 
         const where: Prisma.ShipmentWhereInput = {};
 
-        // 1. Search Query Filtering
-        if (query) {
+        // 1. Search Query Filtering (Bility #, Sender, Receiver, Vehicle Number, Register #)
+        if (query && query.trim()) {
+            const cleanQuery = query.trim();
             where.OR = [
-                { bility_number: { contains: query } },
-                // 2. Search by Receiver Party Name
-                { receiver: { name: { contains: query } } },
-                // 3. Search by Register Number
-                { register_number: { contains: query } },
+                // 1. Bilty Number
+                { bility_number: { contains: cleanQuery, mode: 'insensitive' } },
+                // 2. Sender Party Name
+                { sender: { name: { contains: cleanQuery, mode: 'insensitive' } } },
+                // 3. Receiver Party Name
+                { receiver: { name: { contains: cleanQuery, mode: 'insensitive' } } },
+                // 4. Vehicle / Truck Number
+                { vehicle: { vehicleNumber: { contains: cleanQuery, mode: 'insensitive' } } },
+                // 5. Register Number
+                { register_number: { contains: cleanQuery, mode: 'insensitive' } },
+                // 6. Forwarding Agency Name
+                { forwardingAgency: { name: { contains: cleanQuery, mode: 'insensitive' } } },
+                // 7. Departure City
+                { departureCity: { name: { contains: cleanQuery, mode: 'insensitive' } } },
+                // 8. Destination City
+                { toCity: { name: { contains: cleanQuery, mode: 'insensitive' } } },
             ];
         }
 
-        // 2. Date Range Filtering (bility_date)
-        const dateFilter: { gte?: Date; lte?: Date } = {};
-        if (startDateParam) {
-            dateFilter.gte = new Date(startDateParam + 'T00:00:00.000Z');
-        }
-        if (endDateParam) {
-            dateFilter.lte = new Date(endDateParam + 'T23:59:59.999Z');
-        }
+        // 2. Date Range Filtering (Day created / Entry date based)
         if (startDateParam || endDateParam) {
-            where.bility_date = dateFilter;
+            const startOfIso = startDateParam ? new Date(startDateParam + 'T00:00:00.000Z') : undefined;
+            const endOfIso = endDateParam ? new Date(endDateParam + 'T23:59:59.999Z') : undefined;
+
+            const startOfLocal = startDateParam ? new Date(`${startDateParam}T00:00:00`) : undefined;
+            const endOfLocal = endDateParam ? new Date(`${endDateParam}T23:59:59.999`) : undefined;
+
+            const conditions: Prisma.ShipmentWhereInput[] = [];
+
+            if (startOfIso || endOfIso) {
+                const f: { gte?: Date; lte?: Date } = {};
+                if (startOfIso) f.gte = startOfIso;
+                if (endOfIso) f.lte = endOfIso;
+                conditions.push({ created_day: f });
+                conditions.push({ createdAt: f });
+            }
+            if (startOfLocal || endOfLocal) {
+                const f: { gte?: Date; lte?: Date } = {};
+                if (startOfLocal) f.gte = startOfLocal;
+                if (endOfLocal) f.lte = endOfLocal;
+                conditions.push({ created_day: f });
+                conditions.push({ createdAt: f });
+            }
+
+            const existingAnd = Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : [];
+            where.AND = [
+                ...existingAnd,
+                { OR: conditions }
+            ];
         }
 
         // 3. Vehicle Filtering

@@ -106,7 +106,7 @@ export default function ViewParties() {
                 <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 py-3 px-4">
                     <div>
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                            Client Accounts ({filteredParties.length})
+                            Parties ({filteredParties.length})
                         </CardTitle>
                     </div>
                     <div className="relative w-full sm:w-64">
@@ -142,7 +142,7 @@ export default function ViewParties() {
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 w-16">ID</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Party Name</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Contact Details</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right pr-4">Opening Balance</TableHead>
+                                        {/* <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right pr-4">Opening Balance</TableHead> */}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -167,11 +167,11 @@ export default function ViewParties() {
                                                         <span className="text-slate-400 italic text-[11px]">Not provided</span>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-right pr-4 font-mono font-bold tabular-nums">
+                                                {/* <TableCell className="text-right pr-4 font-mono font-bold tabular-nums">
                                                     <span className={balance < 0 ? 'text-rose-600' : balance > 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}>
                                                         {formatCurrency(balance)}
                                                     </span>
-                                                </TableCell>
+                                                </TableCell> */}
                                             </TableRow>
                                         );
                                     })}

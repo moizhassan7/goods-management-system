@@ -91,7 +91,8 @@ const getCurrentMonthDateRange = () => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const formatDate = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
     return {
         startDate: formatDate(startOfMonth),
@@ -457,7 +458,7 @@ export default function ViewShipments() {
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                                 <Input
-                                    placeholder="Bilty #, Party, Reg..."
+                                    placeholder="Search Bilty #, Sender, Receiver, Vehicle..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-9 h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs"
@@ -476,7 +477,7 @@ export default function ViewShipments() {
                         {/* Start Date */}
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                Start Date
+                                Entry Start Date
                             </label>
                             <Input
                                 type="date"
@@ -489,7 +490,7 @@ export default function ViewShipments() {
                         {/* End Date */}
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                End Date
+                                Entry End Date
                             </label>
                             <Input
                                 type="date"
@@ -661,7 +662,7 @@ export default function ViewShipments() {
                                     <TableRow className="hover:bg-transparent">
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4">Bilty #</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Bilty Date</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Created Date</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Entry Date</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Departure</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Destination</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Vehicle</TableHead>

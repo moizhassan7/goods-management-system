@@ -4,36 +4,36 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('🌱 Starting database seeding for Zikria Goods and Transport ERP...');
+    console.log('🌱 Starting database seeding for Zikria Goods Transport Company ERP...');
 
     // 1. Clear existing data safely in reverse dependency order
     console.log('🧹 Cleaning old records...');
-    await prisma.labourPaymentHistory.deleteMany().catch(() => {});
-    await prisma.labourAssignment.deleteMany().catch(() => {});
-    await prisma.labourPerson.deleteMany().catch(() => {});
-    await prisma.delivery.deleteMany().catch(() => {});
-    await prisma.returnItem.deleteMany().catch(() => {});
-    await prisma.returnShipment.deleteMany().catch(() => {});
-    await prisma.goodsDetails.deleteMany().catch(() => {});
-    await prisma.transaction.deleteMany().catch(() => {});
-    await prisma.vehicleTransaction.deleteMany().catch(() => {});
-    await prisma.tripShipmentLog.deleteMany().catch(() => {});
-    await prisma.tripLog.deleteMany().catch(() => {});
-    await prisma.shipment.deleteMany().catch(() => {});
-    await prisma.itemCatalog.deleteMany().catch(() => {});
-    await prisma.party.deleteMany().catch(() => {});
-    await prisma.vehicle.deleteMany().catch(() => {});
-    await prisma.agency.deleteMany().catch(() => {});
-    await prisma.city.deleteMany().catch(() => {});
-    await prisma.user.deleteMany().catch(() => {});
-    await prisma.systemSetting.deleteMany().catch(() => {});
+    await prisma.labourPaymentHistory.deleteMany().catch(() => { });
+    await prisma.labourAssignment.deleteMany().catch(() => { });
+    await prisma.labourPerson.deleteMany().catch(() => { });
+    await prisma.delivery.deleteMany().catch(() => { });
+    await prisma.returnItem.deleteMany().catch(() => { });
+    await prisma.returnShipment.deleteMany().catch(() => { });
+    await prisma.goodsDetails.deleteMany().catch(() => { });
+    await prisma.transaction.deleteMany().catch(() => { });
+    await prisma.vehicleTransaction.deleteMany().catch(() => { });
+    await prisma.tripShipmentLog.deleteMany().catch(() => { });
+    await prisma.tripLog.deleteMany().catch(() => { });
+    await prisma.shipment.deleteMany().catch(() => { });
+    await prisma.itemCatalog.deleteMany().catch(() => { });
+    await prisma.party.deleteMany().catch(() => { });
+    await prisma.vehicle.deleteMany().catch(() => { });
+    await prisma.agency.deleteMany().catch(() => { });
+    await prisma.city.deleteMany().catch(() => { });
+    await prisma.user.deleteMany().catch(() => { });
+    await prisma.systemSetting.deleteMany().catch(() => { });
 
     // 2. Seed System Settings
     console.log('⚙️ Seeding System Settings...');
     await prisma.systemSetting.createMany({
         data: [
             { key: 'EDIT_BILTY_PASSWORD', value: '1234' },
-            { key: 'COMPANY_NAME', value: 'Zikria Goods and Transport' },
+            { key: 'COMPANY_NAME', value: 'Zikria Goods Transport Company' },
             { key: 'MAIN_STATION', value: 'Sargodha, Pakistan' },
         ],
         skipDuplicates: true,

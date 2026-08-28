@@ -28,15 +28,15 @@ const SidebarLink = ({ link, isSubItem = false, isNestedSubItem = false, isColla
     }
 
     const textSize = isNestedSubItem ? 'text-xs font-normal' : isSubItem ? 'text-xs font-medium' : 'text-xs font-semibold';
-    
+
     return (
         <Link
             href={link.href}
             key={link.name}
             title={isCollapsed ? link.name : undefined}
             className={`group relative flex items-center transition-colors duration-150 rounded-lg my-0.5 select-none
-                ${isActive 
-                    ? 'bg-blue-600 text-white font-semibold shadow-xs' 
+                ${isActive
+                    ? 'bg-blue-600 text-white font-semibold shadow-xs'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
                 }
                 ${textSize} ${paddingClass} ${isCollapsed ? 'w-10 h-10 mx-auto' : 'w-full'}`}
@@ -45,14 +45,14 @@ const SidebarLink = ({ link, isSubItem = false, isNestedSubItem = false, isColla
             {Icon && (
                 <Icon className={`shrink-0
                     ${isCollapsed ? 'w-4 h-4' : isNestedSubItem ? 'w-3.5 h-3.5 mr-2.5' : isSubItem ? 'w-3.5 h-3.5 mr-2.5' : 'w-4 h-4 mr-2.5'}
-                    ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`} 
+                    ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}
                 />
             )}
 
             {/* Sub-item bullet point if no icon */}
             {!Icon && (isSubItem || isNestedSubItem) && !isCollapsed && (
                 <span className={`w-1.5 h-1.5 rounded-full mr-2.5 shrink-0 transition-colors
-                    ${isActive ? 'bg-white' : 'bg-slate-600 group-hover:bg-slate-400'}`} 
+                    ${isActive ? 'bg-white' : 'bg-slate-600 group-hover:bg-slate-400'}`}
                 />
             )}
 
@@ -105,8 +105,8 @@ const SidebarCollapsibleSection = ({ section, isCollapsed }) => {
             <button
                 onClick={toggleOpen}
                 className={`w-full flex items-center justify-between text-left px-3 py-2 transition-colors rounded-lg text-xs font-semibold
-                    ${anyChildActive 
-                        ? 'text-white bg-slate-800/80' 
+                    ${anyChildActive
+                        ? 'text-white bg-slate-800/80'
                         : 'text-slate-300 hover:text-white hover:bg-slate-800/40'
                     }`}
             >
@@ -150,8 +150,8 @@ const SidebarNestedList = ({ subSection, isCollapsed }) => {
             <button
                 onClick={toggleNestedOpen}
                 className={`w-full flex items-center justify-between text-left px-2.5 py-1.5 transition-colors rounded-md text-xs
-                    ${anyNestedActive 
-                        ? 'text-blue-300 font-medium' 
+                    ${anyNestedActive
+                        ? 'text-blue-300 font-medium'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                     }`}
             >
@@ -204,16 +204,16 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                 className={`bg-slate-900 border border-slate-800 p-0.5 rounded-lg ${isCollapsed ? 'flex justify-center' : 'grid grid-cols-2'}`}
                 size="sm"
             >
-                <ToggleGroupItem 
-                    value="en" 
-                    aria-label="Toggle English" 
+                <ToggleGroupItem
+                    value="en"
+                    aria-label="Toggle English"
                     className="text-xs h-7 font-semibold data-[state=on]:bg-blue-600 data-[state=on]:text-white text-slate-400 rounded-md transition-colors"
                 >
                     {isCollapsed ? 'EN' : t('language_english')}
                 </ToggleGroupItem>
-                <ToggleGroupItem 
-                    value="ur" 
-                    aria-label="Toggle Urdu" 
+                <ToggleGroupItem
+                    value="ur"
+                    aria-label="Toggle Urdu"
                     className="text-xs h-7 font-semibold data-[state=on]:bg-blue-600 data-[state=on]:text-white text-slate-400 rounded-md transition-colors"
                 >
                     {isCollapsed ? 'UR' : t('language_urdu')}
@@ -344,7 +344,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                     {!isCollapsed && (
                         <div className="flex flex-col min-w-0">
                             <span className="font-bold text-xs tracking-tight text-white uppercase truncate">
-                                Zikria Goods and Transport
+                                Zikria Goods Transport Company
                             </span>
                             <span className="text-[10px] font-mono text-slate-400 truncate">
                                 Sargodha, Pakistan

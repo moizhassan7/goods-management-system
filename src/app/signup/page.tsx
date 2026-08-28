@@ -92,7 +92,7 @@ export default function SignupPage() {
             <Truck className="w-6 h-6" />
           </div>
           <h1 className="text-lg font-extrabold text-white tracking-tight">
-            Zikria Goods Transports
+            Zikria Goods Transport Company
           </h1>
           <p className="text-xs text-slate-400 font-mono">
             Register System Operator

@@ -1,6 +1,6 @@
 # ==========================================
 # Multi-Stage Production Dockerfile
-# Zikria Goods and Transport ERP (Port 9050)
+# Zikria Goods Transport Company ERP (Port 9050)
 # ==========================================
 
 # 1. Base image

@@ -18,6 +18,9 @@ import {
 
 interface KeyMetrics {
     totalShipments: number;
+    todayShipments?: number;
+    totalChotaKaraya?: number;
+    totalBaraKaraya?: number;
     pendingApprovals: number;
     totalParties: number;
     totalVehicles: number;
@@ -53,6 +56,9 @@ interface DashboardData {
 
 const initialMetrics: KeyMetrics = {
     totalShipments: 0,
+    todayShipments: 0,
+    totalChotaKaraya: 0,
+    totalBaraKaraya: 0,
     pendingApprovals: 0,
     totalParties: 0,
     totalVehicles: 0,
@@ -74,7 +80,7 @@ export default function DashboardPage() {
     const fetchDashboardData = useCallback(async (showRefreshing = false) => {
         if (showRefreshing) setIsRefreshing(true);
         else setIsLoading(true);
-        
+
         try {
             const response = await fetch('/api/dashboard');
             if (!response.ok) throw new Error('Failed to fetch dashboard data.');
@@ -99,7 +105,7 @@ export default function DashboardPage() {
             <div className="flex flex-col justify-center items-center min-h-[60vh]">
                 <Loader2 className="w-7 h-7 text-blue-600 animate-spin mb-2" />
                 <p className="text-xs font-semibold text-slate-500 font-mono">
-                  Loading logistics telemetry...
+                    Loading logistics telemetry...
                 </p>
             </div>
         );
@@ -111,7 +117,7 @@ export default function DashboardPage() {
                 <AlertCircle className="h-8 w-8 text-rose-500 mx-auto mb-3" />
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Operational Data Unavailable</h3>
                 <p className="text-xs text-slate-500 mb-4">
-                  Unable to connect to the central dispatch database.
+                    Unable to connect to the central dispatch database.
                 </p>
                 <Button onClick={() => fetchDashboardData()} size="sm" className="gap-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700">
                     <RefreshCw className="w-3.5 h-3.5" />
@@ -140,7 +146,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                    <Button 
+                    <Button
                         variant="outline"
                         size="sm"
                         onClick={() => fetchDashboardData(true)}
@@ -167,9 +173,9 @@ export default function DashboardPage() {
                     { label: 'Register Bilty', href: '/shipments/add', icon: Package, count: 'New entry' },
                     { label: 'Bilty Directory', href: '/shipments/view', icon: Truck, count: `${metrics.totalShipments} records` },
                     { label: 'Parties Ledger', href: '/parties/view', icon: Users, count: `${metrics.totalParties} accounts` },
-                    { label: 'Fleet Registry', href: '/vehicles/view', icon: Car, count: `${metrics.totalVehicles} units` },
-                    { label: 'Returns Log', href: '/returns', icon: RotateCcw, count: `${metrics.totalReturns} logs` },
-                    { label: 'Reports Audit', href: '/shipments/report', icon: FileText, count: 'Financial' },
+                    { label: 'Freight Carrier', href: '/vehicles/view', icon: Car, count: `${metrics.totalVehicles} units` },
+                    // { label: 'Returns Log', href: '/returns', icon: RotateCcw, count: `${metrics.totalReturns} logs` },
+                    // { label: 'Reports Audit', href: '/shipments/report', icon: FileText, count: 'Financial' },
                 ].map((act, i) => (
                     <button
                         key={i}
@@ -192,23 +198,35 @@ export default function DashboardPage() {
             </div>
 
             {/* 1. KEY METRICS ROW */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-                {/* Total Revenue */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Chota Karaya */}
                 <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
                     <div className="flex items-center justify-between text-slate-500">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">Total Freight</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Chota Karaya</span>
                         <DollarSign className="h-4 w-4 text-emerald-600" />
                     </div>
                     <div className="text-lg font-black text-slate-900 dark:text-white mt-1 tabular-nums">
-                        {formatCurrency(metrics.totalRevenue)}
+                        {formatCurrency(metrics.totalChotaKaraya ?? 0)}
                     </div>
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 inline-block">
-                        • Cumulative charges
-                    </span>
+                    {/* <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 inline-block">
+                        • Delivery charges
+                    </span> */}
                 </div>
-
+                {/* Bara Karaya */}
+                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    <div className="flex items-center justify-between text-slate-500">
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Bara Karaya</span>
+                        <DollarSign className="h-4 w-4 text-emerald-600" />
+                    </div>
+                    <div className="text-lg font-black text-slate-900 dark:text-white mt-1 tabular-nums">
+                        {formatCurrency(metrics.totalBaraKaraya ?? metrics.totalRevenue)}
+                    </div>
+                    {/* <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 inline-block">
+                        • Freight charges
+                    </span> */}
+                </div>
                 {/* Total Shipments */}
-                <div 
+                <div
                     onClick={() => router.push('/shipments/view')}
                     className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-blue-400 cursor-pointer transition-colors"
                 >
@@ -223,9 +241,25 @@ export default function DashboardPage() {
                         View register →
                     </span>
                 </div>
+                {/* Today's Bilties */}
+                <div
+                    onClick={() => router.push('/shipments/add')}
+                    className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-blue-400 cursor-pointer transition-colors"
+                >
+                    <div className="flex items-center justify-between text-slate-500">
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Today's Bilties</span>
+                        <Truck className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div className="text-lg font-black text-slate-900 dark:text-white mt-1 tabular-nums">
+                        {(metrics.todayShipments ?? 0).toLocaleString()}
+                    </div>
+                    <span className="text-[10px] text-blue-600 font-semibold mt-0.5 inline-block">
+                        Add shipment →
+                    </span>
+                </div>
 
-                {/* Total Parties */}
-                <div 
+                {/* Total Parties
+                <div
                     onClick={() => router.push('/parties/view')}
                     className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-purple-400 cursor-pointer transition-colors"
                 >
@@ -241,8 +275,8 @@ export default function DashboardPage() {
                     </span>
                 </div>
 
-                {/* Fleet Vehicles */}
-                <div 
+                {/* Fleet Vehicles 
+                <div
                     onClick={() => router.push('/vehicles/view')}
                     className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-teal-400 cursor-pointer transition-colors"
                 >
@@ -256,10 +290,10 @@ export default function DashboardPage() {
                     <span className="text-[10px] text-slate-500 mt-0.5 inline-block">
                         Active units
                     </span>
-                </div>
+                </div> */}
 
                 {/* Pending Approvals */}
-                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                {/* <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
                     <div className="flex items-center justify-between text-slate-500">
                         <span className="text-[11px] font-bold uppercase tracking-wider">Pending</span>
                         <Hourglass className="h-4 w-4 text-amber-600" />
@@ -272,7 +306,7 @@ export default function DashboardPage() {
                     </span>
                 </div>
 
-                {/* Returns Total */}
+               
                 <div 
                     onClick={() => router.push('/returns')}
                     className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-rose-400 cursor-pointer transition-colors"
@@ -287,7 +321,7 @@ export default function DashboardPage() {
                     <span className="text-[10px] text-slate-500 mt-0.5 inline-block">
                         Logged returns
                     </span>
-                </div>
+                </div> */}
             </div>
 
             {/* 2. GRAPHS AND TOP AGENCIES */}
@@ -319,26 +353,26 @@ export default function DashboardPage() {
                                     <AreaChart data={data.volumeData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25}/>
-                                                <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0}/>
+                                                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25} />
+                                                <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.6} />
-                                        <XAxis 
-                                            dataKey="date" 
-                                            stroke="#94a3b8" 
-                                            fontSize={10} 
-                                            tickLine={false} 
-                                            axisLine={false} 
+                                        <XAxis
+                                            dataKey="date"
+                                            stroke="#94a3b8"
+                                            fontSize={10}
+                                            tickLine={false}
+                                            axisLine={false}
                                         />
-                                        <YAxis 
-                                            stroke="#94a3b8" 
-                                            fontSize={10} 
-                                            tickLine={false} 
-                                            axisLine={false} 
+                                        <YAxis
+                                            stroke="#94a3b8"
+                                            fontSize={10}
+                                            tickLine={false}
+                                            axisLine={false}
                                             allowDecimals={false}
                                         />
-                                        <Tooltip 
+                                        <Tooltip
                                             content={({ active, payload, label }) => {
                                                 if (active && payload && payload.length) {
                                                     return (
@@ -381,9 +415,9 @@ export default function DashboardPage() {
                                 Ranked by total consignment count
                             </CardDescription>
                         </div>
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => router.push('/agency/view')}
                             className="text-xs font-semibold text-blue-600 hover:text-blue-700 h-7 px-2"
                         >
@@ -399,8 +433,8 @@ export default function DashboardPage() {
                         ) : (
                             <div className="space-y-2">
                                 {data.topAgencies.map((agency, index) => (
-                                    <div 
-                                        key={agency.name} 
+                                    <div
+                                        key={agency.name}
                                         className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs"
                                     >
                                         <div className="flex items-center gap-2.5 min-w-0">
@@ -430,9 +464,9 @@ export default function DashboardPage() {
                             Recent Bilty Activity Log
                         </CardTitle>
                     </div>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
+                    <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => router.push('/shipments/view')}
                         className="rounded-lg text-xs font-semibold gap-1 h-7 border-slate-200 dark:border-slate-700"
                     >

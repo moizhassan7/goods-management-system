@@ -32,7 +32,7 @@ type LoginFormValues = z.infer<typeof LoginSchema>;
 export default function LoginPage() {
   const router = useRouter();
   const { setSessionUser } = useAuth();
-  
+
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(LoginSchema),
     defaultValues: {
@@ -56,7 +56,7 @@ export default function LoginPage() {
       if (!response.ok) {
         throw new Error(data.message || 'Login credentials incorrect.');
       }
-      
+
       setSessionUser(data.user);
 
       toast.success('Authentication Successful', {
@@ -85,10 +85,10 @@ export default function LoginPage() {
             <Truck className="w-6 h-6" />
           </div>
           <h1 className="text-lg font-extrabold text-white tracking-tight">
-            Zikria Goods Transports
+            Zikria Goods Transport Company
           </h1>
           <p className="text-xs text-slate-400 font-mono">
-            Logistics & Freight ERP System
+            Logistic and Goods Transport Company
           </p>
         </div>
 
@@ -96,7 +96,7 @@ export default function LoginPage() {
         <Card className="rounded-xl border-slate-800 bg-slate-950 text-white shadow-xl overflow-hidden">
           <CardHeader className="text-center pb-2 pt-5 px-5 border-b border-slate-850">
             <CardTitle className="text-sm font-bold text-white uppercase tracking-wider">
-              Operator Sign In
+              Login
             </CardTitle>
             <CardDescription className="text-xs text-slate-400">
               Enter credentials to access dispatch workstation
@@ -117,9 +117,9 @@ export default function LoginPage() {
                       <FormControl>
                         <div className="relative">
                           <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
-                          <Input 
-                            placeholder="e.g. admin or operator" 
-                            {...field} 
+                          <Input
+                            placeholder="e.g. admin or operator"
+                            {...field}
                             className="pl-9 h-9 rounded-lg bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 text-xs focus-visible:ring-blue-500"
                             autoFocus
                           />
@@ -141,10 +141,10 @@ export default function LoginPage() {
                       <FormControl>
                         <div className="relative">
                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
-                          <Input 
-                            type="password" 
-                            placeholder="••••••••" 
-                            {...field} 
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            {...field}
                             className="pl-9 h-9 rounded-lg bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 text-xs focus-visible:ring-blue-500"
                           />
                         </div>
@@ -154,8 +154,8 @@ export default function LoginPage() {
                   )}
                 />
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full h-10 rounded-lg font-bold text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors mt-3 cursor-pointer gap-1.5"
                   disabled={isSubmitting}
                 >
@@ -178,7 +178,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-[10px] text-slate-500 font-mono">
-          Zikria Goods Transports Company • Station ERP
+          Zikria Goods Transports Company
         </p>
       </div>
     </div>
