@@ -73,6 +73,7 @@ interface ShipmentData {
     receiver: { name: string };
     vehicle: { vehicleNumber: string };
     payment_status?: string | null;
+    remarks?: string | null;
     forwardingAgency?: { name: string };
     goodsDetails?: { quantity: number; itemCatalog?: { item_description?: string } | null }[];
 }
@@ -98,6 +99,40 @@ const getCurrentMonthDateRange = () => {
         startDate: formatDate(startOfMonth),
         endDate: formatDate(endOfMonth),
     };
+};
+
+const HighlightText = ({ text, query }: { text?: string | null; query?: string }) => {
+    if (!text) return null;
+    const trimmed = query?.trim();
+    if (!trimmed) return <>{text}</>;
+
+    const words = trimmed
+        .split(/\s+/)
+        .filter(w => w.length > 0)
+        .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+    if (words.length === 0) return <>{text}</>;
+
+    const pattern = new RegExp(`(${words.join('|')})`, 'gi');
+    const parts = text.split(pattern);
+
+    return (
+        <>
+            {parts.map((part, index) => {
+                const isMatch = words.some(w => part.toLowerCase() === w.toLowerCase());
+                return isMatch ? (
+                    <mark
+                        key={index}
+                        className="bg-yellow-200 text-slate-900 dark:bg-yellow-400/30 dark:text-yellow-200 px-0.5 rounded font-bold"
+                    >
+                        {part}
+                    </mark>
+                ) : (
+                    <span key={index}>{part}</span>
+                );
+            })}
+        </>
+    );
 };
 
 export default function ViewShipments() {
@@ -235,9 +270,7 @@ export default function ViewShipments() {
                     </tr>
                     <tr>
                         <td><strong>Bilty Date:</strong></td>
-                        <td>${new Date(shipmentData.bility_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                        <td><strong>Payment:</strong></td>
-                        <td style="font-weight: 700;">${shipmentData.payment_status}</td>
+                        <td colspan="3">${new Date(shipmentData.bility_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                     </tr>
                 </table>
             </div>
@@ -677,14 +710,21 @@ export default function ViewShipments() {
                                     {shipments.map((shipment) => {
                                         const createdVal = shipment.createdAt || shipment.created_day;
 
+                                        const isAlreadyPaid = shipment.payment_status === 'ALREADY_PAID' || shipment.payment_status === 'PAID' || (shipment.remarks?.includes('PAYMENT_STATUS:ALREADY_PAID') ?? false);
+                                        const isFree = shipment.payment_status === 'FREE' || (shipment.remarks?.includes('PAYMENT_STATUS:FREE') ?? false);
+
                                         return (
                                             <TableRow 
                                                 key={shipment.register_number} 
                                                 className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors"
                                             >
                                                 <TableCell className="pl-4 font-mono font-bold text-slate-900 dark:text-white">
-                                                    <span>{shipment.bility_number}</span>
-                                                    <span className="block text-[10px] text-slate-400 font-mono">#{shipment.register_number}</span>
+                                                    <span>
+                                                        <HighlightText text={shipment.bility_number} query={searchTerm} />
+                                                    </span>
+                                                    <span className="block text-[10px] text-slate-400 font-mono">
+                                                        #<HighlightText text={shipment.register_number} query={searchTerm} />
+                                                    </span>
                                                 </TableCell>
                                                 <TableCell className="font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap text-[11px]">
                                                     {shipment.bility_date ? new Date(shipment.bility_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
@@ -692,16 +732,38 @@ export default function ViewShipments() {
                                                 <TableCell className="font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap text-[11px]">
                                                     {createdVal ? new Date(createdVal).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
                                                 </TableCell>
-                                                <TableCell>{shipment.departureCity?.name || 'Main Hub'}</TableCell>
-                                                <TableCell>{shipment.toCity?.name || 'Local'}</TableCell>
-                                                <TableCell className="font-mono font-semibold">{shipment.vehicle?.vehicleNumber || '-'}</TableCell>
-                                                <TableCell className="max-w-[110px] truncate">{shipment.sender?.name || '-'}</TableCell>
-                                                <TableCell className="max-w-[110px] truncate">{shipment.receiver?.name || '-'}</TableCell>
-                                                <TableCell className="text-right font-mono font-semibold text-slate-700 dark:text-slate-300">
-                                                    {formatCurrency(Number(shipment.total_delivery_charges || 0))}
+                                                <TableCell>
+                                                    <HighlightText text={shipment.departureCity?.name || 'Main Hub'} query={searchTerm} />
                                                 </TableCell>
-                                                <TableCell className="text-right font-mono font-bold text-slate-900 dark:text-white">
-                                                    {formatCurrency(Number(shipment.total_charges || 0))}
+                                                <TableCell>
+                                                    <HighlightText text={shipment.toCity?.name || 'Local'} query={searchTerm} />
+                                                </TableCell>
+                                                <TableCell className="font-mono font-semibold">
+                                                    <HighlightText text={shipment.vehicle?.vehicleNumber || '-'} query={searchTerm} />
+                                                </TableCell>
+                                                <TableCell className="max-w-[110px] truncate" title={shipment.sender?.name || ''}>
+                                                    <HighlightText text={shipment.sender?.name || '-'} query={searchTerm} />
+                                                </TableCell>
+                                                <TableCell className="max-w-[110px] truncate" title={shipment.receiver?.name || ''}>
+                                                    <HighlightText text={shipment.receiver?.name || '-'} query={searchTerm} />
+                                                </TableCell>
+                                                <TableCell className="text-right font-mono font-semibold text-slate-700 dark:text-slate-300">
+                                                    {isAlreadyPaid || isFree ? '0' : formatCurrency(Number(shipment.total_delivery_charges || 0))}
+                                                </TableCell>
+                                                <TableCell className="text-right font-mono font-bold">
+                                                    {isAlreadyPaid ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                                            Already Paid
+                                                        </span>
+                                                    ) : isFree ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
+                                                            Free
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-900 dark:text-white">
+                                                            {formatCurrency(Number(shipment.total_charges || 0))}
+                                                        </span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-center pr-4">
                                                     <DropdownMenu>

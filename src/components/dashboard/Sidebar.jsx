@@ -6,10 +6,9 @@ import {
     Truck, FileText, MapPin, Users, Package,
     ChevronDown, ChevronUp, ChevronRight, ChevronLeft,
     Home, Building, Car, Box, ListChecks, Package2,
-    DollarSign, Globe, ShieldCheck
+    DollarSign, ShieldCheck
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermission } from '@/hooks/use-permission';
 
@@ -176,51 +175,11 @@ const SidebarNestedList = ({ subSection, isCollapsed }) => {
 const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     const { user, isAuthLoading } = useAuth();
     const { hasPermission } = usePermission();
-    const { t, locale, setLocale } = useTranslation();
+    const { t } = useTranslation();
 
     if (isAuthLoading) return null;
 
     const sidebarWidth = isCollapsed ? 'w-16' : 'w-64';
-
-    const LanguageSelector = ({ isCollapsed }) => (
-        <div className={`pt-2 mt-2 border-t border-slate-800 ${isCollapsed ? 'px-1' : 'px-1'}`}>
-            {!isCollapsed && (
-                <div className="flex items-center justify-between mb-1 px-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                        <Globe className="w-3 h-3 text-blue-400" />
-                        {t('language_selector')}
-                    </span>
-                    <span className="text-[9px] font-mono uppercase bg-slate-800 text-slate-400 px-1 py-0.5 rounded">
-                        {locale}
-                    </span>
-                </div>
-            )}
-            <ToggleGroup
-                type="single"
-                value={locale}
-                onValueChange={(value) => {
-                    if (value) setLocale(value);
-                }}
-                className={`bg-slate-900 border border-slate-800 p-0.5 rounded-lg ${isCollapsed ? 'flex justify-center' : 'grid grid-cols-2'}`}
-                size="sm"
-            >
-                <ToggleGroupItem
-                    value="en"
-                    aria-label="Toggle English"
-                    className="text-xs h-7 font-semibold data-[state=on]:bg-blue-600 data-[state=on]:text-white text-slate-400 rounded-md transition-colors"
-                >
-                    {isCollapsed ? 'EN' : t('language_english')}
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                    value="ur"
-                    aria-label="Toggle Urdu"
-                    className="text-xs h-7 font-semibold data-[state=on]:bg-blue-600 data-[state=on]:text-white text-slate-400 rounded-md transition-colors"
-                >
-                    {isCollapsed ? 'UR' : t('language_urdu')}
-                </ToggleGroupItem>
-            </ToggleGroup>
-        </div>
-    );
 
     const filteredNavSections = useMemo(() => {
         const rawNavSections = [
@@ -377,9 +336,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                     );
                 })}
             </nav>
-
-            {/* Language Selector */}
-            <LanguageSelector isCollapsed={isCollapsed} />
 
             {/* Bottom Collapse Trigger (when collapsed) */}
             {isCollapsed && (

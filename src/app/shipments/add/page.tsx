@@ -222,6 +222,7 @@ export default function AddShipment() {
     const [data, setData] = useState<DropdownData | null>(null);
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [shipments, setShipments] = useState<ShipmentData[]>([]);
+    const [savedBiltiesDate, setSavedBiltiesDate] = useState<string>(today);
     const [isLoadingShipments, setIsLoadingShipments] = useState(false);
     const [isFetchingRegNum, setIsFetchingRegNum] = useState(false);
     const [showExpenses, setShowExpenses] = useState(false);
@@ -489,10 +490,13 @@ export default function AddShipment() {
 
     useEffect(() => {
         fetchNextRegNum();
-        if (bilityDate) {
-            fetchShipments(bilityDate);
+    }, [bilityDate, fetchNextRegNum]);
+
+    useEffect(() => {
+        if (savedBiltiesDate) {
+            fetchShipments(savedBiltiesDate);
         }
-    }, [bilityDate, fetchNextRegNum, fetchShipments]);
+    }, [savedBiltiesDate, fetchShipments]);
 
     const openMasterDataModal = (type: typeof modalType) => {
         setModalType(type);
@@ -663,14 +667,14 @@ export default function AddShipment() {
                 receiver_id: 0,
             });
             fetchNextRegNum(values.bility_date || today);
-            fetchShipments(values.bility_date);
+            fetchShipments(savedBiltiesDate);
             focusBilityNumber();
 
         } catch (error: any) {
             console.error('Submission Error:', error);
             toast.error({ title: editingShipmentId ? 'Error Updating Bilty' : 'Error Saving Bilty', description: error.message });
         }
-    }, [form, paymentStatusToSend, toast, editingShipmentId, fetchShipments, fetchNextRegNum, focusBilityNumber]);
+    }, [form, paymentStatusToSend, toast, editingShipmentId, fetchShipments, fetchNextRegNum, focusBilityNumber, savedBiltiesDate]);
 
     const onInvalid = useCallback((errors: any) => {
         console.error("Form Validation Errors:", errors);
@@ -732,9 +736,7 @@ export default function AddShipment() {
                     </tr>
                     <tr>
                         <td><strong>Bilty Date:</strong></td>
-                        <td>${new Date(shipmentData.bility_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                        <td><strong>Payment:</strong></td>
-                        <td style="font-weight: 700;">${shipmentData.payment_status}</td>
+                        <td colspan="3">${new Date(shipmentData.bility_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                     </tr>
                 </table>
             </div>
@@ -858,7 +860,10 @@ export default function AddShipment() {
             const receiver = s.receiver_id === WALK_IN_CUSTOMER_ID && s.walk_in_receiver_name
                 ? s.walk_in_receiver_name
                 : findNameById(data, 'parties', s.receiver_id);
-            const paymentStatus = s.payment_status === 'FREE' ? 'FREE' : s.payment_status === 'ALREADY_PAID' ? 'PAID' : 'PENDING';
+            const isAlreadyPaid = s.payment_status === 'ALREADY_PAID' || s.payment_status === 'PAID' || (s.remarks?.includes('PAYMENT_STATUS:ALREADY_PAID') ?? false);
+            const isFree = s.payment_status === 'FREE' || (s.remarks?.includes('PAYMENT_STATUS:FREE') ?? false);
+            const chotaDisplay = (isAlreadyPaid || isFree) ? '0' : `Rs. ${chota.toLocaleString('en-PK')}`;
+            const baraDisplay = isAlreadyPaid ? 'Already Paid' : isFree ? 'Free' : `Rs. ${bara.toLocaleString('en-PK')}`;
 
             return `
                 <tr>
@@ -871,9 +876,8 @@ export default function AddShipment() {
                     <td>${fromCity} &rarr; ${toCity}</td>
                     <td>${firstItemDesc}</td>
                     <td style="text-align: center; font-weight: bold;">${qty}</td>
-                    <td style="text-align: right; font-family: monospace;">Rs. ${chota.toLocaleString('en-PK')}</td>
-                    <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. ${bara.toLocaleString('en-PK')}</td>
-                    <td style="text-align: center; font-size: 10px; font-weight: bold;">${paymentStatus}</td>
+                    <td style="text-align: right; font-family: monospace;">${chotaDisplay}</td>
+                    <td style="text-align: right; font-family: monospace; font-weight: bold;">${baraDisplay}</td>
                 </tr>
             `;
         }).join('');
@@ -1008,7 +1012,6 @@ export default function AddShipment() {
                         <th style="width: 40px; text-align: center;">Qty</th>
                         <th style="width: 80px; text-align: right;">Chota Karaya</th>
                         <th style="width: 80px; text-align: right;">Bara Karaya</th>
-                        <th style="width: 55px; text-align: center;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1018,7 +1021,6 @@ export default function AddShipment() {
                         <td style="text-align: center; font-weight: 900;">${totalQty}</td>
                         <td style="text-align: right; font-family: monospace;">Rs. ${totalChota.toLocaleString('en-PK')}</td>
                         <td style="text-align: right; font-family: monospace;">Rs. ${totalBara.toLocaleString('en-PK')}</td>
-                        <td></td>
                     </tr>
                 </tbody>
             </table>
@@ -1067,7 +1069,7 @@ export default function AddShipment() {
         try {
             const printWindow = window.open('', '_blank', 'height=750,width=1050');
             if (printWindow) {
-                const html = createDaySheetPrintContent(shipments, bilityDate);
+                const html = createDaySheetPrintContent(shipments, savedBiltiesDate);
                 printWindow.document.open();
                 printWindow.document.write(html);
                 printWindow.document.close();
@@ -1679,13 +1681,24 @@ export default function AddShipment() {
             {/* Saved Shipments Today */}
             <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
                 <CardHeader className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
-                            Saved Bilties for ({bilityDate})
-                        </CardTitle>
-                        <CardDescription className="text-[11px] text-slate-500">
-                            {shipments.length} {shipments.length === 1 ? 'consignment' : 'consignments'} on record
-                        </CardDescription>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div>
+                            <CardTitle className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
+                                Saved Bilties for ({savedBiltiesDate})
+                            </CardTitle>
+                            <CardDescription className="text-[11px] text-slate-500">
+                                {shipments.length} {shipments.length === 1 ? 'consignment' : 'consignments'} on record
+                            </CardDescription>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <Input
+                                type="date"
+                                value={savedBiltiesDate}
+                                onChange={(e) => setSavedBiltiesDate(e.target.value)}
+                                className="h-7 text-xs font-mono w-36 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                                title="Filter by Created Date"
+                            />
+                        </div>
                     </div>
                     {shipments.length > 0 && (
                         <Button
@@ -1732,6 +1745,8 @@ export default function AddShipment() {
                                         const createdDateFormatted = (s.created_day || s.created_at || s.createdAt)
                                             ? new Date(s.created_day || s.created_at || s.createdAt!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                                             : '-';
+                                        const isAlreadyPaid = s.payment_status === 'ALREADY_PAID' || s.payment_status === 'PAID' || (s.remarks?.includes('PAYMENT_STATUS:ALREADY_PAID') ?? false);
+                                        const isFree = s.payment_status === 'FREE' || (s.remarks?.includes('PAYMENT_STATUS:FREE') ?? false);
 
                                         return (
                                             <TableRow
@@ -1754,10 +1769,22 @@ export default function AddShipment() {
                                                 <TableCell className="max-w-[100px] truncate">{findNameById(data, 'parties', s.sender_id)}</TableCell>
                                                 <TableCell className="max-w-[100px] truncate">{findNameById(data, 'parties', s.receiver_id)}</TableCell>
                                                 <TableCell className="text-right font-mono font-semibold text-slate-700 dark:text-slate-300">
-                                                    {formatCurrency(Number(s.total_delivery_charges || 0))}
+                                                    {isAlreadyPaid || isFree ? '0' : formatCurrency(Number(s.total_delivery_charges || 0))}
                                                 </TableCell>
-                                                <TableCell className="text-right font-mono font-bold text-slate-900 dark:text-white">
-                                                    {formatCurrency(Number(s.total_charges || 0))}
+                                                <TableCell className="text-right font-mono font-bold">
+                                                    {isAlreadyPaid ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                                            Already Paid
+                                                        </span>
+                                                    ) : isFree ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
+                                                            Free
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-900 dark:text-white">
+                                                            {formatCurrency(Number(s.total_charges || 0))}
+                                                        </span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-center pr-4">
                                                     <DropdownMenu>
