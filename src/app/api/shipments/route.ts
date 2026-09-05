@@ -225,16 +225,19 @@ export async function GET(request: Request) {
             baseWhere.delivery_date = null; // Only undelivered shipments
         }
         
-        // 2. Apply 'date' filter
+        // 2. Apply 'date' filter based on creation/entry date
         if (dateParam) {
-            // Filter shipments whose bility_date falls within the start and end of the given day
-            const startOfDay = new Date(dateParam + 'T00:00:00.000Z');
-            const endOfDay = new Date(dateParam + 'T23:59:59.999Z');
-            
-            baseWhere.bility_date = {
-                gte: startOfDay,
-                lte: endOfDay,
-            };
+            const startOfIso = new Date(dateParam + 'T00:00:00.000Z');
+            const endOfIso = new Date(dateParam + 'T23:59:59.999Z');
+            const startOfLocal = new Date(`${dateParam}T00:00:00`);
+            const endOfLocal = new Date(`${dateParam}T23:59:59.999`);
+
+            baseWhere.OR = [
+                { created_day: { gte: startOfIso, lte: endOfIso } },
+                { createdAt: { gte: startOfIso, lte: endOfIso } },
+                { created_day: { gte: startOfLocal, lte: endOfLocal } },
+                { createdAt: { gte: startOfLocal, lte: endOfLocal } },
+            ];
         }
 
         // *** START FIX FOR RangeError: Maximum call stack size exceeded ***

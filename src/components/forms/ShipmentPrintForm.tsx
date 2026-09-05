@@ -129,16 +129,6 @@ const ShipmentPrintForm = ({ data, onSave, onSaveAndPrint, onPrint }: ShipmentPr
                                 })}
                             </p>
                         </div>
-                        <div>
-                            <p className="text-xs uppercase font-semibold text-gray-500">Payment Status</p>
-                            <p className={`text-lg font-bold ${
-                                data.payment_status === 'PAID' ? 'text-green-600' :
-                                data.payment_status === 'FREE' ? 'text-blue-600' :
-                                'text-red-600'
-                            }`}>
-                                {data.payment_status}
-                            </p>
-                        </div>
                     </div>
 
                     {/* Section 2: Route Information */}
