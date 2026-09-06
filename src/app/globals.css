@@ -151,3 +151,10 @@
 input, select, textarea {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
+
+/* Global auto-capitalization (Title Case) across text inputs and dropdown search boxes */
+input:not([type="password"]):not([type="email"]):not([type="number"]):not([type="date"]):not([type="datetime-local"]):not([type="time"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([name="username"]):not([name="password"]):not([name="email"]):not(.normal-case):not(.lowercase):not(.uppercase),
+[data-slot="command-input"],
+[cmdk-input] {
+  text-transform: capitalize;
+}

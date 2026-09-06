@@ -218,7 +218,7 @@ export async function GET(request: Request) {
         const dateParam = searchParams.get('date');
         const bilityNumberParam = searchParams.get('bility_number'); 
 
-        let baseWhere: Prisma.ShipmentWhereInput = {};
+        const baseWhere: Prisma.ShipmentWhereInput = {};
 
         // 1. Apply 'delivered' filter first 
         if (delivered === 'false') {
@@ -321,7 +321,9 @@ export async function GET(request: Request) {
                 departureCity: { select: { name: true } },
                 toCity: { select: { name: true } },
                 sender: { select: { id: true, name: true, contactInfo: true } },
-                receiver: { select: { id: true, name: true, contactInfo: true } }, 
+                receiver: { select: { id: true, name: true, contactInfo: true } },
+                vehicle: { select: { id: true, vehicleNumber: true } },
+                forwardingAgency: { select: { id: true, name: true } },
             },
             orderBy: { createdAt: 'desc' },
         });

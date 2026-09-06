@@ -42,6 +42,16 @@ export async function GET(request: Request) {
                 { departureCity: { name: { contains: cleanQuery, mode: 'insensitive' } } },
                 // 8. Destination City
                 { toCity: { name: { contains: cleanQuery, mode: 'insensitive' } } },
+                // 9. Goods Item Description
+                {
+                    goodsDetails: {
+                        some: {
+                            itemCatalog: {
+                                item_description: { contains: cleanQuery, mode: 'insensitive' }
+                            }
+                        }
+                    }
+                },
             ];
         }
 
@@ -89,13 +99,16 @@ export async function GET(request: Request) {
             include: {
                 departureCity: { select: { name: true } },
                 toCity: { select: { name: true } },
-                sender: { select: { name: true } },
-                receiver: { select: { name: true } },
+                sender: { select: { name: true, contactInfo: true } },
+                receiver: { select: { name: true, contactInfo: true } },
                 vehicle: { select: { vehicleNumber: true } },
                 forwardingAgency: { select: { name: true } },
                 goodsDetails: {
                     select: {
+                        good_detail_id: true,
                         quantity: true,
+                        charges: true,
+                        delivery_charges: true,
                         itemCatalog: {
                             select: {
                                 item_description: true,
@@ -122,6 +135,16 @@ export async function GET(request: Request) {
             ...s,
             total_charges: Number(s.total_charges),
             total_delivery_charges: Number(s.total_delivery_charges),
+            station_expense: Number(s.station_expense || 0),
+            bility_expense: Number(s.bility_expense || 0),
+            station_labour: Number(s.station_labour || 0),
+            cart_labour: Number(s.cart_labour || 0),
+            total_expenses: Number(s.total_expenses || 0),
+            goodsDetails: s.goodsDetails.map(g => ({
+                ...g,
+                charges: Number(g.charges || 0),
+                delivery_charges: Number(g.delivery_charges || 0),
+            })),
             // Convert date to ISO string
             bility_date: s.bility_date.toISOString().split('T')[0],
             delivery_date: s.delivery_date?.toISOString().split('T')[0] || null,

@@ -7,6 +7,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Eye } from 'lucide-react';
+import BiltyDetailDialog from '@/components/shipments/BiltyDetailDialog';
 
 interface DeliveryData {
     delivery_id: number;
@@ -47,6 +49,8 @@ export default function ViewDeliveries() {
     const [deliveries, setDeliveries] = useState<DeliveryData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedShipmentIdForDialog, setSelectedShipmentIdForDialog] = useState<string | null>(null);
+    const [isBiltyDialogOpen, setIsBiltyDialogOpen] = useState(false);
 
     const fetchDeliveries = async () => {
         setIsLoading(true);
@@ -171,7 +175,20 @@ export default function ViewDeliveries() {
                                             <TableCell className='font-medium'>
                                                 {new Date(delivery.delivery_date).toLocaleDateString()}
                                             </TableCell>
-                                            <TableCell>{delivery.shipment.bility_number}</TableCell>
+                                            <TableCell>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedShipmentIdForDialog(delivery.shipment.register_number);
+                                                        setIsBiltyDialogOpen(true);
+                                                    }}
+                                                    className="font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1"
+                                                    title="Click to view bilty details"
+                                                >
+                                                    {delivery.shipment.bility_number}
+                                                    <Eye className="w-3 h-3 text-blue-500 opacity-70" />
+                                                </button>
+                                            </TableCell>
                                             <TableCell>{delivery.shipment.register_number}</TableCell>
                                             <TableCell>{delivery.receiver_name}</TableCell>
                                             <TableCell>{delivery.receiver_phone}</TableCell>
@@ -248,6 +265,14 @@ export default function ViewDeliveries() {
                         </CardContent>
                     </Card>
                 </div>
-            )}        </div>
+            )}
+            
+            {/* Bilty Details Interactive Modal */}
+            <BiltyDetailDialog
+                shipmentId={selectedShipmentIdForDialog}
+                open={isBiltyDialogOpen}
+                onOpenChange={setIsBiltyDialogOpen}
+            />
+        </div>
     );
 }

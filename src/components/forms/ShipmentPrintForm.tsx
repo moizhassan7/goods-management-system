@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Printer, Save, FileText } from 'lucide-react';
 
@@ -135,19 +135,19 @@ const ShipmentPrintForm = ({ data, onSave, onSaveAndPrint, onPrint }: ShipmentPr
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border border-gray-300 p-4">
                         <div>
                             <p className="text-xs uppercase font-semibold text-gray-500 mb-2">Departure City</p>
-                            <p className="text-lg font-semibold text-gray-800">{data.departure_city}</p>
+                            <p className="text-lg font-semibold text-gray-800 capitalize">{data.departure_city}</p>
                         </div>
                         <div>
                             <p className="text-xs uppercase font-semibold text-gray-500 mb-2">Destination City</p>
-                            <p className="text-lg font-semibold text-gray-800">{data.destination_city || 'Local'}</p>
+                            <p className="text-lg font-semibold text-gray-800 capitalize">{data.destination_city || 'Local'}</p>
                         </div>
                         <div>
                             <p className="text-xs uppercase font-semibold text-gray-500 mb-2">Agency</p>
-                            <p className="text-lg font-semibold text-gray-800">{data.forwarding_agency}</p>
+                            <p className="text-lg font-semibold text-gray-800 capitalize">{data.forwarding_agency}</p>
                         </div>
                         <div>
                             <p className="text-xs uppercase font-semibold text-gray-500 mb-2">Vehicle</p>
-                            <p className="text-lg font-semibold text-gray-800">{data.vehicle_number}</p>
+                            <p className="text-lg font-semibold text-gray-800 uppercase">{data.vehicle_number}</p>
                         </div>
                     </div>
 
@@ -155,11 +155,11 @@ const ShipmentPrintForm = ({ data, onSave, onSaveAndPrint, onPrint }: ShipmentPr
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border border-gray-300 p-4 bg-blue-50">
                         <div>
                             <p className="text-xs uppercase font-semibold text-gray-500 mb-2">Sender Name</p>
-                            <p className="text-lg font-semibold text-gray-800">{data.sender_name}</p>
+                            <p className="text-lg font-semibold text-gray-800 capitalize">{data.sender_name}</p>
                         </div>
                         <div>
                             <p className="text-xs uppercase font-semibold text-gray-500 mb-2">Receiver Name</p>
-                            <p className="text-lg font-semibold text-gray-800">{data.receiver_name}</p>
+                            <p className="text-lg font-semibold text-gray-800 capitalize">{data.receiver_name}</p>
                         </div>
                     </div>
 
@@ -169,7 +169,7 @@ const ShipmentPrintForm = ({ data, onSave, onSaveAndPrint, onPrint }: ShipmentPr
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <p className="text-xs text-gray-500 mb-1">Item Type</p>
-                                <p className="text-lg font-semibold text-gray-800">{data.item_type}</p>
+                                <p className="text-lg font-semibold text-gray-800 capitalize">{data.item_type}</p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-500 mb-1">Quantity</p>

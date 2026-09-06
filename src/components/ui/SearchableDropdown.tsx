@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Check, ChevronsUpDown, Loader2, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toTitleCase } from "@/components/ui/input"
 
 interface SearchableDropdownProps {
   label: string
@@ -45,9 +46,9 @@ export default function SearchableDropdown({
 
   useEffect(() => {
     if (Array.isArray(itemsProp) && itemsProp.length > 0) {
-      const normalized = (itemsProp as any[]).map((it) => ({
-        id: String(it.id),
-        name: it.name ?? it.vehicleNumber ?? it.item_description ?? '',
+      const normalized = (itemsProp as Array<Record<string, unknown>>).map((it) => ({
+        id: String(it.id ?? ''),
+        name: toTitleCase(String(it.name ?? it.vehicleNumber ?? it.item_description ?? '')),
       }))
       setItems(normalized)
       return
@@ -59,9 +60,9 @@ export default function SearchableDropdown({
       try {
         const res = await fetch(endpoint as string)
         const data = await res.json()
-        const normalized = (Array.isArray(data) ? data : []).map((it: any) => ({
+        const normalized = (Array.isArray(data) ? (data as Array<Record<string, unknown>>) : []).map((it) => ({
           id: String(it.id ?? it.register_number ?? ''),
-          name: it.name ?? it.vehicleNumber ?? it.item_description ?? it.register_number ?? '',
+          name: toTitleCase(String(it.name ?? it.vehicleNumber ?? it.item_description ?? it.register_number ?? '')),
         }))
         setItems(normalized)
       } catch (error) {
@@ -73,13 +74,14 @@ export default function SearchableDropdown({
   }, [endpoint, itemsProp])
 
   const handleSelect = (item: { id: string; name: string }) => {
-    if (onChange) onChange(item.name)
-    if (onSelectItem) onSelectItem(item)
+    const titleName = toTitleCase(item.name)
+    if (onChange) onChange(titleName)
+    if (onSelectItem) onSelectItem({ id: item.id, name: titleName })
     setOpen(false)
   }
 
   const handleAddNew = async () => {
-    const trimmed = search.trim()
+    const trimmed = toTitleCase(search.trim())
     if (!trimmed) return
 
     const exists = items.some(
@@ -117,7 +119,7 @@ export default function SearchableDropdown({
       const newItem = await res.json()
       const normalized = { 
         id: String(newItem.id ?? newItem.register_number ?? ''), 
-        name: newItem.name ?? newItem.vehicleNumber ?? newItem.item_description ?? newItem.register_number ?? trimmed 
+        name: toTitleCase(newItem.name ?? newItem.vehicleNumber ?? newItem.item_description ?? newItem.register_number ?? trimmed) 
       }
       setItems((prev) => [...prev, normalized])
       if (onChange) onChange(normalized.name)
@@ -147,7 +149,7 @@ export default function SearchableDropdown({
               !selectedLabel && "text-slate-400 dark:text-slate-500 font-normal"
             )}
           >
-            <span className="truncate">
+            <span className="truncate capitalize">
               {selectedLabel ?? (typeof value === 'string' && value ? value : placeholder)}
             </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" />
@@ -158,14 +160,15 @@ export default function SearchableDropdown({
             <CommandInput
               placeholder={placeholder}
               value={search}
-              onValueChange={setSearch}
-              className="h-10 text-xs"
+              onValueChange={(val) => setSearch(toTitleCase(val))}
+              className="h-10 text-xs capitalize"
+              autoCapitalize="words"
               onFocus={(e) => (e.target as HTMLInputElement).select()}
               onClick={(e) => (e.target as HTMLInputElement).select()}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   if (e.ctrlKey) {
-                    const trimmed = search.trim()
+                    const trimmed = toTitleCase(search.trim())
                     if (trimmed) {
                       e.preventDefault()
                       handleAddNew()
@@ -211,7 +214,7 @@ export default function SearchableDropdown({
                       isSelected ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-semibold" : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
                     )}
                   >
-                    <span className="truncate">{item.name}</span>
+                    <span className="truncate capitalize">{item.name}</span>
                     {isSelected && (
                       <Check className="h-3.5 w-3.5 text-blue-600 shrink-0" />
                     )}
