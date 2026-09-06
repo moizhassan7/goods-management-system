@@ -2,13 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
+const PAYMENT_STATUS_PREFIX = "PAYMENT_STATUS:";
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ shipmentId: string }> }) {
   const { shipmentId } = await params;
   
   try {
-    const shipment = await prisma.shipment.findUnique({
+    const cleanId = decodeURIComponent(shipmentId).trim();
+    const shipment = await prisma.shipment.findFirst({
       where: {
-        register_number: shipmentId, // Assumes shipmentId from params matches the register_number field
+        OR: [
+          { register_number: cleanId },
+          { bility_number: cleanId },
+        ],
       },
       include: {
         // Eagerly load the GoodsDetails and their corresponding ItemCatalog for the ReturnForm
@@ -23,24 +29,43 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         receiver: true,
         forwardingAgency: true,
         vehicle: true,
+        deliveries: {
+          orderBy: { delivery_date: 'desc' },
+          take: 1,
+        },
       },
     });
 
     if (!shipment) {
-      // This is what likely causes the "Shipment not found" error if the ID is incorrect
       return NextResponse.json({ message: 'Shipment not found with this ID.' }, { status: 404 });
     }
 
-    // Convert Decimal types to string for safe JSON serialization
+    const extractPaymentStatus = (remarks: string | null): string => {
+      if (remarks && remarks.startsWith(PAYMENT_STATUS_PREFIX)) {
+        return remarks.split(' ')[0].replace(PAYMENT_STATUS_PREFIX, '');
+      }
+      return 'PENDING';
+    };
+
+    // Convert Decimal types to string / numbers for safe JSON serialization
     const serializeShipment = {
       ...shipment,
       total_charges: shipment.total_charges.toString(),
       total_delivery_charges: shipment.total_delivery_charges.toString(),
+      station_expense: shipment.station_expense?.toString() || '0',
+      bility_expense: shipment.bility_expense?.toString() || '0',
+      station_labour: shipment.station_labour?.toString() || '0',
+      cart_labour: shipment.cart_labour?.toString() || '0',
+      total_expenses: shipment.total_expenses?.toString() || '0',
+      payment_status: extractPaymentStatus(shipment.remarks),
+      bility_date: shipment.bility_date.toISOString().split('T')[0],
+      delivery_date: shipment.delivery_date?.toISOString().split('T')[0] || null,
       goodsDetails: shipment.goodsDetails.map(detail => ({
         ...detail,
         charges: detail.charges.toString(),
         delivery_charges: detail.delivery_charges.toString(),
-      }))
+      })),
+      latestDelivery: shipment.deliveries && shipment.deliveries.length > 0 ? shipment.deliveries[0] : null,
     };
 
     return NextResponse.json(serializeShipment, { status: 200 });

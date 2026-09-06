@@ -5,6 +5,7 @@ import { Command as CommandPrimitive } from "cmdk"
 import { SearchIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { toTitleCase } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -62,8 +63,13 @@ function CommandDialog({
 
 function CommandInput({
   className,
+  onValueChange,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
+  const handleValueChange = (search: string) => {
+    onValueChange?.(toTitleCase(search))
+  }
+
   return (
     <div
       data-slot="command-input-wrapper"
@@ -72,8 +78,10 @@ function CommandInput({
       <SearchIcon className="size-4 shrink-0 opacity-50" />
       <CommandPrimitive.Input
         data-slot="command-input"
+        autoCapitalize="words"
+        onValueChange={handleValueChange}
         className={cn(
-          "placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+          "placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50 capitalize",
           className
         )}
         {...props}
