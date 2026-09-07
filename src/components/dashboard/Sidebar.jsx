@@ -244,6 +244,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                         translationKey: 'nav_items',
                         links: [
                             { name: t('nav_add_item_type'), href: '/items/add', translationKey: 'nav_add_item_type', permissionKey: 'MASTER_DATA_WRITE' },
+                            { name: t('nav_view_items') || 'View Items', href: '/items/view', translationKey: 'nav_view_items', permissionKey: 'MASTER_DATA_WRITE' },
                         ]
                     },
                     {

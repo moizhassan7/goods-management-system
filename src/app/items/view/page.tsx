@@ -7,128 +7,127 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
-    Car, Plus, Search, Loader2, RefreshCw, 
-    Truck, AlertCircle, MoreVertical, Pencil, Trash2
+    Box, Plus, Search, Loader2, RefreshCw, 
+    AlertCircle, MoreVertical, Pencil, Trash2
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
-interface Vehicle {
+interface ItemCatalog {
     id: number;
-    vehicleNumber: string;
-    createdAt?: string;
+    item_description: string;
 }
 
-export default function ViewVehicles() {
+export default function ViewItems() {
     const router = useRouter();
-    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [items, setItems] = useState<ItemCatalog[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [error, setError] = useState<string | null>(null);
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
-    const [editNumber, setEditNumber] = useState('');
+    const [editingItem, setEditingItem] = useState<ItemCatalog | null>(null);
+    const [editDescription, setEditDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
     // Delete Modal State
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [deletingVehicle, setDeletingVehicle] = useState<Vehicle | null>(null);
+    const [deletingItem, setDeletingItem] = useState<ItemCatalog | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const fetchVehicles = async () => {
+    const fetchItems = async () => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch('/api/vehicles');
+            const response = await fetch('/api/items');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const data: Vehicle[] = await response.json();
-            setVehicles(data);
+            const data: ItemCatalog[] = await response.json();
+            setItems(data);
         } catch (err) {
             console.error('Fetch error:', err);
-            setError('Failed to load fleet vehicles directory.');
+            setError('Failed to load items catalog.');
         } finally {
             setIsLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchVehicles();
+        fetchItems();
     }, []);
 
-    const filteredVehicles = useMemo(() => {
-        if (!searchTerm.trim()) return vehicles;
+    const filteredItems = useMemo(() => {
+        if (!searchTerm.trim()) return items;
         const q = searchTerm.toLowerCase();
-        return vehicles.filter(v => 
-            v.vehicleNumber?.toLowerCase().includes(q) ||
-            String(v.id).includes(q)
+        return items.filter(i => 
+            i.item_description?.toLowerCase().includes(q) ||
+            String(i.id).includes(q)
         );
-    }, [vehicles, searchTerm]);
+    }, [items, searchTerm]);
 
-    const handleEditClick = (vehicle: Vehicle) => {
-        setEditingVehicle(vehicle);
-        setEditNumber(vehicle.vehicleNumber);
+    const handleEditClick = (item: ItemCatalog) => {
+        setEditingItem(item);
+        setEditDescription(item.item_description);
         setIsEditModalOpen(true);
     };
 
     const handleSaveEdit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!editingVehicle) return;
-        if (!editNumber.trim()) {
-            toast.error('Vehicle number cannot be empty');
+        if (!editingItem) return;
+        if (!editDescription.trim()) {
+            toast.error('Item description cannot be empty');
             return;
         }
 
         setIsSaving(true);
         try {
-            const res = await fetch(`/api/vehicles/${editingVehicle.id}`, {
+            const res = await fetch(`/api/items/${editingItem.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ vehicleNumber: editNumber.trim() }),
+                body: JSON.stringify({ description: editDescription.trim() }),
             });
             const data = await res.json();
             
             if (res.ok) {
-                toast.success('Vehicle updated successfully');
+                toast.success('Item updated successfully');
                 setIsEditModalOpen(false);
-                fetchVehicles();
+                fetchItems();
             } else {
-                toast.error(data.error || 'Failed to update vehicle');
+                toast.error(data.error || 'Failed to update item');
             }
         } catch (err) {
-            toast.error('Could not update vehicle');
+            toast.error('Could not update item');
         } finally {
             setIsSaving(false);
         }
     };
 
-    const handleDeleteClick = (vehicle: Vehicle) => {
-        setDeletingVehicle(vehicle);
+    const handleDeleteClick = (item: ItemCatalog) => {
+        setDeletingItem(item);
         setIsDeleteModalOpen(true);
     };
 
     const confirmDelete = async () => {
-        if (!deletingVehicle) return;
+        if (!deletingItem) return;
         
         setIsDeleting(true);
         try {
-            const res = await fetch(`/api/vehicles/${deletingVehicle.id}`, {
+            const res = await fetch(`/api/items/${deletingItem.id}`, {
                 method: 'DELETE',
             });
             const data = await res.json();
             
             if (res.ok) {
-                toast.success('Vehicle deleted successfully');
+                toast.success('Item deleted successfully');
                 setIsDeleteModalOpen(false);
-                fetchVehicles();
+                fetchItems();
             } else {
-                toast.error(data.error || 'Failed to delete vehicle');
+                toast.error(data.error || 'Failed to delete item');
             }
         } catch (err) {
-            toast.error('Could not delete vehicle');
+            toast.error('Could not delete item');
         } finally {
             setIsDeleting(false);
         }
@@ -139,22 +138,22 @@ export default function ViewVehicles() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
-                    <Truck className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-lg bg-orange-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                    <Box className="w-5 h-5" />
                   </div>
                   <div>
                     <h2 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
-                      Active Transport Fleet Vehicles
+                      Item Catalog Directory
                     </h2>
                     <p className="text-xs text-slate-500">
-                      Manage registered cargo trucks and license plates for consignment dispatch.
+                      Manage registered goods and material descriptions.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                     <Button
-                        onClick={fetchVehicles}
+                        onClick={fetchItems}
                         disabled={isLoading}
                         variant="outline"
                         size="sm"
@@ -164,12 +163,12 @@ export default function ViewVehicles() {
                         Refresh
                     </Button>
                     <Button
-                        onClick={() => router.push('/vehicles/add')}
+                        onClick={() => router.push('/items/add')}
                         size="sm"
-                        className="rounded-lg text-xs font-bold gap-1 bg-teal-600 hover:bg-teal-700 text-white h-8 shadow-xs"
+                        className="rounded-lg text-xs font-bold gap-1 bg-orange-600 hover:bg-orange-700 text-white h-8 shadow-xs"
                     >
                         <Plus className="w-3.5 h-3.5" />
-                        Add New Vehicle
+                        Add New Item
                     </Button>
                 </div>
             </div>
@@ -179,33 +178,33 @@ export default function ViewVehicles() {
                 <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 py-3 px-4">
                     <div>
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                            Fleet Records ({filteredVehicles.length})
+                            Item Catalog ({filteredItems.length})
                         </CardTitle>
                     </div>
                     <div className="relative w-full sm:w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                         <Input
-                            placeholder="Search by license number..."
+                            placeholder="Search item description..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 h-8 rounded-lg border-slate-200 dark:border-slate-700 text-xs font-mono"
+                            className="pl-9 h-8 rounded-lg border-slate-200 dark:border-slate-700 text-xs"
                         />
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                            <Loader2 className="w-6 h-6 animate-spin text-teal-600 mb-1" />
-                            <p className="text-xs">Loading fleet...</p>
+                            <Loader2 className="w-6 h-6 animate-spin text-orange-600 mb-1" />
+                            <p className="text-xs">Loading items...</p>
                         </div>
                     ) : error ? (
                         <div className="p-6 text-center text-red-500">
                             <AlertCircle className="w-6 h-6 mx-auto mb-1" />
                             <p className="text-xs font-semibold">{error}</p>
                         </div>
-                    ) : filteredVehicles.length === 0 ? (
+                    ) : filteredItems.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                            <p className="text-xs font-medium">No vehicles registered</p>
+                            <p className="text-xs font-medium">No items found</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -213,27 +212,18 @@ export default function ViewVehicles() {
                                 <TableHeader className="bg-slate-50 dark:bg-slate-800/60">
                                     <TableRow className="hover:bg-transparent">
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 w-20">ID</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">License Plate</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Status</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Item Description</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right pr-4 w-20">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredVehicles.map((vehicle) => (
-                                        <TableRow key={vehicle.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors">
+                                    {filteredItems.map((item) => (
+                                        <TableRow key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors">
                                             <TableCell className="pl-4 font-mono font-bold text-slate-400">
-                                                #{vehicle.id}
+                                                #{item.id}
                                             </TableCell>
                                             <TableCell className="font-bold text-slate-900 dark:text-white">
-                                                <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                                    {vehicle.vehicleNumber}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                                    Active
-                                                </span>
+                                                {item.item_description}
                                             </TableCell>
                                             <TableCell className="text-right pr-4">
                                                 <DropdownMenu>
@@ -243,10 +233,10 @@ export default function ViewVehicles() {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="w-36 rounded-xl border-slate-200 dark:border-slate-800">
-                                                        <DropdownMenuItem onClick={() => handleEditClick(vehicle)} className="gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                                        <DropdownMenuItem onClick={() => handleEditClick(item)} className="gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
                                                             <Pencil className="w-3.5 h-3.5 text-blue-600" /> Edit
                                                         </DropdownMenuItem>
-                                                        {/* <DropdownMenuItem onClick={() => handleDeleteClick(vehicle)} className="gap-2 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/50">
+                                                        {/* <DropdownMenuItem onClick={() => handleDeleteClick(item)} className="gap-2 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/50">
                                                             <Trash2 className="w-3.5 h-3.5" /> Delete
                                                         </DropdownMenuItem> */}
                                                     </DropdownMenuContent>
@@ -265,16 +255,16 @@ export default function ViewVehicles() {
             <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
                 <DialogContent className="sm:max-w-md rounded-2xl">
                     <DialogHeader>
-                        <DialogTitle>Edit Vehicle</DialogTitle>
-                        <DialogDescription>Update the vehicle license plate.</DialogDescription>
+                        <DialogTitle>Edit Item</DialogTitle>
+                        <DialogDescription>Update the item description.</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSaveEdit} className="space-y-4 pt-2">
                         <div className="space-y-2">
-                            <Label htmlFor="vehicleNumber">Vehicle Number</Label>
+                            <Label htmlFor="itemDesc">Item Description</Label>
                             <Input 
-                                id="vehicleNumber" 
-                                value={editNumber} 
-                                onChange={(e) => setEditNumber(e.target.value)} 
+                                id="itemDesc" 
+                                value={editDescription} 
+                                onChange={(e) => setEditDescription(e.target.value)} 
                                 autoFocus 
                             />
                         </div>
@@ -298,14 +288,14 @@ export default function ViewVehicles() {
                             Confirm Deletion
                         </DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete vehicle <strong>{deletingVehicle?.vehicleNumber}</strong>? This action cannot be undone.
+                            Are you sure you want to delete <strong>{deletingItem?.item_description}</strong>? This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="mt-4 gap-2 sm:gap-0">
                         <Button type="button" variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
                         <Button type="button" variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
                             {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
-                            Delete Vehicle
+                            Delete Item
                         </Button>
                     </DialogFooter>
                 </DialogContent>

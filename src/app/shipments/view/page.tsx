@@ -26,7 +26,7 @@ import {
 import { 
     Search, Loader2, RefreshCw, Truck, Package, Calendar, 
     DollarSign, ArrowRight, CheckCircle2, Clock, Filter, X,
-    MoreVertical, Pencil, Printer, Lock, ShieldCheck, KeyRound, Eye, EyeOff, ExternalLink
+    MoreVertical, Pencil, Printer, Lock, ShieldCheck, KeyRound, Eye, EyeOff, ExternalLink, Trash2
 } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 import BiltyDetailDialog from '@/components/shipments/BiltyDetailDialog';
@@ -401,13 +401,40 @@ export default function ViewShipments() {
 
     // Password Security Modal State for Bilty Edit
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    const [authAction, setAuthAction] = useState<'edit' | 'delete'>('edit');
     const [targetShipmentToEdit, setTargetShipmentToEdit] = useState<ShipmentData | null>(null);
     const [passwordInput, setPasswordInput] = useState('');
     const [showPasswordInModal, setShowPasswordInModal] = useState(false);
     const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
     const [passwordError, setPasswordError] = useState<string | null>(null);
 
+    const handleDeleteShipment = async (shipmentId: string) => {
+        try {
+            const res = await fetch(`/api/shipments/${encodeURIComponent(shipmentId)}`, {
+                method: 'DELETE',
+            });
+            const data = await res.json();
+            if (res.ok) {
+                sonnerToast.success('Deleted', { description: 'Bilty deleted successfully.' });
+                fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId);
+            } else {
+                sonnerToast.error('Error', { description: data.message || 'Failed to delete bilty.' });
+            }
+        } catch (error: any) {
+            sonnerToast.error('Error', { description: 'Could not delete bilty.' });
+        }
+    };
+
     const handleRequestEdit = (shipment: ShipmentData) => {
+        setAuthAction('edit');
+        setTargetShipmentToEdit(shipment);
+        setPasswordInput('');
+        setPasswordError(null);
+        setIsPasswordModalOpen(true);
+    };
+
+    const handleRequestDelete = (shipment: ShipmentData) => {
+        setAuthAction('delete');
         setTargetShipmentToEdit(shipment);
         setPasswordInput('');
         setPasswordError(null);
@@ -417,7 +444,7 @@ export default function ViewShipments() {
     const handleVerifyAndProceed = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         if (!passwordInput || passwordInput.trim().length === 0) {
-            setPasswordError('Please enter the edit password.');
+            setPasswordError(`Please enter the ${authAction} password.`);
             return;
         }
         setIsVerifyingPassword(true);
@@ -435,11 +462,13 @@ export default function ViewShipments() {
                 if (typeof window !== 'undefined') {
                     sessionStorage.setItem('bilty_edit_auth', 'true');
                 }
-                if (targetShipmentToEdit) {
+                if (authAction === 'edit' && targetShipmentToEdit) {
                     router.push(`/shipments/add?edit=${encodeURIComponent(targetShipmentToEdit.register_number)}`);
+                } else if (authAction === 'delete' && targetShipmentToEdit) {
+                    handleDeleteShipment(targetShipmentToEdit.register_number);
                 }
             } else {
-                setPasswordError(data.message || 'Incorrect edit password. Access denied.');
+                setPasswordError(data.message || `Incorrect ${authAction} password. Access denied.`);
             }
         } catch (err: any) {
             setPasswordError('Verification failed. Please try again.');
@@ -612,7 +641,7 @@ export default function ViewShipments() {
                                     Security Authorization Required
                                 </DialogTitle>
                                 <DialogDescription className="text-xs text-slate-500">
-                                    بلٹی میں ترمیم کے لیے پاس ورڈ درج کریں
+                                    {authAction === 'edit' ? 'بلٹی میں ترمیم کے لیے پاس ورڈ درج کریں' : 'بلٹی کو ڈیلیٹ کرنے کے لیے پاس ورڈ درج کریں'}
                                 </DialogDescription>
                             </div>
                         </div>
@@ -622,7 +651,7 @@ export default function ViewShipments() {
                         {targetShipmentToEdit && (
                             <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
                                 <div>
-                                    <span className="text-slate-500">Editing Bilty: </span>
+                                    <span className="text-slate-500">{authAction === 'edit' ? 'Editing' : 'Deleting'} Bilty: </span>
                                     <span className="font-mono font-bold text-slate-900 dark:text-white">#{targetShipmentToEdit.bility_number}</span>
                                 </div>
                                 <div className="font-mono text-slate-500">
@@ -633,7 +662,7 @@ export default function ViewShipments() {
 
                         <div className="space-y-1.5">
                             <Label htmlFor="viewEditPasswordInput" className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                Enter Edit Password *
+                                Enter {authAction === 'edit' ? 'Edit' : 'Delete'} Password *
                             </Label>
                             <div className="relative">
                                 <Input
@@ -677,10 +706,10 @@ export default function ViewShipments() {
                                 size="sm"
                                 type="submit"
                                 disabled={isVerifyingPassword}
-                                className="rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+                                className={`rounded-lg text-xs font-bold text-white gap-1.5 ${authAction === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
                             >
-                                {isVerifyingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
-                                Verify & Edit
+                                {isVerifyingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (authAction === 'delete' ? <Trash2 className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />)}
+                                Verify & {authAction === 'edit' ? 'Edit' : 'Delete'}
                             </Button>
                         </div>
                     </form>
@@ -884,6 +913,13 @@ export default function ViewShipments() {
                                                             >
                                                                 <Printer className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
                                                                 Print Receipt
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleRequestDelete(shipment)}
+                                                                className="gap-2 cursor-pointer font-semibold text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/40 dark:focus:text-red-400 py-1.5"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                                                                Delete Bilty
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>

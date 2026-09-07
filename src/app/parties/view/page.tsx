@@ -8,8 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
     Users, Plus, Search, Loader2, RefreshCw, 
-    Phone, AlertCircle 
+    Phone, AlertCircle, MoreVertical, Pencil, Trash2
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 interface Party {
     id: number;
@@ -30,6 +34,18 @@ export default function ViewParties() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [error, setError] = useState<string | null>(null);
+
+    // Edit Modal State
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingParty, setEditingParty] = useState<Party | null>(null);
+    const [editName, setEditName] = useState('');
+    const [editContact, setEditContact] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Delete Modal State
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deletingParty, setDeletingParty] = useState<Party | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const fetchParties = async () => {
         setIsLoading(true);
@@ -60,6 +76,73 @@ export default function ViewParties() {
             String(p.id).includes(q)
         );
     }, [parties, searchTerm]);
+
+    const handleEditClick = (party: Party) => {
+        setEditingParty(party);
+        setEditName(party.name);
+        setEditContact(party.contactInfo || '');
+        setIsEditModalOpen(true);
+    };
+
+    const handleSaveEdit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingParty) return;
+        if (!editName.trim()) {
+            toast.error('Party name cannot be empty');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const res = await fetch(`/api/parties/${editingParty.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: editName.trim(), contactInfo: editContact.trim() }),
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                toast.success('Party updated successfully');
+                setIsEditModalOpen(false);
+                fetchParties();
+            } else {
+                toast.error(data.error || 'Failed to update party');
+            }
+        } catch (err) {
+            toast.error('Could not update party');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDeleteClick = (party: Party) => {
+        setDeletingParty(party);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deletingParty) return;
+        
+        setIsDeleting(true);
+        try {
+            const res = await fetch(`/api/parties/${deletingParty.id}`, {
+                method: 'DELETE',
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                toast.success('Party deleted successfully');
+                setIsDeleteModalOpen(false);
+                fetchParties();
+            } else {
+                toast.error(data.error || 'Failed to delete party');
+            }
+        } catch (err) {
+            toast.error('Could not delete party');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     return (
         <div className="space-y-5 max-w-5xl mx-auto pb-10">
@@ -143,6 +226,7 @@ export default function ViewParties() {
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Party Name</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Contact Details</TableHead>
                                         {/* <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right pr-4">Opening Balance</TableHead> */}
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right pr-4 w-20">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -172,6 +256,23 @@ export default function ViewParties() {
                                                         {formatCurrency(balance)}
                                                     </span>
                                                 </TableCell> */}
+                                                <TableCell className="text-right pr-4">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                                                                <MoreVertical className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-36 rounded-xl border-slate-200 dark:border-slate-800">
+                                                            <DropdownMenuItem onClick={() => handleEditClick(party)} className="gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                                                <Pencil className="w-3.5 h-3.5 text-blue-600" /> Edit
+                                                            </DropdownMenuItem>
+                                                            {/* <DropdownMenuItem onClick={() => handleDeleteClick(party)} className="gap-2 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/50">
+                                                                <Trash2 className="w-3.5 h-3.5" /> Delete
+                                                            </DropdownMenuItem> */}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
                                             </TableRow>
                                         );
                                     })}
@@ -181,6 +282,64 @@ export default function ViewParties() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Edit Modal */}
+            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Edit Party</DialogTitle>
+                        <DialogDescription>Update the party details.</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSaveEdit} className="space-y-4 pt-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="partyName">Party Name</Label>
+                            <Input 
+                                id="partyName" 
+                                value={editName} 
+                                onChange={(e) => setEditName(e.target.value)} 
+                                autoFocus 
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="partyContact">Contact Details</Label>
+                            <Input 
+                                id="partyContact" 
+                                value={editContact} 
+                                onChange={(e) => setEditContact(e.target.value)} 
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
+                            <Button type="submit" disabled={isSaving} className="bg-blue-600 hover:bg-blue-700 text-white">
+                                {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                Save Changes
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Modal */}
+            <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+                <DialogContent className="sm:max-w-sm rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-red-600 flex items-center gap-2">
+                            <AlertCircle className="w-5 h-5" />
+                            Confirm Deletion
+                        </DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete <strong>{deletingParty?.name}</strong>? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="mt-4 gap-2 sm:gap-0">
+                        <Button type="button" variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
+                        <Button type="button" variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
+                            {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                            Delete Party
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

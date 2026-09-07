@@ -54,3 +54,22 @@ export async function POST(request: Request) {
     );
   }
 }
+
+/**
+ * Handles GET requests to retrieve all ItemCatalog records.
+ * Endpoint: /api/items
+ */
+export async function GET() {
+  try {
+    const items = await prisma.itemCatalog.findMany({
+      orderBy: { id: 'desc' }
+    });
+    return NextResponse.json(items, { status: 200 });
+  } catch (error) {
+    console.error('Error fetching items:', error);
+    return NextResponse.json(
+      { message: 'Internal Server Error: Failed to process request.' }, 
+      { status: 500 }
+    );
+  }
+}

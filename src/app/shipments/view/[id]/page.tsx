@@ -39,6 +39,7 @@ import {
     Eye,
     EyeOff,
     AlertCircle,
+    Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -59,12 +60,31 @@ export default function SingleBiltyFullViewPage() {
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
 
-    // Password Security Modal State for Bilty Edit
+    // Password Security Modal State for Bilty Edit/Delete
+    const [authAction, setAuthAction] = useState<'edit' | 'delete'>('edit');
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
     const [showPasswordInModal, setShowPasswordInModal] = useState(false);
     const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
     const [passwordError, setPasswordError] = useState<string | null>(null);
+
+    const handleDeleteShipment = async () => {
+        if (!shipmentId) return;
+        try {
+            const res = await fetch(`/api/shipments/${encodeURIComponent(shipmentId)}`, {
+                method: 'DELETE',
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success('Bilty deleted successfully.');
+                router.push('/shipments/view');
+            } else {
+                toast.error(data.message || 'Failed to delete bilty.');
+            }
+        } catch (error: any) {
+            toast.error('Could not delete bilty.');
+        }
+    };
 
     const fetchShipment = useCallback(async () => {
         if (!shipmentId) return;
@@ -225,6 +245,14 @@ export default function SingleBiltyFullViewPage() {
     };
 
     const handleRequestEdit = () => {
+        setAuthAction('edit');
+        setPasswordInput('');
+        setPasswordError(null);
+        setIsPasswordModalOpen(true);
+    };
+
+    const handleRequestDelete = () => {
+        setAuthAction('delete');
         setPasswordInput('');
         setPasswordError(null);
         setIsPasswordModalOpen(true);
@@ -233,7 +261,7 @@ export default function SingleBiltyFullViewPage() {
     const handleVerifyAndProceed = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         if (!passwordInput || passwordInput.trim().length === 0) {
-            setPasswordError('Please enter the edit password.');
+            setPasswordError(`Please enter the ${authAction} password.`);
             return;
         }
         setIsVerifyingPassword(true);
@@ -251,11 +279,13 @@ export default function SingleBiltyFullViewPage() {
                 if (typeof window !== 'undefined') {
                     sessionStorage.setItem('bilty_edit_auth', 'true');
                 }
-                if (shipment) {
+                if (authAction === 'edit' && shipment) {
                     router.push(`/shipments/add?edit=${encodeURIComponent(shipment.register_number)}`);
+                } else if (authAction === 'delete') {
+                    handleDeleteShipment();
                 }
             } else {
-                setPasswordError(data.message || 'Incorrect edit password. Access denied.');
+                setPasswordError(data.message || `Incorrect ${authAction} password. Access denied.`);
             }
         } catch (err: any) {
             setPasswordError('Verification failed. Please try again.');
@@ -394,6 +424,15 @@ export default function SingleBiltyFullViewPage() {
                     >
                         <Pencil className="w-3.5 h-3.5" />
                         Edit Bilty
+                    </Button>
+
+                    <Button
+                        size="sm"
+                        onClick={handleRequestDelete}
+                        className="rounded-xl text-xs font-bold gap-1.5 h-9 bg-red-600 hover:bg-red-700 text-white shadow-xs"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
                     </Button>
                 </div>
             </div>
@@ -720,25 +759,25 @@ export default function SingleBiltyFullViewPage() {
                 </div>
             </div>
 
-            {/* Password Security Modal for Bilty Edit */}
+            {/* Password Security Modal for Bilty Edit/Delete */}
             <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
                 <DialogContent className="sm:max-w-md rounded-2xl p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                     <DialogHeader className="space-y-2">
-                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                            <Lock className="w-5 h-5" />
+                        <div className={`w-10 h-10 rounded-xl ${authAction === 'delete' ? 'bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400' : 'bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'} flex items-center justify-center`}>
+                            {authAction === 'delete' ? <Trash2 className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
                         </div>
                         <DialogTitle className="text-base font-bold text-slate-900 dark:text-white">
                             Authorization Required
                         </DialogTitle>
                         <DialogDescription className="text-xs text-slate-500">
-                            Please enter the authorization password to edit Bilty #{shipment.bility_number}.
+                            Please enter the authorization password to {authAction === 'edit' ? 'edit' : 'delete'} Bilty #{shipment.bility_number}.
                         </DialogDescription>
                     </DialogHeader>
 
                     <form onSubmit={handleVerifyAndProceed} className="space-y-4 pt-2">
                         <div className="space-y-1.5">
                             <Label htmlFor="fullPageEditPassword" className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                Enter Edit Password *
+                                Enter {authAction === 'edit' ? 'Edit' : 'Delete'} Password *
                             </Label>
                             <div className="relative">
                                 <Input
@@ -782,10 +821,10 @@ export default function SingleBiltyFullViewPage() {
                                 size="sm"
                                 type="submit"
                                 disabled={isVerifyingPassword}
-                                className="rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+                                className={`rounded-lg text-xs font-bold text-white gap-1.5 ${authAction === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
                             >
-                                {isVerifyingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
-                                Verify & Edit
+                                {isVerifyingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (authAction === 'delete' ? <Trash2 className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />)}
+                                Verify & {authAction === 'edit' ? 'Edit' : 'Delete'}
                             </Button>
                         </div>
                     </form>

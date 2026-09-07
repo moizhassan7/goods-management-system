@@ -162,3 +162,30 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ shipmentId: string }> }) {
+  const { shipmentId } = await params;
+  try {
+    const cleanId = decodeURIComponent(shipmentId).trim();
+
+    await prisma.$transaction(async (tx) => {
+      // Delete associated records to satisfy foreign key constraints
+      await tx.transaction.deleteMany({ where: { shipment_id: cleanId } });
+      await tx.delivery.deleteMany({ where: { shipment_id: cleanId } });
+      await tx.vehicleTransaction.deleteMany({ where: { shipment_id: cleanId } });
+      await tx.labourAssignment.deleteMany({ where: { shipment_id: cleanId } });
+      await tx.labourPaymentHistory.deleteMany({ where: { shipment_id: cleanId } });
+      
+      // Cascade delete is usually handled by Prisma for these, but we explicitly delete to be safe
+      await tx.goodsDetails.deleteMany({ where: { shipment_id: cleanId } });
+      await tx.returnShipment.deleteMany({ where: { original_shipment_id: cleanId } });
+
+      // Delete the main shipment record
+      await tx.shipment.delete({ where: { register_number: cleanId } });
+    });
+
+    return NextResponse.json({ message: 'Shipment deleted successfully.' }, { status: 200 });
+  } catch (error: any) {
+    console.error('Error deleting shipment:', error);
+    return NextResponse.json({ message: error.message || 'Failed to delete shipment' }, { status: 500 });
+  }
+}
