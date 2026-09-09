@@ -250,7 +250,7 @@ export default function BiltyDetailDialog({
                     ) : (
                         <>
                             {/* 1. Metric Strip Cards */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="grid grid-cols-2 gap-3">
                                 <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                                     <div className="flex items-center gap-1.5 text-slate-500 font-semibold text-[11px] uppercase tracking-wider">
                                         <MapPin className="w-3.5 h-3.5 text-blue-600" />
@@ -268,26 +268,6 @@ export default function BiltyDetailDialog({
                                     </div>
                                     <p className="font-mono font-bold text-slate-900 dark:text-white text-sm mt-1 uppercase truncate">
                                         {data.vehicle?.vehicleNumber || 'Unassigned'}
-                                    </p>
-                                </div>
-
-                                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                                    <div className="flex items-center gap-1.5 text-slate-500 font-semibold text-[11px] uppercase tracking-wider">
-                                        <Receipt className="w-3.5 h-3.5 text-emerald-600" />
-                                        Bara Karaya
-                                    </div>
-                                    <p className="font-mono font-black text-emerald-700 dark:text-emerald-400 text-sm mt-1 truncate">
-                                        {isAlreadyPaid ? 'Already Paid' : isFree ? 'Free' : formatCurrency(data.total_charges)}
-                                    </p>
-                                </div>
-
-                                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                                    <div className="flex items-center gap-1.5 text-slate-500 font-semibold text-[11px] uppercase tracking-wider">
-                                        <Receipt className="w-3.5 h-3.5 text-amber-600" />
-                                        Chota Karaya
-                                    </div>
-                                    <p className="font-mono font-bold text-slate-900 dark:text-white text-sm mt-1 truncate">
-                                        {isAlreadyPaid || isFree ? '0' : formatCurrency(data.total_delivery_charges)}
                                     </p>
                                 </div>
                             </div>
@@ -412,25 +392,6 @@ export default function BiltyDetailDialog({
                                         </span>
                                     </div>
                                     <div className="space-y-2">
-                                        <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                                            <span>Chota Karaya (Delivery):</span>
-                                            <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                                                {formatCurrency(data.total_delivery_charges)}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                                            <span>Bara Karaya (Main Freight):</span>
-                                            <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                                                {formatCurrency(data.total_charges)}
-                                            </span>
-                                        </div>
-                                        <Separator className="my-1" />
-                                        <div className="flex justify-between items-center font-bold text-sm">
-                                            <span className="text-slate-900 dark:text-white">Total Amount:</span>
-                                            <span className="font-mono font-extrabold text-blue-600 dark:text-blue-400">
-                                                {formatCurrency(Number(data.total_charges || 0) + Number(data.total_delivery_charges || 0))}
-                                            </span>
-                                        </div>
                                         <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 text-[11px] flex items-center justify-between">
                                             <span className="text-slate-500 font-semibold">Payment Condition:</span>
                                             <span className="font-bold">
