@@ -6,7 +6,14 @@
 # 1. Base image
 FROM node:20-alpine AS base
 WORKDIR /app
-RUN apk add --no-cache libc6-compat openssl
+# Use HTTP and mirror fallbacks to bypass TLS/MTU handshake drops during Docker build on VPS/Dokploy
+RUN sed -i 's/https/http/g' /etc/apk/repositories && \
+    (apk add --no-cache libc6-compat openssl ca-certificates || \
+     (ALPINE_VER=$(cat /etc/alpine-release | cut -d. -f1,2) && \
+      echo "http://uk.alpinelinux.org/alpine/v${ALPINE_VER}/main" > /etc/apk/repositories && \
+      echo "http://uk.alpinelinux.org/alpine/v${ALPINE_VER}/community" >> /etc/apk/repositories && \
+      apk add --no-cache libc6-compat openssl ca-certificates))
+
 
 # 2. Install dependencies
 FROM base AS deps
@@ -38,11 +45,11 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Copy static assets, prisma, seed, and standalone server output
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/docker-entrypoint.sh ./docker-entrypoint.sh
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Automatically leverage output traces to reduce image size
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
