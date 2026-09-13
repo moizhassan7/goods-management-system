@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,7 +26,8 @@ import {
 import { 
     Search, Loader2, RefreshCw, Truck, Package, Calendar, 
     DollarSign, ArrowRight, CheckCircle2, Clock, Filter, X,
-    MoreVertical, Pencil, Printer, Lock, ShieldCheck, KeyRound, Eye, EyeOff, ExternalLink, Trash2
+    MoreVertical, Pencil, Printer, Lock, ShieldCheck, KeyRound, Eye, EyeOff, ExternalLink, Trash2,
+    ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 import BiltyDetailDialog from '@/components/shipments/BiltyDetailDialog';
@@ -161,6 +162,12 @@ export default function ViewShipments() {
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [pageSize, setPageSize] = useState<number>(25);
+    const [jumpPageInput, setJumpPageInput] = useState<string>('');
+    const tableTopRef = useRef<HTMLDivElement>(null);
+
     const fetchShipments = useCallback(async (query = '', currentStartDate: string, currentEndDate: string, currentVehicleId: number | 'all') => {
         setIsLoading(true);
         try {
@@ -212,10 +219,12 @@ export default function ViewShipments() {
     }, [searchTerm]);
 
     useEffect(() => {
+        setCurrentPage(1);
         fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId);
     }, [debouncedSearchTerm, fetchShipments, startDate, endDate, vehicleId]);
 
     const handleFilterLoad = () => {
+        setCurrentPage(1);
         fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId);
     };
 
@@ -225,7 +234,75 @@ export default function ViewShipments() {
         setEndDate(range.endDate);
         setVehicleId('all');
         setSearchTerm('');
+        setCurrentPage(1);
         fetchShipments('', range.startDate, range.endDate, 'all');
+    };
+
+    // Pagination Calculations
+    const totalItems = shipments.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+    useEffect(() => {
+        if (currentPage > totalPages && totalPages > 0) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
+
+    const paginatedShipments = useMemo(() => {
+        const startIndex = (currentPage - 1) * pageSize;
+        return shipments.slice(startIndex, startIndex + pageSize);
+    }, [shipments, currentPage, pageSize]);
+
+    const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const endIndex = Math.min(currentPage * pageSize, totalItems);
+
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
+            setCurrentPage(newPage);
+            tableTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+
+    const handleJumpPageSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const pageNum = parseInt(jumpPageInput, 10);
+        if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+            handlePageChange(pageNum);
+            setJumpPageInput('');
+        } else {
+            sonnerToast.error('Invalid page number', {
+                description: `Please enter a page number between 1 and ${totalPages}.`
+            });
+        }
+    };
+
+    const getPageNumbers = () => {
+        const pages: (number | string)[] = [];
+        const maxVisible = 7;
+
+        if (totalPages <= maxVisible) {
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i);
+            }
+        } else {
+            pages.push(1);
+            if (currentPage > 3) {
+                pages.push('...');
+            }
+
+            const start = Math.max(2, currentPage - 1);
+            const end = Math.min(totalPages - 1, currentPage + 1);
+
+            for (let i = start; i <= end; i++) {
+                pages.push(i);
+            }
+
+            if (currentPage < totalPages - 2) {
+                pages.push('...');
+            }
+            pages.push(totalPages);
+        }
+        return pages;
     };
 
     // Calculate Summary Stats
@@ -717,16 +794,77 @@ export default function ViewShipments() {
             </Dialog>
 
             {/* Results Table Card */}
+            <div ref={tableTopRef} />
             <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 dark:border-slate-800 py-3 px-4">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 py-3 px-4">
                     <div>
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                            Consignment Records ({shipments.length})
-                        </CardTitle>
-                        <CardDescription className="text-[11px] text-slate-500">
-                            Showing filtered freight consignments
+                        <div className="flex items-center gap-2">
+                            <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                                Consignment Records
+                            </CardTitle>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
+                                {totalItems.toLocaleString()} total
+                            </span>
+                        </div>
+                        <CardDescription className="text-[11px] text-slate-500 mt-0.5">
+                            {totalItems > 0 
+                                ? `Showing ${startIndex}-${endIndex} of ${totalItems} consignments ${totalPages > 1 ? `(Page ${currentPage} of ${totalPages})` : ''}`
+                                : 'Showing filtered freight consignments'}
                         </CardDescription>
                     </div>
+
+                    {totalItems > 0 && (
+                        <div className="flex items-center gap-2.5 self-end sm:self-auto">
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                <span className="text-[11px] font-medium hidden sm:inline">Per page:</span>
+                                <Select
+                                    value={String(pageSize)}
+                                    onValueChange={(val) => {
+                                        setPageSize(Number(val));
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <SelectTrigger className="h-8 w-[72px] text-xs font-mono font-bold rounded-lg border-slate-200 dark:border-slate-700">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent align="end" className="rounded-lg">
+                                        <SelectItem value="10">10</SelectItem>
+                                        <SelectItem value="25">25</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                        <SelectItem value="100">100</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {totalPages > 1 && (
+                                <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-800 pl-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 rounded-lg border-slate-200 dark:border-slate-700"
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1 || isLoading}
+                                        title="Previous Page"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <span className="text-xs font-mono font-semibold px-1 text-slate-700 dark:text-slate-300">
+                                        {currentPage}/{totalPages}
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 rounded-lg border-slate-200 dark:border-slate-700"
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === totalPages || isLoading}
+                                        title="Next Page"
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </CardHeader>
                 <CardContent className="p-0">
                     {isLoading ? (
@@ -759,7 +897,7 @@ export default function ViewShipments() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {shipments.map((shipment) => {
+                                    {paginatedShipments.map((shipment) => {
                                         const createdVal = shipment.createdAt || shipment.created_day || shipment.created_at;
 
                                         const isAlreadyPaid = shipment.payment_status === 'ALREADY_PAID' || shipment.payment_status === 'PAID' || (shipment.remarks?.includes('PAYMENT_STATUS:ALREADY_PAID') ?? false);
@@ -932,6 +1070,120 @@ export default function ViewShipments() {
                         </div>
                     )}
                 </CardContent>
+
+                {totalItems > 0 && (
+                    <CardFooter className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800 py-3 px-4 bg-slate-50/50 dark:bg-slate-900/50">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 order-2 sm:order-1">
+                            <span>
+                                Showing <strong className="font-semibold text-slate-900 dark:text-white">{startIndex}</strong> to <strong className="font-semibold text-slate-900 dark:text-white">{endIndex}</strong> of <strong className="font-semibold text-slate-900 dark:text-white">{totalItems}</strong> entries
+                            </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-center gap-1.5 order-1 sm:order-2">
+                            {/* First Page */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 rounded-lg border-slate-200 dark:border-slate-700"
+                                onClick={() => handlePageChange(1)}
+                                disabled={currentPage === 1 || isLoading}
+                                title="First Page"
+                            >
+                                <ChevronsLeft className="h-4 w-4" />
+                            </Button>
+
+                            {/* Previous Page */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2.5 rounded-lg text-xs gap-1 border-slate-200 dark:border-slate-700"
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage === 1 || isLoading}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                                <span className="hidden sm:inline">Previous</span>
+                            </Button>
+
+                            {/* Number buttons */}
+                            <div className="flex items-center gap-1">
+                                {getPageNumbers().map((p, idx) => {
+                                    if (p === '...') {
+                                        return (
+                                            <span key={`ellipsis-${idx}`} className="w-7 text-center text-xs text-slate-400 select-none">
+                                                ...
+                                            </span>
+                                        );
+                                    }
+                                    const isCurrent = p === currentPage;
+                                    return (
+                                        <Button
+                                            key={`page-${p}`}
+                                            variant={isCurrent ? "default" : "outline"}
+                                            size="sm"
+                                            className={`h-8 min-w-8 px-2 rounded-lg text-xs font-semibold ${
+                                                isCurrent 
+                                                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs' 
+                                                    : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                                            }`}
+                                            onClick={() => handlePageChange(p as number)}
+                                            disabled={isLoading}
+                                        >
+                                            {p}
+                                        </Button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Next Page */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2.5 rounded-lg text-xs gap-1 border-slate-200 dark:border-slate-700"
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage === totalPages || isLoading}
+                            >
+                                <span className="hidden sm:inline">Next</span>
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+
+                            {/* Last Page */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 rounded-lg border-slate-200 dark:border-slate-700"
+                                onClick={() => handlePageChange(totalPages)}
+                                disabled={currentPage === totalPages || isLoading}
+                                title="Last Page"
+                            >
+                                <ChevronsRight className="h-4 w-4" />
+                            </Button>
+
+                            {/* Direct Jump if totalPages > 5 */}
+                            {totalPages > 5 && (
+                                <form onSubmit={handleJumpPageSubmit} className="hidden md:flex items-center gap-1.5 ml-2 pl-2 border-l border-slate-200 dark:border-slate-700">
+                                    <span className="text-[11px] text-slate-400">Page:</span>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        max={totalPages}
+                                        value={jumpPageInput}
+                                        onChange={(e) => setJumpPageInput(e.target.value)}
+                                        placeholder={`${currentPage}`}
+                                        className="h-8 w-14 text-center text-xs p-1 font-mono rounded-lg border-slate-200 dark:border-slate-700"
+                                    />
+                                    <Button
+                                        type="submit"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 px-2 text-xs font-medium rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50"
+                                    >
+                                        Go
+                                    </Button>
+                                </form>
+                            )}
+                        </div>
+                    </CardFooter>
+                )}
             </Card>
 
             {/* Bilty Detail Interactive Dialog Modal */}
