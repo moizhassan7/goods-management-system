@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import DeleteMasterDataModal from '@/components/master-data/DeleteMasterDataModal';
 
 interface Vehicle {
     id: number;
@@ -246,9 +247,9 @@ export default function ViewVehicles() {
                                                         <DropdownMenuItem onClick={() => handleEditClick(vehicle)} className="gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
                                                             <Pencil className="w-3.5 h-3.5 text-blue-600" /> Edit
                                                         </DropdownMenuItem>
-                                                        {/* <DropdownMenuItem onClick={() => handleDeleteClick(vehicle)} className="gap-2 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/50">
+                                                        <DropdownMenuItem onClick={() => handleDeleteClick(vehicle)} className="gap-2 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/50">
                                                             <Trash2 className="w-3.5 h-3.5" /> Delete
-                                                        </DropdownMenuItem> */}
+                                                        </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </TableCell>
@@ -289,27 +290,16 @@ export default function ViewVehicles() {
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation Modal */}
-            <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-                <DialogContent className="sm:max-w-sm rounded-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-red-600 flex items-center gap-2">
-                            <AlertCircle className="w-5 h-5" />
-                            Confirm Deletion
-                        </DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to delete vehicle <strong>{deletingVehicle?.vehicleNumber}</strong>? This action cannot be undone.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="mt-4 gap-2 sm:gap-0">
-                        <Button type="button" variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
-                        <Button type="button" variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
-                            {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
-                            Delete Vehicle
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Delete Confirmation & Dependency Modal */}
+            <DeleteMasterDataModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                entityType="vehicle"
+                entityTitle="Vehicle"
+                entityName={deletingVehicle?.vehicleNumber || ''}
+                entityId={deletingVehicle?.id || null}
+                onSuccess={fetchVehicles}
+            />
         </div>
     );
 }

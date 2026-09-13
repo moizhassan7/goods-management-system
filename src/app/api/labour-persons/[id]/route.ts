@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { checkMasterDataDependencies } from '@/lib/master-data-dependencies';
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -44,6 +45,17 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     }
 
     try {
+        const depCheck = await checkMasterDataDependencies('labour-person', personId);
+        if (depCheck.notFound) {
+            return NextResponse.json({ error: 'Labour person not found.' }, { status: 404 });
+        }
+        if (!depCheck.canDelete) {
+            return NextResponse.json({
+                error: `Cannot delete labour person "${depCheck.entityName}" because they are linked to ${depCheck.totalCount} active record(s).`,
+                ...depCheck,
+            }, { status: 409 });
+        }
+
         await prisma.labourPerson.delete({
             where: { id: personId },
         });

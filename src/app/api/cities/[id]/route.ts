@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { checkMasterDataDependencies } from '@/lib/master-data-dependencies';
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -32,6 +33,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
 }
 
+
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     const cityId = parseInt(id, 10);
@@ -41,6 +43,17 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     }
 
     try {
+        const depCheck = await checkMasterDataDependencies('city', cityId);
+        if (depCheck.notFound) {
+            return NextResponse.json({ error: 'City not found.' }, { status: 404 });
+        }
+        if (!depCheck.canDelete) {
+            return NextResponse.json({
+                error: `Cannot delete city "${depCheck.entityName}" because it is linked to ${depCheck.totalCount} active record(s).`,
+                ...depCheck,
+            }, { status: 409 });
+        }
+
         await prisma.city.delete({
             where: { id: cityId },
         });
