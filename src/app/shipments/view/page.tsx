@@ -618,7 +618,7 @@ export default function ViewShipments() {
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                                 <Input
-                                    placeholder="Search Bilty #, Sender, Receiver, Vehicle, Item..."
+                                    placeholder="Search Bilty #, Sender, Receiver, Vehicle, Agency, Item..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-9 h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs"
@@ -887,6 +887,7 @@ export default function ViewShipments() {
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Departure</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Destination</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Vehicle</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Agency</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-center whitespace-nowrap">Quantity</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Item Type</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Sender</TableHead>
@@ -964,6 +965,11 @@ export default function ViewShipments() {
                                                 {/* 6. Vehicle */}
                                                 <TableCell className="font-mono font-semibold uppercase whitespace-nowrap">
                                                     <HighlightText text={shipment.vehicle?.vehicleNumber || '-'} query={searchTerm} />
+                                                </TableCell>
+
+                                                {/* 6.5 Agency */}
+                                                <TableCell className="capitalize whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">
+                                                    <HighlightText text={shipment.forwardingAgency?.name || '-'} query={searchTerm} />
                                                 </TableCell>
 
                                                 {/* 7. Quantity */}
