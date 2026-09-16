@@ -27,10 +27,12 @@ import {
     Search, Loader2, RefreshCw, Truck, Package, Calendar, 
     DollarSign, ArrowRight, CheckCircle2, Clock, Filter, X,
     MoreVertical, Pencil, Printer, Lock, ShieldCheck, KeyRound, Eye, EyeOff, ExternalLink, Trash2,
-    ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
+    ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 import BiltyDetailDialog from '@/components/shipments/BiltyDetailDialog';
+import { TablePagination } from '@/components/ui/TablePagination';
+import { fetchMasterLists } from '@/lib/master-lists-client';
 
 export interface Toast {
     id: string;
@@ -153,6 +155,14 @@ export default function ViewShipments() {
     const { toast } = useToast();
     const [shipments, setShipments] = useState<ShipmentData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [totalItems, setTotalItems] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
+    const [stats, setStats] = useState({
+        totalBiltyCount: 0,
+        totalBaraKaraya: 0,
+        totalChotaKaraya: 0,
+        deliveredCount: 0,
+    });
 
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [vehicleId, setVehicleId] = useState<number | 'all'>('all');
@@ -165,10 +175,16 @@ export default function ViewShipments() {
     // Pagination State
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(25);
-    const [jumpPageInput, setJumpPageInput] = useState<string>('');
     const tableTopRef = useRef<HTMLDivElement>(null);
 
-    const fetchShipments = useCallback(async (query = '', currentStartDate: string, currentEndDate: string, currentVehicleId: number | 'all') => {
+    const fetchShipments = useCallback(async (
+        query = '',
+        currentStartDate: string,
+        currentEndDate: string,
+        currentVehicleId: number | 'all',
+        page = 1,
+        size = 25,
+    ) => {
         setIsLoading(true);
         try {
             const params = new URLSearchParams();
@@ -176,6 +192,8 @@ export default function ViewShipments() {
             if (currentStartDate) params.append('startDate', currentStartDate);
             if (currentEndDate) params.append('endDate', currentEndDate);
             if (currentVehicleId !== 'all') params.append('vehicleId', String(currentVehicleId));
+            params.append('page', String(page));
+            params.append('pageSize', String(size));
 
             const response = await fetch(`/api/shipments/view-all?${params.toString()}`);
 
@@ -184,14 +202,30 @@ export default function ViewShipments() {
                 throw new Error(errorData.message || 'Failed to load shipment records.');
             }
 
-            const data: ShipmentData[] = await response.json();
-            setShipments(data);
+            const payload = await response.json();
+            const list = Array.isArray(payload) ? payload : (payload.data || []);
+            setShipments(list);
+            setTotalItems(Array.isArray(payload) ? payload.length : Number(payload.total || 0));
+            setTotalPages(Array.isArray(payload) ? 1 : Number(payload.totalPages || 1));
+            if (!Array.isArray(payload) && payload.stats) {
+                setStats(payload.stats);
+            } else {
+                setStats({
+                    totalBiltyCount: list.length,
+                    totalBaraKaraya: list.reduce((sum: number, s: ShipmentData) => sum + (Number(s.total_charges) || 0), 0),
+                    totalChotaKaraya: list.reduce((sum: number, s: ShipmentData) => sum + (Number(s.total_delivery_charges) || 0), 0),
+                    deliveredCount: list.filter((s: ShipmentData) => !!s.delivery_date).length,
+                });
+            }
         } catch (error: any) {
             console.error("Shipments fetch error:", error);
             sonnerToast.error('Fetch Error', {
                 description: error.message || 'Could not load shipment records.',
             });
             setShipments([]);
+            setTotalItems(0);
+            setTotalPages(1);
+            setStats({ totalBiltyCount: 0, totalBaraKaraya: 0, totalChotaKaraya: 0, deliveredCount: 0 });
         } finally {
             setIsLoading(false);
         }
@@ -200,8 +234,7 @@ export default function ViewShipments() {
     useEffect(() => {
         async function loadFilters() {
             try {
-                const listsRes = await fetch('/api/lists');
-                const lists = await listsRes.json();
+                const lists = await fetchMasterLists();
                 setVehicles(lists.vehicles || []);
             } catch (e) {
                 console.error('Failed to load filter lists', e);
@@ -220,12 +253,21 @@ export default function ViewShipments() {
 
     useEffect(() => {
         setCurrentPage(1);
-        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId);
-    }, [debouncedSearchTerm, fetchShipments, startDate, endDate, vehicleId]);
+    }, [debouncedSearchTerm, startDate, endDate, vehicleId, pageSize]);
+
+    useEffect(() => {
+        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize);
+    }, [debouncedSearchTerm, fetchShipments, startDate, endDate, vehicleId, currentPage, pageSize]);
+
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
 
     const handleFilterLoad = () => {
         setCurrentPage(1);
-        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId);
+        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, 1, pageSize);
     };
 
     const handleResetFilters = () => {
@@ -235,23 +277,8 @@ export default function ViewShipments() {
         setVehicleId('all');
         setSearchTerm('');
         setCurrentPage(1);
-        fetchShipments('', range.startDate, range.endDate, 'all');
+        fetchShipments('', range.startDate, range.endDate, 'all', 1, pageSize);
     };
-
-    // Pagination Calculations
-    const totalItems = shipments.length;
-    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-
-    useEffect(() => {
-        if (currentPage > totalPages && totalPages > 0) {
-            setCurrentPage(totalPages);
-        }
-    }, [currentPage, totalPages]);
-
-    const paginatedShipments = useMemo(() => {
-        const startIndex = (currentPage - 1) * pageSize;
-        return shipments.slice(startIndex, startIndex + pageSize);
-    }, [shipments, currentPage, pageSize]);
 
     const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
     const endIndex = Math.min(currentPage * pageSize, totalItems);
@@ -262,63 +289,6 @@ export default function ViewShipments() {
             tableTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     };
-
-    const handleJumpPageSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        const pageNum = parseInt(jumpPageInput, 10);
-        if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
-            handlePageChange(pageNum);
-            setJumpPageInput('');
-        } else {
-            sonnerToast.error('Invalid page number', {
-                description: `Please enter a page number between 1 and ${totalPages}.`
-            });
-        }
-    };
-
-    const getPageNumbers = () => {
-        const pages: (number | string)[] = [];
-        const maxVisible = 7;
-
-        if (totalPages <= maxVisible) {
-            for (let i = 1; i <= totalPages; i++) {
-                pages.push(i);
-            }
-        } else {
-            pages.push(1);
-            if (currentPage > 3) {
-                pages.push('...');
-            }
-
-            const start = Math.max(2, currentPage - 1);
-            const end = Math.min(totalPages - 1, currentPage + 1);
-
-            for (let i = start; i <= end; i++) {
-                pages.push(i);
-            }
-
-            if (currentPage < totalPages - 2) {
-                pages.push('...');
-            }
-            pages.push(totalPages);
-        }
-        return pages;
-    };
-
-    // Calculate Summary Stats
-    const stats = useMemo(() => {
-        const totalBiltyCount = shipments.length;
-        const totalBaraKaraya = shipments.reduce((sum, s) => sum + (Number(s.total_charges) || 0), 0);
-        const totalChotaKaraya = shipments.reduce((sum, s) => sum + (Number(s.total_delivery_charges) || 0), 0);
-        const deliveredCount = shipments.filter(s => !!s.delivery_date).length;
-
-        return {
-            totalBiltyCount,
-            totalBaraKaraya,
-            totalChotaKaraya,
-            deliveredCount,
-        };
-    }, [shipments]);
 
     const createPrintContent = (shipmentData: any) => {
         return `
@@ -493,7 +463,7 @@ export default function ViewShipments() {
             const data = await res.json();
             if (res.ok) {
                 sonnerToast.success('Deleted', { description: 'Bilty deleted successfully.' });
-                fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId);
+                fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize);
             } else {
                 sonnerToast.error('Error', { description: data.message || 'Failed to delete bilty.' });
             }
@@ -574,7 +544,7 @@ export default function ViewShipments() {
 
                 <div className="flex items-center gap-2">
                     <Button
-                        onClick={() => fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId)}
+                        onClick={() => fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize)}
                         variant="outline"
                         size="sm"
                         disabled={isLoading}
@@ -898,7 +868,7 @@ export default function ViewShipments() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {paginatedShipments.map((shipment) => {
+                                    {shipments.map((shipment) => {
                                         const createdVal = shipment.createdAt || shipment.created_day || shipment.created_at;
 
                                         const isAlreadyPaid = shipment.payment_status === 'ALREADY_PAID' || shipment.payment_status === 'PAID' || (shipment.remarks?.includes('PAYMENT_STATUS:ALREADY_PAID') ?? false);
@@ -1077,119 +1047,21 @@ export default function ViewShipments() {
                     )}
                 </CardContent>
 
-                {totalItems > 0 && (
-                    <CardFooter className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800 py-3 px-4 bg-slate-50/50 dark:bg-slate-900/50">
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 order-2 sm:order-1">
-                            <span>
-                                Showing <strong className="font-semibold text-slate-900 dark:text-white">{startIndex}</strong> to <strong className="font-semibold text-slate-900 dark:text-white">{endIndex}</strong> of <strong className="font-semibold text-slate-900 dark:text-white">{totalItems}</strong> entries
-                            </span>
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-center gap-1.5 order-1 sm:order-2">
-                            {/* First Page */}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 p-0 rounded-lg border-slate-200 dark:border-slate-700"
-                                onClick={() => handlePageChange(1)}
-                                disabled={currentPage === 1 || isLoading}
-                                title="First Page"
-                            >
-                                <ChevronsLeft className="h-4 w-4" />
-                            </Button>
-
-                            {/* Previous Page */}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 px-2.5 rounded-lg text-xs gap-1 border-slate-200 dark:border-slate-700"
-                                onClick={() => handlePageChange(currentPage - 1)}
-                                disabled={currentPage === 1 || isLoading}
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                                <span className="hidden sm:inline">Previous</span>
-                            </Button>
-
-                            {/* Number buttons */}
-                            <div className="flex items-center gap-1">
-                                {getPageNumbers().map((p, idx) => {
-                                    if (p === '...') {
-                                        return (
-                                            <span key={`ellipsis-${idx}`} className="w-7 text-center text-xs text-slate-400 select-none">
-                                                ...
-                                            </span>
-                                        );
-                                    }
-                                    const isCurrent = p === currentPage;
-                                    return (
-                                        <Button
-                                            key={`page-${p}`}
-                                            variant={isCurrent ? "default" : "outline"}
-                                            size="sm"
-                                            className={`h-8 min-w-8 px-2 rounded-lg text-xs font-semibold ${
-                                                isCurrent 
-                                                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs' 
-                                                    : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
-                                            }`}
-                                            onClick={() => handlePageChange(p as number)}
-                                            disabled={isLoading}
-                                        >
-                                            {p}
-                                        </Button>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Next Page */}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 px-2.5 rounded-lg text-xs gap-1 border-slate-200 dark:border-slate-700"
-                                onClick={() => handlePageChange(currentPage + 1)}
-                                disabled={currentPage === totalPages || isLoading}
-                            >
-                                <span className="hidden sm:inline">Next</span>
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-
-                            {/* Last Page */}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 p-0 rounded-lg border-slate-200 dark:border-slate-700"
-                                onClick={() => handlePageChange(totalPages)}
-                                disabled={currentPage === totalPages || isLoading}
-                                title="Last Page"
-                            >
-                                <ChevronsRight className="h-4 w-4" />
-                            </Button>
-
-                            {/* Direct Jump if totalPages > 5 */}
-                            {totalPages > 5 && (
-                                <form onSubmit={handleJumpPageSubmit} className="hidden md:flex items-center gap-1.5 ml-2 pl-2 border-l border-slate-200 dark:border-slate-700">
-                                    <span className="text-[11px] text-slate-400">Page:</span>
-                                    <Input
-                                        type="number"
-                                        min={1}
-                                        max={totalPages}
-                                        value={jumpPageInput}
-                                        onChange={(e) => setJumpPageInput(e.target.value)}
-                                        placeholder={`${currentPage}`}
-                                        className="h-8 w-14 text-center text-xs p-1 font-mono rounded-lg border-slate-200 dark:border-slate-700"
-                                    />
-                                    <Button
-                                        type="submit"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 px-2 text-xs font-medium rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50"
-                                    >
-                                        Go
-                                    </Button>
-                                </form>
-                            )}
-                        </div>
-                    </CardFooter>
-                )}
+                <CardFooter className="p-0">
+                    <TablePagination
+                        className="w-full border-t-0"
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalItems}
+                        pageSize={pageSize}
+                        onPageChange={handlePageChange}
+                        onPageSizeChange={(size) => {
+                            setPageSize(size);
+                            setCurrentPage(1);
+                        }}
+                        isLoading={isLoading}
+                    />
+                </CardFooter>
             </Card>
 
             {/* Bilty Detail Interactive Dialog Modal */}

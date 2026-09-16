@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; 
 import { FileText, Printer, Filter, Loader2, ArrowRight, Package, DollarSign, BarChart3 } from 'lucide-react';
+import { fetchMasterLists } from '@/lib/master-lists-client';
 
 type City = { id: number; name: string };
 type Vehicle = { id: number; vehicleNumber: string };
@@ -44,8 +45,7 @@ export default function ShipmentsReportPage() {
   useEffect(() => {
     async function loadFilters() {
       try {
-        const listsRes = await fetch('/api/lists');
-        const lists = await listsRes.json();
+        const lists = await fetchMasterLists();
         setCities(lists.cities || []);
         setVehicles(lists.vehicles || []);
       } catch (e) {

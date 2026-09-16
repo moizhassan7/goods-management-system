@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { checkMasterDataDependencies } from '@/lib/master-data-dependencies';
+import { invalidateMasterCache } from '@/lib/cache';
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -23,6 +24,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
             data: { name: name.trim() },
         });
 
+        await invalidateMasterCache();
         return NextResponse.json(updatedCity, { status: 200 });
     } catch (error: any) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -57,6 +59,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
         await prisma.city.delete({
             where: { id: cityId },
         });
+        await invalidateMasterCache();
         return NextResponse.json({ message: 'City deleted successfully.' }, { status: 200 });
     } catch (error: any) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { prismaErrorMessage } from '@/lib/api-client';
 
 const PAYMENT_STATUS_PREFIX = "PAYMENT_STATUS:";
 
@@ -102,6 +103,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       });
 
       // 2. Update main shipment
+      const createdTimestamps = parseCreatedDate(payload.created_date);
+
       const shipment = await tx.shipment.update({
         where: { register_number: shipmentId },
         data: {
@@ -121,6 +124,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           cart_labour: new Prisma.Decimal(payload.cart_labour || 0),
           total_expenses: new Prisma.Decimal(payload.total_expenses || 0),
           remarks: finalRemarks,
+          ...(createdTimestamps ? {
+            created_day: createdTimestamps.created_day,
+            createdAt: createdTimestamps.createdAt,
+          } : {}),
           goodsDetails: {
             createMany: {
               data: goodsDetailsForCreate,
@@ -137,7 +144,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       if (payload.payment_status !== 'ALREADY_PAID' && payload.payment_status !== 'FREE') {
         await tx.transaction.create({
           data: {
-            transaction_date: new Date(),
+            transaction_date: createdTimestamps?.createdAt || new Date(),
             party_type: 'SENDER',
             party_ref_id: payload.sender_id,
             shipment_id: shipmentId,
@@ -158,7 +165,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }, { status: 200 });
   } catch (error: any) {
     console.error('Error updating shipment:', error);
-    return NextResponse.json({ message: error.message || 'Failed to update shipment' }, { status: 500 });
+    return NextResponse.json({ message: prismaErrorMessage(error, 'Failed to update shipment') }, { status: 500 });
   }
 }
 

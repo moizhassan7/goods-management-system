@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma'; // Assumes shared Prisma client utility
-import { Prisma } from '@prisma/client'; 
+import { Prisma } from '@prisma/client';
+import { CACHE_KEYS, getOrSetCache, invalidateMasterCache, MASTER_CACHE_HEADERS } from '@/lib/cache'; 
 
 // Type definition for the expected request body
 interface PartyRequest {
@@ -18,15 +19,15 @@ interface PartyRequest {
  */
 export async function GET() {
     try {
-        const parties = await prisma.party.findMany({
-            // Fetch all parties, ordered by ID descending (newest first)
-            orderBy: {
-                id: 'desc', 
-            }
-        });
+        const parties = await getOrSetCache(CACHE_KEYS.MASTER_PARTIES, () =>
+            prisma.party.findMany({
+                orderBy: {
+                    id: 'desc',
+                }
+            })
+        );
 
-        // Return the list of parties
-        return NextResponse.json(parties, { status: 200 });
+        return NextResponse.json(parties, { status: 200, headers: MASTER_CACHE_HEADERS });
 
     } catch (error) {
         console.error('Error fetching Parties:', error);
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
             },
         });
         
-        // Return success response (status 201 Created)
+        await invalidateMasterCache();
         return NextResponse.json(newParty, { status: 201 });
 
     } catch (error) {

@@ -38,6 +38,8 @@ model Party {
   opening_balance   Decimal    @db.Decimal(10, 2)
   receivedShipments Shipment[] @relation("ReceiverParty")
   sentShipments     Shipment[] @relation("SenderParty")
+
+  @@index([name])
 }
 
 model ItemCatalog {
@@ -61,6 +63,7 @@ model GoodsDetails {
   shipment         Shipment     @relation(fields: [shipment_id], references: [register_number], onDelete: Cascade)
   returnItems      ReturnItem[]
 
+  @@index([shipment_id])
   @@map("Goods_Details")
 }
 
@@ -115,6 +118,12 @@ model Shipment {
   transactions           Transaction[]
   vehicleTransactions    VehicleTransaction[]
   paymentHistory         LabourPaymentHistory[]
+
+  @@index([createdAt])
+  @@index([created_day])
+  @@index([bility_number])
+  @@index([vehicle_number_id])
+  @@index([delivery_date])
 }
 
 model ReturnShipment {

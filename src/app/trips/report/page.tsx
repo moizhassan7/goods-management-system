@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { fetchMasterLists } from '@/lib/master-lists-client';
 
 type Vehicle = { id: number; vehicleNumber: string };
 type TripShipmentLog = {
@@ -54,8 +55,7 @@ export default function TripReportPage() {
   useEffect(() => {
     async function loadVehicles() {
       try {
-        const res = await fetch('/api/lists');
-        const lists = await res.json();
+        const lists = await fetchMasterLists();
         setVehicles(lists.vehicles || []);
       } catch (e) {
         console.error('Failed to load vehicles', e);

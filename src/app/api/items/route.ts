@@ -2,7 +2,8 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma'; // Shared Prisma client utility
-import { Prisma } from '@prisma/client'; 
+import { Prisma } from '@prisma/client';
+import { CACHE_KEYS, getOrSetCache, invalidateMasterCache, MASTER_CACHE_HEADERS } from '@/lib/cache'; 
 
 // Type definition for the expected request body
 interface ItemRequest {
@@ -32,8 +33,8 @@ export async function POST(request: Request) {
     const newItem = await prisma.itemCatalog.create({
       data: { item_description: itemDescription },
     });
-    
-    // Return success response
+
+    await invalidateMasterCache();
     return NextResponse.json(newItem, { status: 201 });
 
   } catch (error) {
@@ -61,10 +62,12 @@ export async function POST(request: Request) {
  */
 export async function GET() {
   try {
-    const items = await prisma.itemCatalog.findMany({
-      orderBy: { id: 'desc' }
-    });
-    return NextResponse.json(items, { status: 200 });
+    const items = await getOrSetCache(CACHE_KEYS.MASTER_ITEMS, () =>
+      prisma.itemCatalog.findMany({
+        orderBy: { id: 'desc' }
+      })
+    );
+    return NextResponse.json(items, { status: 200, headers: MASTER_CACHE_HEADERS });
   } catch (error) {
     console.error('Error fetching items:', error);
     return NextResponse.json(

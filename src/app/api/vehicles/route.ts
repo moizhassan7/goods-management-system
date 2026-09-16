@@ -2,7 +2,8 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma'; // Assumes shared Prisma client utility
-import { Prisma } from '@prisma/client'; 
+import { Prisma } from '@prisma/client';
+import { CACHE_KEYS, getOrSetCache, invalidateMasterCache, MASTER_CACHE_HEADERS } from '@/lib/cache'; 
 
 // Type definition for the expected request body
 interface VehicleRequest {
@@ -32,8 +33,8 @@ export async function POST(request: Request) {
     const newVehicle = await prisma.vehicle.create({
       data: { vehicleNumber: cleanVehicleNumber },
     });
-    
-    // Return success response
+
+    await invalidateMasterCache();
     return NextResponse.json(newVehicle, { status: 201 });
 
   } catch (error) {
@@ -57,8 +58,8 @@ export async function POST(request: Request) {
 // Note: GET method
 export async function GET() {
     try {
-        const vehicles = await prisma.vehicle.findMany();
-        return NextResponse.json(vehicles, { status: 200 });
+        const vehicles = await getOrSetCache(CACHE_KEYS.MASTER_VEHICLES, () => prisma.vehicle.findMany());
+        return NextResponse.json(vehicles, { status: 200, headers: MASTER_CACHE_HEADERS });
     }
     catch (error) {
         console.error('Error fetching vehicles:', error);

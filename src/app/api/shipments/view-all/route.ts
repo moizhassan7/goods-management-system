@@ -3,134 +3,139 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { parsePagination, paginationMeta } from '@/lib/pagination';
 
-// NOTE: This prefix MUST match the one used in src/app/api/shipments/route.ts
-const PAYMENT_STATUS_PREFIX = "PAYMENT_STATUS:"; 
+const PAYMENT_STATUS_PREFIX = "PAYMENT_STATUS:";
 
-/**
- * GET /api/shipments/view-all
- * Retrieves all shipments with necessary relations for the main view table.
- * Supports filtering/searching by query, date range, and vehicle ID.
- */
-export async function GET(request: Request) {
-    try {
-        const { searchParams } = new URL(request.url);
-        const query = searchParams.get('query');
-        const startDateParam = searchParams.get('startDate');
-        const endDateParam = searchParams.get('endDate');
-        const vehicleIdParam = searchParams.get('vehicleId');
+function extractPaymentStatus(remarks: string | null): string | null {
+    if (remarks && remarks.startsWith(PAYMENT_STATUS_PREFIX)) {
+        return remarks.split(' ')[0].replace(PAYMENT_STATUS_PREFIX, '');
+    }
+    return 'PENDING';
+}
 
-        const where: Prisma.ShipmentWhereInput = {};
+function buildWhere(searchParams: URLSearchParams): Prisma.ShipmentWhereInput {
+    const query = searchParams.get('query');
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
+    const vehicleIdParam = searchParams.get('vehicleId');
 
-        // 1. Search Query Filtering (Bility #, Sender, Receiver, Vehicle Number, Register #)
-        if (query && query.trim()) {
-            const cleanQuery = query.trim();
-            where.OR = [
-                // 1. Bilty Number
-                { bility_number: { contains: cleanQuery, mode: 'insensitive' } },
-                // 2. Sender Party Name
-                { sender: { name: { contains: cleanQuery, mode: 'insensitive' } } },
-                // 3. Receiver Party Name
-                { receiver: { name: { contains: cleanQuery, mode: 'insensitive' } } },
-                // 4. Vehicle / Truck Number
-                { vehicle: { vehicleNumber: { contains: cleanQuery, mode: 'insensitive' } } },
-                // 5. Register Number
-                { register_number: { contains: cleanQuery, mode: 'insensitive' } },
-                // 6. Forwarding Agency Name
-                { forwardingAgency: { name: { contains: cleanQuery, mode: 'insensitive' } } },
-                // 7. Departure City
-                { departureCity: { name: { contains: cleanQuery, mode: 'insensitive' } } },
-                // 8. Destination City
-                { toCity: { name: { contains: cleanQuery, mode: 'insensitive' } } },
-                // 9. Goods Item Description
-                {
-                    goodsDetails: {
-                        some: {
-                            itemCatalog: {
-                                item_description: { contains: cleanQuery, mode: 'insensitive' }
-                            }
-                        }
-                    }
-                },
-            ];
-        }
+    const where: Prisma.ShipmentWhereInput = {};
 
-        // 2. Date Range Filtering (Day created / Entry date based)
-        if (startDateParam || endDateParam) {
-            const startOfIso = startDateParam ? new Date(startDateParam + 'T00:00:00.000Z') : undefined;
-            const endOfIso = endDateParam ? new Date(endDateParam + 'T23:59:59.999Z') : undefined;
-
-            const startOfLocal = startDateParam ? new Date(`${startDateParam}T00:00:00`) : undefined;
-            const endOfLocal = endDateParam ? new Date(`${endDateParam}T23:59:59.999`) : undefined;
-
-            const conditions: Prisma.ShipmentWhereInput[] = [];
-
-            if (startOfIso || endOfIso) {
-                const f: { gte?: Date; lte?: Date } = {};
-                if (startOfIso) f.gte = startOfIso;
-                if (endOfIso) f.lte = endOfIso;
-                conditions.push({ created_day: f });
-                conditions.push({ createdAt: f });
-            }
-            if (startOfLocal || endOfLocal) {
-                const f: { gte?: Date; lte?: Date } = {};
-                if (startOfLocal) f.gte = startOfLocal;
-                if (endOfLocal) f.lte = endOfLocal;
-                conditions.push({ created_day: f });
-                conditions.push({ createdAt: f });
-            }
-
-            const existingAnd = Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : [];
-            where.AND = [
-                ...existingAnd,
-                { OR: conditions }
-            ];
-        }
-
-        // 3. Vehicle Filtering
-        const parsedVehicleId = parseInt(vehicleIdParam || '0');
-        if (parsedVehicleId > 0) {
-            where.vehicle_number_id = parsedVehicleId;
-        }
-
-
-        const shipments = await prisma.shipment.findMany({
-            where,
-            include: {
-                departureCity: { select: { name: true } },
-                toCity: { select: { name: true } },
-                sender: { select: { name: true, contactInfo: true } },
-                receiver: { select: { name: true, contactInfo: true } },
-                vehicle: { select: { vehicleNumber: true } },
-                forwardingAgency: { select: { name: true } },
+    if (query && query.trim()) {
+        const cleanQuery = query.trim();
+        where.OR = [
+            { bility_number: { contains: cleanQuery, mode: 'insensitive' } },
+            { sender: { name: { contains: cleanQuery, mode: 'insensitive' } } },
+            { receiver: { name: { contains: cleanQuery, mode: 'insensitive' } } },
+            { vehicle: { vehicleNumber: { contains: cleanQuery, mode: 'insensitive' } } },
+            { register_number: { contains: cleanQuery, mode: 'insensitive' } },
+            { forwardingAgency: { name: { contains: cleanQuery, mode: 'insensitive' } } },
+            { departureCity: { name: { contains: cleanQuery, mode: 'insensitive' } } },
+            { toCity: { name: { contains: cleanQuery, mode: 'insensitive' } } },
+            {
                 goodsDetails: {
-                    select: {
-                        good_detail_id: true,
-                        quantity: true,
-                        charges: true,
-                        delivery_charges: true,
+                    some: {
                         itemCatalog: {
-                            select: {
-                                item_description: true,
-                            }
+                            item_description: { contains: cleanQuery, mode: 'insensitive' }
                         }
                     }
                 }
             },
-            orderBy: { createdAt: 'desc' },
-        });
+        ];
+    }
 
-        // Helper function to extract payment status from remarks
-        const extractPaymentStatus = (remarks: string | null): string | null => {
-            if (remarks && remarks.startsWith(PAYMENT_STATUS_PREFIX)) {
-                // Extracts ALREADY_PAID or FREE from "PAYMENT_STATUS:STATUS_HERE other notes..."
-                return remarks.split(' ')[0].replace(PAYMENT_STATUS_PREFIX, '');
-            }
-            return 'PENDING'; // Default status if no special tag found
-        };
+    if (startDateParam || endDateParam) {
+        const startOfIso = startDateParam ? new Date(startDateParam + 'T00:00:00.000Z') : undefined;
+        const endOfIso = endDateParam ? new Date(endDateParam + 'T23:59:59.999Z') : undefined;
+        const startOfLocal = startDateParam ? new Date(`${startDateParam}T00:00:00`) : undefined;
+        const endOfLocal = endDateParam ? new Date(`${endDateParam}T23:59:59.999`) : undefined;
 
+        const conditions: Prisma.ShipmentWhereInput[] = [];
 
-        // Convert Decimal types to Number and extract payment status
+        if (startOfIso || endOfIso) {
+            const f: { gte?: Date; lte?: Date } = {};
+            if (startOfIso) f.gte = startOfIso;
+            if (endOfIso) f.lte = endOfIso;
+            conditions.push({ created_day: f });
+            conditions.push({ createdAt: f });
+        }
+        if (startOfLocal || endOfLocal) {
+            const f: { gte?: Date; lte?: Date } = {};
+            if (startOfLocal) f.gte = startOfLocal;
+            if (endOfLocal) f.lte = endOfLocal;
+            conditions.push({ created_day: f });
+            conditions.push({ createdAt: f });
+        }
+
+        const existingAnd = Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : [];
+        where.AND = [
+            ...existingAnd,
+            { OR: conditions }
+        ];
+    }
+
+    const parsedVehicleId = parseInt(vehicleIdParam || '0');
+    if (parsedVehicleId > 0) {
+        where.vehicle_number_id = parsedVehicleId;
+    }
+
+    return where;
+}
+
+/**
+ * GET /api/shipments/view-all
+ * Paginated shipment list for the view page, with filter totals.
+ */
+export async function GET(request: Request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const where = buildWhere(searchParams);
+        const { page, pageSize, skip } = parsePagination(searchParams);
+
+        const [shipments, total, aggregates, deliveredCount] = await prisma.$transaction([
+            prisma.shipment.findMany({
+                where,
+                include: {
+                    departureCity: { select: { name: true } },
+                    toCity: { select: { name: true } },
+                    sender: { select: { name: true, contactInfo: true } },
+                    receiver: { select: { name: true, contactInfo: true } },
+                    vehicle: { select: { vehicleNumber: true } },
+                    forwardingAgency: { select: { name: true } },
+                    goodsDetails: {
+                        select: {
+                            good_detail_id: true,
+                            quantity: true,
+                            charges: true,
+                            delivery_charges: true,
+                            itemCatalog: {
+                                select: {
+                                    item_description: true,
+                                }
+                            }
+                        }
+                    }
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: pageSize,
+            }),
+            prisma.shipment.count({ where }),
+            prisma.shipment.aggregate({
+                where,
+                _sum: {
+                    total_charges: true,
+                    total_delivery_charges: true,
+                },
+            }),
+            prisma.shipment.count({
+                where: {
+                    AND: [where, { delivery_date: { not: null } }],
+                },
+            }),
+        ]);
+
         const formattedShipments = shipments.map(s => ({
             ...s,
             total_charges: Number(s.total_charges),
@@ -145,14 +150,21 @@ export async function GET(request: Request) {
                 charges: Number(g.charges || 0),
                 delivery_charges: Number(g.delivery_charges || 0),
             })),
-            // Convert date to ISO string
             bility_date: s.bility_date.toISOString().split('T')[0],
             delivery_date: s.delivery_date?.toISOString().split('T')[0] || null,
-            // NEW: Add the extracted payment status
             payment_status: extractPaymentStatus(s.remarks),
         }));
 
-        return NextResponse.json(formattedShipments, { status: 200 });
+        return NextResponse.json({
+            data: formattedShipments,
+            ...paginationMeta(total, page, pageSize),
+            stats: {
+                totalBiltyCount: total,
+                totalBaraKaraya: Number(aggregates._sum.total_charges || 0),
+                totalChotaKaraya: Number(aggregates._sum.total_delivery_charges || 0),
+                deliveredCount,
+            },
+        }, { status: 200 });
     } catch (error) {
         console.error('Error fetching all shipments:', error);
         return NextResponse.json(

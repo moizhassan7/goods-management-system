@@ -1,6 +1,7 @@
 // app/api/cities/route.ts
 import { prisma } from "../../../lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { CACHE_KEYS, getOrSetCache, invalidateMasterCache, MASTER_CACHE_HEADERS } from '@/lib/cache';
 
 
 // API route to handle adding a new city
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
     const createCity = await prisma.city.create({
         data: { name: name.trim() },
     })
+    await invalidateMasterCache();
     return NextResponse.json(createCity, { status: 201 });
   } catch (error) {
     console.error('Error adding city:', error);
@@ -31,8 +33,8 @@ export async function POST(request: NextRequest) {
 // API route to fetch all cities
 export async function GET() {
     try {
-        const cities = await prisma.city.findMany();
-        return NextResponse.json(cities, { status: 200 });
+        const cities = await getOrSetCache(CACHE_KEYS.MASTER_CITIES, () => prisma.city.findMany());
+        return NextResponse.json(cities, { status: 200, headers: MASTER_CACHE_HEADERS });
     }
     catch (error) {
         console.error('Error fetching cities:', error);

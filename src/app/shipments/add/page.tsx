@@ -35,6 +35,10 @@ import {
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
 import { SearchableDropdown } from "@/components/ui/SearchableDropdown";
+import { TablePagination } from '@/components/ui/TablePagination';
+import { fetchMasterLists, clearMasterListsClientCache } from '@/lib/master-lists-client';
+import { toDateInputValue } from '@/lib/created-date';
+import { describeNetworkError, fetchWithTimeout, readApiErrorMessage } from '@/lib/api-client';
 
 export interface Toast {
     id: string;
@@ -176,7 +180,14 @@ interface ShipmentData {
     total_expenses: number;
 }
 
-const today = new Date().toISOString().substring(0, 10);
+const getLocalDateInput = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const today = getLocalDateInput();
 
 const generateDefaultValues = (): ShipmentFormValues => ({
     register_number: '',
@@ -223,10 +234,17 @@ export default function AddShipment() {
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [shipments, setShipments] = useState<ShipmentData[]>([]);
     const [savedBiltiesDate, setSavedBiltiesDate] = useState<string>(today);
+    const [createdDate, setCreatedDate] = useState<string>(today);
     const [isLoadingShipments, setIsLoadingShipments] = useState(false);
+    const [shipmentsPage, setShipmentsPage] = useState(1);
+    const [shipmentsPageSize, setShipmentsPageSize] = useState(25);
+    const [shipmentsTotal, setShipmentsTotal] = useState(0);
+    const [shipmentsTotalPages, setShipmentsTotalPages] = useState(1);
     const [isFetchingRegNum, setIsFetchingRegNum] = useState(false);
     const [showExpenses, setShowExpenses] = useState(false);
     const [editingShipmentId, setEditingShipmentId] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const isSavingRef = useRef(false);
 
     // Modal state for quick add
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -234,20 +252,33 @@ export default function AddShipment() {
     const [modalInput, setModalInput] = useState<any>({});
     const [isModalSubmitting, setIsModalSubmitting] = useState(false);
 
-    const fetchShipments = useCallback(async (dateToFilter: string) => {
+    const fetchShipments = useCallback(async (dateToFilter: string, page = 1, pageSize = 25) => {
         if (!dateToFilter) {
             setShipments([]);
+            setShipmentsTotal(0);
+            setShipmentsTotalPages(1);
             return;
         }
         setIsLoadingShipments(true);
         try {
-            const response = await fetch(`/api/shipments?date=${dateToFilter}`);
+            const params = new URLSearchParams({
+                date: dateToFilter,
+                page: String(page),
+                pageSize: String(pageSize),
+            });
+            const response = await fetch(`/api/shipments?${params.toString()}`);
             if (!response.ok) throw new Error('Failed to fetch shipments.');
-            const list = await response.json();
+            const payload = await response.json();
+            const list = Array.isArray(payload) ? payload : (payload.data || []);
             setShipments(list);
+            setShipmentsTotal(Array.isArray(payload) ? payload.length : Number(payload.total || 0));
+            setShipmentsTotalPages(Array.isArray(payload) ? 1 : Number(payload.totalPages || 1));
         } catch (error: any) {
             console.error("Shipments fetch error:", error);
             sonnerToast.error('Error loading shipments', { description: 'Could not retrieve saved shipments list.' });
+            setShipments([]);
+            setShipmentsTotal(0);
+            setShipmentsTotalPages(1);
         } finally {
             setIsLoadingShipments(false);
         }
@@ -311,11 +342,9 @@ export default function AddShipment() {
         return 'PENDING';
     }, [isAlreadyPaid, isFreeOfCost]);
 
-    const fetchDropdownData = async () => {
+    const fetchDropdownData = async (force = false) => {
         try {
-            const response = await fetch('/api/lists');
-            if (!response.ok) throw new Error('Failed to fetch lists.');
-            const lists = await response.json();
+            const lists = await fetchMasterLists(force);
             setData(lists);
             return lists;
         } catch (error: any) {
@@ -334,6 +363,9 @@ export default function AddShipment() {
             (shipment.remarks?.includes('PAYMENT_STATUS:FREE') ?? false);
 
         const cleanRemarks = (shipment.remarks || '').replace(/PAYMENT_STATUS:\w+\s*/, '');
+        const createdDay = toDateInputValue(shipment.created_day || shipment.created_at || shipment.createdAt) || today;
+        setCreatedDate(createdDay);
+        setSavedBiltiesDate(createdDay);
 
         form.reset({
             register_number: shipment.register_number,
@@ -435,8 +467,6 @@ export default function AddShipment() {
         async function fetchInitialDataAndSetDefaults() {
             setIsLoadingData(true);
             await fetchDropdownData();
-
-            fetchShipments(today);
             setIsLoadingData(false);
             focusBilityNumber();
 
@@ -493,10 +523,20 @@ export default function AddShipment() {
     }, [bilityDate, fetchNextRegNum]);
 
     useEffect(() => {
+        setShipmentsPage(1);
+    }, [savedBiltiesDate, shipmentsPageSize]);
+
+    useEffect(() => {
         if (savedBiltiesDate) {
-            fetchShipments(savedBiltiesDate);
+            fetchShipments(savedBiltiesDate, shipmentsPage, shipmentsPageSize);
         }
-    }, [savedBiltiesDate, fetchShipments]);
+    }, [savedBiltiesDate, shipmentsPage, shipmentsPageSize, fetchShipments]);
+
+    useEffect(() => {
+        if (shipmentsPage > shipmentsTotalPages) {
+            setShipmentsPage(shipmentsTotalPages);
+        }
+    }, [shipmentsPage, shipmentsTotalPages]);
 
     const openMasterDataModal = (type: typeof modalType) => {
         setModalType(type);
@@ -571,7 +611,8 @@ export default function AddShipment() {
             const newEntry = await response.json();
             toast.success({ title: "Success", description: successMessage });
 
-            await fetchDropdownData();
+            clearMasterListsClientCache();
+            await fetchDropdownData(true);
 
             const newIdRaw = newEntry.id ?? newEntry.register_number ?? null;
             const newIdNumber = newIdRaw != null ? Number(newIdRaw) : null;
@@ -602,6 +643,11 @@ export default function AddShipment() {
     };
 
     const handleDirectSave = useCallback(async (values: ShipmentFormValues) => {
+        if (isSavingRef.current) return;
+        isSavingRef.current = true;
+
+        const actionLabel = editingShipmentId ? 'Update' : 'Save';
+        setIsSaving(true);
         try {
             const chota = Number(values.total_delivery_charges) || 0;
             const bara = Number(values.total_amount) || 0;
@@ -626,6 +672,7 @@ export default function AddShipment() {
                 sender_id: Number(values.sender_id),
                 receiver_id: Number(values.receiver_id),
                 payment_status: paymentStatusToSend,
+                created_date: createdDate,
                 station_expense: values.station_expense || 0,
                 bility_expense: values.bility_expense || 0,
                 station_labour: values.station_labour || 0,
@@ -641,17 +688,26 @@ export default function AddShipment() {
             const endpoint = isEditing ? `/api/shipments/${editingShipmentId}` : '/api/shipments';
             const method = isEditing ? 'PUT' : 'POST';
 
-            const response = await fetch(endpoint, {
+            const response = await fetchWithTimeout(endpoint, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payloadToSend),
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `Failed to ${isEditing ? 'update' : 'register'} shipment.`);
+                const message = await readApiErrorMessage(
+                    response,
+                    `Failed to ${isEditing ? 'update' : 'register'} shipment.`,
+                );
+                throw new Error(message);
             }
-            const result = await response.json();
+
+            let result: { register_number?: string; message?: string } = {};
+            try {
+                result = await response.json();
+            } catch {
+                throw new Error('Bilty was saved but the server response could not be read. Please refresh and confirm the list.');
+            }
             const regNum = result.register_number || editingShipmentId;
 
             toast.success({
@@ -659,26 +715,39 @@ export default function AddShipment() {
                 description: `Reg #${regNum} | Bilty No: ${values.bility_number} ${isEditing ? 'updated' : 'recorded'}.`
             });
 
+            const nextBilityDate = values.bility_date || today;
+            const nextCreatedDate = createdDate;
             setEditingShipmentId(null);
-            form.reset({
-                ...generateDefaultValues(),
-                bility_date: values.bility_date || today,
-                sender_id: 0,
-                receiver_id: 0,
-            });
-            fetchNextRegNum(values.bility_date || today);
-            fetchShipments(savedBiltiesDate);
-            focusBilityNumber();
 
-        } catch (error: any) {
+            window.setTimeout(() => {
+                form.reset({
+                    ...generateDefaultValues(),
+                    bility_date: nextBilityDate,
+                    sender_id: 0,
+                    receiver_id: 0,
+                });
+                fetchNextRegNum(nextBilityDate);
+                focusBilityNumber();
+            }, 0);
+
+            setSavedBiltiesDate(nextCreatedDate);
+            setShipmentsPage(1);
+            fetchShipments(nextCreatedDate, 1, shipmentsPageSize);
+
+        } catch (error: unknown) {
             console.error('Submission Error:', error);
-            toast.error({ title: editingShipmentId ? 'Error Updating Bilty' : 'Error Saving Bilty', description: error.message });
+            toast.error({
+                title: editingShipmentId ? 'Bilty Update Failed' : 'Bilty Save Failed',
+                description: describeNetworkError(error, actionLabel),
+            });
+        } finally {
+            isSavingRef.current = false;
+            setIsSaving(false);
         }
-    }, [form, paymentStatusToSend, toast, editingShipmentId, fetchShipments, fetchNextRegNum, focusBilityNumber, savedBiltiesDate]);
+    }, [form, paymentStatusToSend, toast, editingShipmentId, fetchShipments, fetchNextRegNum, focusBilityNumber, createdDate, shipmentsPageSize]);
 
     const onInvalid = useCallback((errors: any) => {
         console.error("Form Validation Errors:", errors);
-        const errorKeys = Object.keys(errors);
         const friendlyNames: Record<string, string> = {
             bility_number: 'Bilty Number',
             bility_date: 'Bilty Date',
@@ -687,13 +756,29 @@ export default function AddShipment() {
             forwarding_agency_id: 'Forwarding Agency',
             vehicle_number_id: 'Fleet Vehicle',
             goods_details: 'Goods / Item Category',
+            item_id: 'Goods / Item Category',
             sender_id: 'Sender Party',
             receiver_id: 'Receiver Party',
+            total_amount: 'Chota Karaya / Bara Karaya',
         };
-        const missing = errorKeys.map(k => friendlyNames[k] || k).join(', ');
+
+        const labels: string[] = [];
+        const walk = (obj: any, parent?: string) => {
+            if (!obj || typeof obj !== 'object') return;
+            if (typeof obj.message === 'string') {
+                labels.push(friendlyNames[parent || ''] || obj.message);
+                return;
+            }
+            Object.entries(obj).forEach(([key, value]) => walk(value, parent || key));
+        };
+        walk(errors);
+
+        const missing = [...new Set(labels)].join(', ');
         toast.error({
-            title: "Incomplete Bilty Details",
-            description: `Please select or enter: ${missing}`,
+            title: "Bilty Save Blocked",
+            description: missing
+                ? `Please complete: ${missing}`
+                : 'Some required fields are missing or invalid. Please check the form and try again.',
         });
     }, [toast]);
 
@@ -1061,15 +1146,19 @@ export default function AddShipment() {
         }
     };
 
-    const handlePrintTable = () => {
-        if (shipments.length === 0) {
-            toast.error({ title: 'No Data', description: 'There are no shipments to print for the selected date.' });
-            return;
-        }
+    const handlePrintTable = async () => {
         try {
+            const response = await fetch(`/api/shipments?date=${savedBiltiesDate}`);
+            if (!response.ok) throw new Error('Failed to load day sheet.');
+            const list = await response.json();
+            const dayShipments = Array.isArray(list) ? list : [];
+            if (dayShipments.length === 0) {
+                toast.error({ title: 'No Data', description: 'There are no shipments to print for the selected date.' });
+                return;
+            }
             const printWindow = window.open('', '_blank', 'height=750,width=1050');
             if (printWindow) {
-                const html = createDaySheetPrintContent(shipments, savedBiltiesDate);
+                const html = createDaySheetPrintContent(dayShipments, savedBiltiesDate);
                 printWindow.document.open();
                 printWindow.document.write(html);
                 printWindow.document.close();
@@ -1099,13 +1188,32 @@ export default function AddShipment() {
 
     return (
         <div className="space-y-3 max-w-5xl mx-auto pb-10">
-            {/* Minimal Sub-header: Date & Quick Add */}
-            <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-1.5 text-xs font-mono text-slate-600 dark:text-slate-400">
-                    {/* <Calendar className="w-3.5 h-3.5 text-blue-600" /> */}
-                    {/* <span>Dispatch Date: <strong className="text-slate-900 dark:text-white font-bold">{bilityDate || 'Today'}</strong></span> */}
+            {/* Created Date + Quick Add */}
+            <div className="flex items-center justify-end gap-2 px-1">
+                <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 shadow-2xs">
+                    <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <Label htmlFor="created_date_input" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        Created Date
+                    </Label>
+                    <Input
+                        id="created_date_input"
+                        type="date"
+                        max={today}
+                        value={createdDate}
+                        onChange={(e) => {
+                            const nextDate = e.target.value;
+                            if (!nextDate) return;
+                            setCreatedDate(nextDate);
+                            setSavedBiltiesDate(nextDate);
+                            setShipmentsPage(1);
+                            if (!editingShipmentId) {
+                                setValue('bility_date', nextDate, { shouldValidate: true });
+                            }
+                        }}
+                        className="h-7 w-[138px] text-xs font-mono border-0 bg-transparent shadow-none px-1 focus-visible:ring-0"
+                        title="Entry date for this bilty. Use a previous date to back-date consignments."
+                    />
                 </div>
-
                 <Button
                     variant="outline"
                     size="sm"
@@ -1451,17 +1559,17 @@ export default function AddShipment() {
                         )}
                         <Button
                             type="submit"
-                            disabled={form.formState.isSubmitting || !hasFreightOrPayment}
+                            disabled={isSaving}
                             className={cn(
                                 "w-full h-10 rounded-lg text-white font-bold text-xs shadow-xs transition-colors gap-2",
                                 !hasFreightOrPayment
-                                    ? "bg-slate-300 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-60 border border-slate-200 dark:border-slate-700 shadow-none hover:bg-slate-300 dark:hover:bg-slate-800"
+                                    ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
                                     : editingShipmentId
                                         ? "bg-amber-600 hover:bg-amber-700 cursor-pointer"
                                         : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
                             )}
                         >
-                            {form.formState.isSubmitting ? (
+                            {isSaving ? (
                                 <>
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                     {editingShipmentId ? 'Updating Bilty Consignment...' : 'Saving Bilty Consignment...'}
@@ -1687,7 +1795,7 @@ export default function AddShipment() {
                                 Saved Bilties for ({savedBiltiesDate})
                             </CardTitle>
                             <CardDescription className="text-[11px] text-slate-500">
-                                {shipments.length} {shipments.length === 1 ? 'consignment' : 'consignments'} on record
+                                {shipmentsTotal} {shipmentsTotal === 1 ? 'consignment' : 'consignments'} on record
                             </CardDescription>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -1700,7 +1808,7 @@ export default function AddShipment() {
                             />
                         </div>
                     </div>
-                    {shipments.length > 0 && (
+                    {shipmentsTotal > 0 && (
                         <Button
                             onClick={handlePrintTable}
                             size="sm"
@@ -1823,6 +1931,18 @@ export default function AddShipment() {
                             </Table>
                         </div>
                     )}
+                    <TablePagination
+                        currentPage={shipmentsPage}
+                        totalPages={shipmentsTotalPages}
+                        totalItems={shipmentsTotal}
+                        pageSize={shipmentsPageSize}
+                        onPageChange={setShipmentsPage}
+                        onPageSizeChange={(size) => {
+                            setShipmentsPageSize(size);
+                            setShipmentsPage(1);
+                        }}
+                        isLoading={isLoadingShipments}
+                    />
                 </CardContent>
             </Card>
         </div>

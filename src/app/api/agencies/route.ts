@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 import { Prisma } from '@prisma/client'; 
-import { authenticate, UserRole, Permissions } from '@/lib/auth';
+import { authenticate, Permissions } from '@/lib/auth';
+import { CACHE_KEYS, getOrSetCache, invalidateMasterCache, MASTER_CACHE_HEADERS } from '@/lib/cache';
 
 // Type definition for the expected request body
 interface AgencyRequest {
@@ -44,8 +45,8 @@ export async function POST(request: Request) {
     const newAgency = await prisma.agency.create({ 
       data: { name: agencyName },
     });
-    
-    // Return success response
+
+    await invalidateMasterCache();
     return NextResponse.json(newAgency, { status: 201 });
 
   } catch (error) {
@@ -88,8 +89,8 @@ export async function GET(request: Request) { // <-- FIX: Added 'request: Reques
     }
     // --- END RBAC CHECK ---
     
-    const agencies = await prisma.agency.findMany();
-    return NextResponse.json(agencies, { status: 200 });
+    const agencies = await getOrSetCache(CACHE_KEYS.MASTER_AGENCIES, () => prisma.agency.findMany());
+    return NextResponse.json(agencies, { status: 200, headers: MASTER_CACHE_HEADERS });
   } catch (error) {
     console.error('Error fetching agencies:', error);
     return NextResponse.json(

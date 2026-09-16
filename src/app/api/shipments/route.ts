@@ -5,6 +5,9 @@ import { NextResponse } from 'next/server';
 // FIX: Use the correctly imported Prisma client 'prisma'
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { hasPaginationParams, paginationMeta, parsePagination } from '@/lib/pagination';
+import { parseCreatedDate } from '@/lib/created-date';
+import { prismaErrorMessage } from '@/lib/api-client';
 
 // Define the shape of the data expected from the client
 interface GoodsDetailPayload {
@@ -26,6 +29,7 @@ interface ShipmentRequestPayload {
 
     total_delivery_charges: number;
     total_amount: number; // This value is mapped to the 'total_charges' DB column
+    created_date?: string;
 
     remarks?: string;
     goods_details: GoodsDetailPayload[];
@@ -53,8 +57,14 @@ export async function POST(request: Request) {
         const payload: ShipmentRequestPayload = await request.json();
 
         // 1. Basic Validation
-        if (!payload.bility_number || !payload.bility_date || payload.goods_details.length === 0) {
-            return NextResponse.json({ message: 'Missing critical shipment data.' }, { status: 400 });
+        if (!payload.bility_number || !payload.bility_date || !Array.isArray(payload.goods_details) || payload.goods_details.length === 0) {
+            return NextResponse.json({ message: 'Missing critical shipment data. Please fill Bilty Number, Date, and Item details.' }, { status: 400 });
+        }
+        if (payload.goods_details.some((detail) => !detail.item_id || Number(detail.item_id) < 1)) {
+            return NextResponse.json({ message: 'Please select a valid item before saving the bilty.' }, { status: 400 });
+        }
+        if (!payload.sender_id || !payload.receiver_id || !payload.departure_city_id || !payload.vehicle_number_id || !payload.forwarding_agency_id) {
+            return NextResponse.json({ message: 'Please select departure city, agency, vehicle, sender, and receiver before saving.' }, { status: 400 });
         }
 
         // --- Auto-generate register_number with Max-Sequence & Retry Logic ---
@@ -114,6 +124,8 @@ export async function POST(request: Request) {
                     charges: new Prisma.Decimal(0),
                     delivery_charges: new Prisma.Decimal(0),
                 }));
+
+                const createdTimestamps = parseCreatedDate(payload.created_date);
         
                 // 2. Begin Atomic Transaction
                 [newShipment] = await prisma.$transaction([
@@ -139,7 +151,11 @@ export async function POST(request: Request) {
                             cart_labour: new Prisma.Decimal(payload.cart_labour || 0),
                             total_expenses: new Prisma.Decimal(payload.total_expenses || 0),
         
-                            remarks: finalRemarks, 
+                            remarks: finalRemarks,
+                            ...(createdTimestamps ? {
+                                created_day: createdTimestamps.created_day,
+                                createdAt: createdTimestamps.createdAt,
+                            } : {}),
         
                             goodsDetails: {
                                 createMany: {
@@ -153,7 +169,7 @@ export async function POST(request: Request) {
                     ...(payload.payment_status !== 'ALREADY_PAID' && payload.payment_status !== 'FREE' ? [
                         prisma.transaction.create({
                             data: {
-                                transaction_date: new Date(),
+                                transaction_date: createdTimestamps?.createdAt || new Date(),
                                 party_type: 'SENDER',
                                 party_ref_id: payload.sender_id,
                                 shipment_id: register_number,
@@ -163,7 +179,7 @@ export async function POST(request: Request) {
                             },
                         }),
                     ] : []),
-                ]);
+                ], { maxWait: 10000, timeout: 20000 });
 
                 // If transaction succeeds, break the retry loop
                 break; 
@@ -193,10 +209,9 @@ export async function POST(request: Request) {
         }, { status: 201 });
 
     } catch (error) {
-        // 4. Handle Errors
         console.error('Shipment Registration Error:', error);
         return NextResponse.json(
-            { message: error instanceof Error ? error.message : 'Internal Server Error: Failed to register shipment.' },
+            { message: prismaErrorMessage(error, 'Internal Server Error: Failed to register shipment.') },
             { status: 500 }
         );
     }
@@ -278,57 +293,75 @@ export async function GET(request: Request) {
         // *** END FIX ***
 
 
-        const shipments = await prisma.shipment.findMany({
-            where: finalWhere, // Use the correctly constructed 'finalWhere'
-            // *** FINAL RECURSION FIX: Explicitly select minimal fields for all deep relations ***
-            select: {
-                // Base Shipment fields (include all scalar fields explicitly for safety)
-                register_number: true,
-                bility_number: true,
-                bility_date: true,
-                departure_city_id: true,
-                to_city_id: true,
-                forwarding_agency_id: true,
-                vehicle_number_id: true,
-                sender_id: true,
-                receiver_id: true,
-                total_charges: true,
-                delivery_date: true,
-                remarks: true,
-                total_delivery_charges: true,
-                station_expense: true,
-                bility_expense: true,
-                station_labour: true,
-                cart_labour: true,
-                total_expenses: true,
-                created_day: true,
-                createdAt: true,
-                updatedAt: true,
-                
-                // Related models (Minimal selection)
-                goodsDetails: { 
-                    select: { 
-                        quantity: true, 
-                        item_name_id: true,
-                        itemCatalog: { 
-                            select: { 
-                                id: true,
-                                item_description: true 
-                            } 
-                        } 
-                    } 
-                },
-                departureCity: { select: { name: true } },
-                toCity: { select: { name: true } },
-                sender: { select: { id: true, name: true, contactInfo: true } },
-                receiver: { select: { id: true, name: true, contactInfo: true } },
-                vehicle: { select: { id: true, vehicleNumber: true } },
-                forwardingAgency: { select: { id: true, name: true } },
+        const select = {
+            register_number: true,
+            bility_number: true,
+            bility_date: true,
+            departure_city_id: true,
+            to_city_id: true,
+            forwarding_agency_id: true,
+            vehicle_number_id: true,
+            sender_id: true,
+            receiver_id: true,
+            total_charges: true,
+            delivery_date: true,
+            remarks: true,
+            total_delivery_charges: true,
+            station_expense: true,
+            bility_expense: true,
+            station_labour: true,
+            cart_labour: true,
+            total_expenses: true,
+            created_day: true,
+            createdAt: true,
+            updatedAt: true,
+            goodsDetails: {
+                select: {
+                    quantity: true,
+                    item_name_id: true,
+                    itemCatalog: {
+                        select: {
+                            id: true,
+                            item_description: true
+                        }
+                    }
+                }
             },
-            orderBy: { createdAt: 'desc' },
-        });
+            departureCity: { select: { name: true } },
+            toCity: { select: { name: true } },
+            sender: { select: { id: true, name: true, contactInfo: true } },
+            receiver: { select: { id: true, name: true, contactInfo: true } },
+            vehicle: { select: { id: true, vehicleNumber: true } },
+            forwardingAgency: { select: { id: true, name: true } },
+        } as const;
 
-        // Helper function to extract payment status from remarks
+        const paginate = hasPaginationParams(searchParams);
+        const { page, pageSize, skip } = parsePagination(searchParams);
+
+        let shipments;
+        let total = 0;
+
+        if (paginate) {
+            const [pagedShipments, pagedTotal] = await prisma.$transaction([
+                prisma.shipment.findMany({
+                    where: finalWhere,
+                    select,
+                    orderBy: { createdAt: 'desc' },
+                    skip,
+                    take: pageSize,
+                }),
+                prisma.shipment.count({ where: finalWhere }),
+            ]);
+            shipments = pagedShipments;
+            total = pagedTotal;
+        } else {
+            shipments = await prisma.shipment.findMany({
+                where: finalWhere,
+                select,
+                orderBy: { createdAt: 'desc' },
+            });
+        }
+
         const extractPaymentStatus = (remarks: string | null): string | null => {
             if (remarks && remarks.startsWith(PAYMENT_STATUS_PREFIX)) {
                 return remarks.split(' ')[0].replace(PAYMENT_STATUS_PREFIX, '');
@@ -336,12 +369,9 @@ export async function GET(request: Request) {
             return 'PENDING';
         };
 
-
-        return NextResponse.json(shipments.map(s => ({
+        const mapped = shipments.map(s => ({
             ...s,
-            // Attach the extracted payment status
             payment_status: extractPaymentStatus(s.remarks),
-            // Convert Decimals to Numbers for client consumption
             total_charges: Number(s.total_charges),
             total_delivery_charges: Number(s.total_delivery_charges),
             station_expense: Number(s.station_expense),
@@ -349,9 +379,17 @@ export async function GET(request: Request) {
             station_labour: Number(s.station_labour),
             cart_labour: Number(s.cart_labour),
             total_expenses: Number(s.total_expenses),
-            // Rename createdAt to created_at to match interface
             created_at: s.createdAt,
-        })), { status: 200 });
+        }));
+
+        if (paginate) {
+            return NextResponse.json({
+                data: mapped,
+                ...paginationMeta(total, page, pageSize),
+            }, { status: 200 });
+        }
+
+        return NextResponse.json(mapped, { status: 200 });
     } catch (error) {
         console.error('Error fetching shipments:', error);
         return NextResponse.json(

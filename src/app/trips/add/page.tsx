@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTranslation } from '@/lib/i18n';
+import { fetchMasterLists } from '@/lib/master-lists-client';
 
 const TripShipmentLogSchema = z.object({
   id: z.string().optional(),
@@ -143,10 +144,8 @@ export default function AddTrip() {
   useEffect(() => {
     async function fetchInitialData() {
       try {
-        const response = await fetch('/api/lists');
-        if (!response.ok) throw new Error('Failed to load dependency lists.');
-        const lists = await response.json();
-        setData(lists);
+        const lists = await fetchMasterLists();
+        setData({ ...lists, shipments: [] });
       } catch (error: any) {
         console.error("Data fetch error:", error);
       } finally {
