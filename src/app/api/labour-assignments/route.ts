@@ -163,7 +163,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
             message: `${result.newAssignments.count} assignments created successfully. ${result.deletedCount} previous active assignments were deleted (reassigned).`
-        }, { status: 201 });
+        }, { status: 200 });
 
     } catch (error) {
         console.error('Error creating labour assignments:', error);

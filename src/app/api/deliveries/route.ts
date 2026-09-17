@@ -94,7 +94,7 @@ export async function POST(request: Request) {
         return NextResponse.json({
             message: 'Delivery recorded successfully.',
             delivery: newDelivery,
-        }, { status: 201 });
+        }, { status: 200 });
 
     } catch (error) {
         console.error('Delivery Recording Error:', error);

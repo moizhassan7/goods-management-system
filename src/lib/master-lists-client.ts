@@ -7,7 +7,7 @@ export type MasterListsPayload = {
 };
 
 const LISTS_CACHE_KEY = 'gms_master_lists_v1';
-const LISTS_TTL_MS = 5 * 60 * 1000;
+const LISTS_TTL_MS = 60 * 1000;
 
 type CachedLists = {
     data: MasterListsPayload;
@@ -39,10 +39,18 @@ function writeSessionCache(data: MasterListsPayload) {
     }
 }
 
+let broadcastTimer: ReturnType<typeof setTimeout> | null = null;
+
 export function clearMasterListsClientCache() {
     if (typeof window === 'undefined') return;
     try {
         sessionStorage.removeItem(LISTS_CACHE_KEY);
+        if (!broadcastTimer) {
+            broadcastTimer = setTimeout(() => {
+                broadcastTimer = null;
+                window.dispatchEvent(new CustomEvent('gms:master-lists-invalidated'));
+            }, 50);
+        }
     } catch {
         // ignore
     }
@@ -52,9 +60,23 @@ export async function fetchMasterLists(force = false): Promise<MasterListsPayloa
     if (!force) {
         const cached = readSessionCache();
         if (cached) return cached;
+    } else {
+        if (typeof window !== 'undefined') {
+            try {
+                sessionStorage.removeItem(LISTS_CACHE_KEY);
+            } catch {
+                // ignore
+            }
+        }
     }
 
-    const response = await fetch('/api/lists');
+    const response = await fetch(`/api/lists?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+        },
+    });
     if (!response.ok) {
         throw new Error('Failed to fetch lists.');
     }

@@ -48,7 +48,7 @@ export async function POST(request: Request) {
         return NextResponse.json({
             message: 'Labour person created successfully.',
             labourPerson: newLabourPerson
-        }, { status: 201 });
+        }, { status: 200 });
 
     } catch (error) {
         console.error('Error creating labour person:', error);

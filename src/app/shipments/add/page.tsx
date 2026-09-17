@@ -342,7 +342,10 @@ export default function AddShipment() {
         return 'PENDING';
     }, [isAlreadyPaid, isFreeOfCost]);
 
-    const fetchDropdownData = async (force = false) => {
+    const isFetchingListsRef = useRef(false);
+    const fetchDropdownData = useCallback(async (force = false) => {
+        if (isFetchingListsRef.current) return null;
+        isFetchingListsRef.current = true;
         try {
             const lists = await fetchMasterLists(force);
             setData(lists);
@@ -350,9 +353,26 @@ export default function AddShipment() {
         } catch (error: any) {
             console.error("Data fetch error:", error);
             sonnerToast.error('Error loading data', { description: error.message || 'Could not retrieve lists.' });
+        } finally {
+            isFetchingListsRef.current = false;
         }
         return null;
-    };
+    }, []);
+
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        const handleSync = () => {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(() => {
+                fetchDropdownData(true);
+            }, 100);
+        };
+        window.addEventListener('gms:master-lists-invalidated', handleSync);
+        return () => {
+            if (timer) clearTimeout(timer);
+            window.removeEventListener('gms:master-lists-invalidated', handleSync);
+        };
+    }, [fetchDropdownData]);
 
     const handleEditShipment = useCallback((shipment: ShipmentData) => {
         setEditingShipmentId(shipment.register_number);
@@ -619,6 +639,18 @@ export default function AddShipment() {
 
             if (newIdNumber != null) {
                 switch (modalType) {
+                    case 'party':
+                        if (!form.getValues('sender_id')) {
+                            setValue('sender_id', newIdNumber, { shouldValidate: true });
+                        } else if (!form.getValues('receiver_id')) {
+                            setValue('receiver_id', newIdNumber, { shouldValidate: true });
+                        } else {
+                            setValue('sender_id', newIdNumber, { shouldValidate: true });
+                        }
+                        break;
+                    case 'city':
+                        setValue('to_city_id', newIdNumber, { shouldValidate: true });
+                        break;
                     case 'agency':
                         setValue('forwarding_agency_id', newIdNumber, { shouldValidate: true });
                         break;
@@ -1300,7 +1332,7 @@ export default function AddShipment() {
                                     value={field.value}
                                     onSelectItem={(it) => field.onChange(Number(it.id))}
                                     items={data?.cities}
-                                    onNewItemAdded={fetchDropdownData}
+                                    onNewItemAdded={() => fetchDropdownData(true)}
                                 />
                             )} />
                         </div>
@@ -1315,7 +1347,7 @@ export default function AddShipment() {
                                     value={field.value}
                                     onSelectItem={(it) => field.onChange(Number(it.id))}
                                     items={data?.agencies}
-                                    onNewItemAdded={fetchDropdownData}
+                                    onNewItemAdded={() => fetchDropdownData(true)}
                                 />
                             )} />
 
@@ -1328,7 +1360,7 @@ export default function AddShipment() {
                                     onSelectItem={(it) => field.onChange(Number(it.id))}
                                     items={data?.vehicles}
                                     createPropertyName="vehicleNumber"
-                                    onNewItemAdded={fetchDropdownData}
+                                    onNewItemAdded={() => fetchDropdownData(true)}
                                 />
                             )} />
                         </div>
@@ -1367,7 +1399,7 @@ export default function AddShipment() {
                                         onSelectItem={(it) => field.onChange(Number(it.id))}
                                         items={data?.items}
                                         createPropertyName="description"
-                                        onNewItemAdded={fetchDropdownData}
+                                        onNewItemAdded={() => fetchDropdownData(true)}
                                     />
                                 )} />
                             </div>
@@ -1383,7 +1415,7 @@ export default function AddShipment() {
                                     value={field.value}
                                     onSelectItem={(it) => field.onChange(Number(it.id))}
                                     items={data?.parties}
-                                    onNewItemAdded={fetchDropdownData}
+                                    onNewItemAdded={() => fetchDropdownData(true)}
                                 />
                             )} />
 
@@ -1395,7 +1427,7 @@ export default function AddShipment() {
                                     value={field.value}
                                     onSelectItem={(it) => field.onChange(Number(it.id))}
                                     items={data?.parties}
-                                    onNewItemAdded={fetchDropdownData}
+                                    onNewItemAdded={() => fetchDropdownData(true)}
                                 />
                             )} />
 
@@ -1407,7 +1439,7 @@ export default function AddShipment() {
                                     value={field.value}
                                     onSelectItem={(it) => field.onChange(Number(it.id))}
                                     items={data?.cities}
-                                    onNewItemAdded={fetchDropdownData}
+                                    onNewItemAdded={() => fetchDropdownData(true)}
                                 />
                             )} />
                         </div>

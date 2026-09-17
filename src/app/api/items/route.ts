@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     });
 
     await invalidateMasterCache();
-    return NextResponse.json(newItem, { status: 201 });
+    return NextResponse.json(newItem, { status: 200 });
 
   } catch (error) {
     // Check for Prisma unique constraint error (P2002) if you decide to make item_description unique

@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
         data: { name: name.trim() },
     })
     await invalidateMasterCache();
-    return NextResponse.json(createCity, { status: 201 });
+    return NextResponse.json(createCity, { status: 200 });
   } catch (error) {
     console.error('Error adding city:', error);
     // Use a more specific error for database issues if possible

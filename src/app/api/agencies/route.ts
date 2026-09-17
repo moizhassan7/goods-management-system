@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     });
 
     await invalidateMasterCache();
-    return NextResponse.json(newAgency, { status: 201 });
+    return NextResponse.json(newAgency, { status: 200 });
 
   } catch (error) {
     // Check for Prisma unique constraint error (P2002) - Agency name must be unique

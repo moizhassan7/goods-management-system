@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MasterDataType, DependencyCheckResult } from '@/lib/master-data-dependencies';
+import { clearMasterListsClientCache } from '@/lib/master-lists-client';
 
 const API_PATHS: Record<MasterDataType, string> = {
   city: '/api/cities',
@@ -106,6 +107,7 @@ export default function DeleteMasterDataModal({
       const data = await res.json();
 
       if (res.ok) {
+        clearMasterListsClientCache();
         toast.success(`${entityTitle} deleted successfully.`);
         onClose();
         onSuccess();

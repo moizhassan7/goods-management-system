@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma'; // Assumes shared Prisma client utility
 import { Prisma } from '@prisma/client';
 import { CACHE_KEYS, getOrSetCache, invalidateMasterCache, MASTER_CACHE_HEADERS } from '@/lib/cache'; 
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; 
+
 // Type definition for the expected request body
 interface PartyRequest {
     name: string;
@@ -84,7 +87,7 @@ export async function POST(request: Request) {
         });
         
         await invalidateMasterCache();
-        return NextResponse.json(newParty, { status: 201 });
+        return NextResponse.json(newParty, { status: 200 });
 
     } catch (error) {
         // Handle database or unexpected errors
