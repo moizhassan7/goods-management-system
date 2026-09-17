@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { MapPin, ArrowLeft, Loader2, Check } from 'lucide-react';
+import { clearMasterListsClientCache } from '@/lib/master-lists-client';
 
 const formSchema = z.object({
   cityName: z.string().min(2, {
@@ -57,6 +58,7 @@ export default function AddCity() {
       }
 
       const newCity = await response.json();
+      clearMasterListsClientCache();
       toast.success('City Added Successfully', {
         description: `"${newCity.name}" is now available as a transit hub.`
       });

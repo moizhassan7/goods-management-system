@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     });
 
     await invalidateMasterCache();
-    return NextResponse.json(newVehicle, { status: 201 });
+    return NextResponse.json(newVehicle, { status: 200 });
 
   } catch (error) {
     // Check for Prisma unique constraint error (P2002) - Vehicle number must be unique

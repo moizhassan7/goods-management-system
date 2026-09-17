@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Building, ArrowLeft, Loader2, Check } from 'lucide-react';
+import { clearMasterListsClientCache } from '@/lib/master-lists-client';
 
 const formSchema = z.object({
   agencyName: z.string().min(2, {
@@ -57,6 +58,7 @@ export default function AddAgency() {
       }
 
       const newAgency = await response.json();
+      clearMasterListsClientCache();
       toast.success('Agency Registered Successfully', {
         description: `"${newAgency.name}" is now available in the forwarding agencies list.`
       });

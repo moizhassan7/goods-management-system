@@ -46,7 +46,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         return NextResponse.json({
             message: `Manual ${type} transaction recorded for Vehicle ID ${vehicleId}.`,
             transaction: newTransaction
-        }, { status: 201 });
+        }, { status: 200 });
 
     } catch (error: any) {
         console.error(`Error recording manual transaction for vehicle ${vehicleId}:`, error);

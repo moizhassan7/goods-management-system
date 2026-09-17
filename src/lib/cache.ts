@@ -67,15 +67,11 @@ function writeMemory(key: string, serialized: string, ttlSeconds: number) {
 }
 
 export async function cacheGet<T>(key: string): Promise<T | null> {
-    const local = readMemory<T>(key);
-    if (local !== null) return local;
-
     try {
         const redis = getRedis();
         if (!redis) return null;
         const value = await redis.get(key);
         if (!value) return null;
-        writeMemory(key, value, 15);
         return JSON.parse(value) as T;
     } catch {
         return null;
@@ -83,15 +79,13 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
 }
 
 export async function cacheSet(key: string, value: unknown, ttlSeconds = MASTER_TTL_SECONDS) {
-    const serialized = JSON.stringify(value);
-    writeMemory(key, serialized, ttlSeconds);
     try {
         const redis = getRedis();
         if (redis) {
-            await redis.set(key, serialized, 'EX', ttlSeconds);
+            await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);
         }
     } catch {
-        // Memory cache remains the fallback.
+        // Ignore remote cache set failures.
     }
 }
 
@@ -122,5 +116,7 @@ export async function invalidateMasterCache() {
 }
 
 export const MASTER_CACHE_HEADERS = {
-    'Cache-Control': 'private, max-age=60, stale-while-revalidate=300',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
 };

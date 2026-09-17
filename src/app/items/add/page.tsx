@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Package, ArrowLeft, Loader2, Check } from 'lucide-react';
+import { clearMasterListsClientCache } from '@/lib/master-lists-client';
 
 const formSchema = z.object({
   description: z.string().min(3, {
@@ -57,6 +58,7 @@ export default function AddItem() {
       }
 
       const newItem = await response.json();
+      clearMasterListsClientCache();
       toast.success('Item Catalog Updated', {
         description: `"${newItem.item_description}" is now available in consignment goods lists.`
       });

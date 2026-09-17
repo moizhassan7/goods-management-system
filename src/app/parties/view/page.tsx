@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import DeleteMasterDataModal from '@/components/master-data/DeleteMasterDataModal';
+import { clearMasterListsClientCache } from '@/lib/master-lists-client';
 
 interface Party {
     id: number;
@@ -103,6 +104,7 @@ export default function ViewParties() {
             const data = await res.json();
             
             if (res.ok) {
+                clearMasterListsClientCache();
                 toast.success('Party updated successfully');
                 setIsEditModalOpen(false);
                 fetchParties();
@@ -132,6 +134,7 @@ export default function ViewParties() {
             const data = await res.json();
             
             if (res.ok) {
+                clearMasterListsClientCache();
                 toast.success('Party deleted successfully');
                 setIsDeleteModalOpen(false);
                 fetchParties();

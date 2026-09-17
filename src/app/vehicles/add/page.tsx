@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowLeft, Loader2, Check, Truck } from 'lucide-react';
+import { clearMasterListsClientCache } from '@/lib/master-lists-client';
 
 const formSchema = z.object({
   vehicleNumber: z.string().min(2, {
@@ -59,6 +60,7 @@ export default function AddVehicle() {
       }
 
       const newVehicle = await response.json();
+      clearMasterListsClientCache();
       toast.success('Vehicle Registered Successfully', {
         description: `Vehicle "${newVehicle.vehicleNumber}" added to active fleet.`
       });

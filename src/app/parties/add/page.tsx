@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Users, ArrowLeft, Loader2, Check } from 'lucide-react';
+import { clearMasterListsClientCache } from '@/lib/master-lists-client';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -65,6 +66,7 @@ export default function AddParty() {
       }
 
       const newParty = await response.json();
+      clearMasterListsClientCache();
       toast.success('Party Registered Successfully', {
         description: `"${newParty.name}" is now available in sender/receiver lists.`
       });

@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             message: `User created successfully with role: ${newUser.role}`,
             user: { username: newUser.username, role: newUser.role }
-        }, { status: 201 });
+        }, { status: 200 });
 
     } catch (error) {
         if (error instanceof z.ZodError) {

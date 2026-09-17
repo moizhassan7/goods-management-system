@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { CACHE_KEYS, getOrSetCache, MASTER_CACHE_HEADERS } from '@/lib/cache';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * Handles GET requests to fetch dropdown data for shipment/trip forms.
  * Endpoint: /api/lists

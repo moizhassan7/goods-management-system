@@ -179,7 +179,7 @@ export async function POST(request: Request) {
                             },
                         }),
                     ] : []),
-                ], { maxWait: 10000, timeout: 20000 });
+                ]);
 
                 // If transaction succeeds, break the retry loop
                 break; 
@@ -206,7 +206,7 @@ export async function POST(request: Request) {
             message: 'Shipment registered successfully.',
             shipment: newShipment,
             register_number,
-        }, { status: 201 });
+        }, { status: 200 });
 
     } catch (error) {
         console.error('Shipment Registration Error:', error);
