@@ -70,6 +70,5 @@ export function prismaErrorMessage(error: unknown, fallback: string) {
             return 'Could not connect to the database. Please try again.';
         }
     }
-    if (error instanceof Error && error.message) return error.message;
     return fallback;
 }

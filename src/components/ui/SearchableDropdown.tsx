@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from '@/lib/api-client';
 import React, { useEffect, useState } from "react"
 import {
   Popover,
@@ -28,6 +29,7 @@ interface SearchableDropdownProps {
   onSelectItem?: (item: { id: string; name: string }) => void
   createPropertyName?: string
   onNewItemAdded?: () => void
+  error?: string
 }
 
 export default function SearchableDropdown({
@@ -40,6 +42,7 @@ export default function SearchableDropdown({
   onSelectItem,
   createPropertyName,
   onNewItemAdded,
+  error,
 }: SearchableDropdownProps) {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<{ id: string; name: string }[]>([])
@@ -69,7 +72,7 @@ export default function SearchableDropdown({
 
     const fetchItems = async () => {
       try {
-        const res = await fetch(endpoint as string, {
+        const res = await fetchWithTimeout(endpoint as string, {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -134,7 +137,7 @@ export default function SearchableDropdown({
         ? { [createPropertyName]: trimmed }
         : { name: trimmed }
 
-      const res = await fetch(endpoint as string, {
+      const res = await fetchWithTimeout(endpoint as string, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
@@ -161,9 +164,9 @@ export default function SearchableDropdown({
       if (onNewItemAdded) onNewItemAdded()
       setSearch("")
       setOpen(false)
-    } catch (error: any) {
+    } catch (error) {
       console.error(error)
-      toast.error(error?.message || "Failed to add record.")
+      toast.error(error instanceof Error ? error.message : "Failed to add record.")
     } finally {
       setLoading(false)
     }
@@ -184,9 +187,11 @@ export default function SearchableDropdown({
           <Button
             variant="outline"
             role="combobox"
+            aria-invalid={error ? true : undefined}
             className={cn(
               "w-full justify-between rounded-xl h-10 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-2xs text-left",
-              !selectedLabel && "text-slate-400 dark:text-slate-500 font-normal"
+              !selectedLabel && "text-slate-400 dark:text-slate-500 font-normal",
+              error && "border-red-500 dark:border-red-500"
             )}
           >
             <span className="truncate capitalize">
@@ -264,6 +269,7 @@ export default function SearchableDropdown({
           </Command>
         </PopoverContent>
       </Popover>
+      {error ? <p className="text-[11px] font-medium text-red-600">{error}</p> : null}
     </div>
   )
 }

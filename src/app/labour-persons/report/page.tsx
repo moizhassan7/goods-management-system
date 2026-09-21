@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
@@ -27,7 +28,7 @@ export default function LabourPersonsReportPage() {
       const params = new URLSearchParams();
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
-      const res = await fetch(`/api/labour-persons/report?${params.toString()}`);
+      const res = await fetchWithTimeout(`/api/labour-persons/report?${params.toString()}`);
       const data: LabourPerson[] = await res.json();
       setLabourPersons(data);
     } catch (e) {
@@ -94,7 +95,7 @@ export default function LabourPersonsReportPage() {
                     <TableCell>{person.name}</TableCell>
                     <TableCell>{person.contact_info}</TableCell>
                     <TableCell>{assignmentCount}</TableCell>
-                    <TableCell>{totalCollected.toFixed(2)}</TableCell>
+                    <TableCell>Rs. {totalCollected.toFixed(2)}</TableCell>
                   </TableRow>
                 );
               })}
@@ -104,7 +105,7 @@ export default function LabourPersonsReportPage() {
           <div className='grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded bg-white'>
             <div><div className='text-gray-500'>Total Persons</div><div className='font-semibold'>{totals.totalPersons}</div></div>
             <div><div className='text-gray-500'>Total Assignments</div><div className='font-semibold'>{totals.totalAssignments}</div></div>
-            <div><div className='text-gray-500'>Total Collected</div><div className='font-semibold'>{totals.totalCollected.toFixed(2)}</div></div>
+            <div><div className='text-gray-500'>Total Collected</div><div className='font-semibold'>Rs. {totals.totalCollected.toFixed(2)}</div></div>
           </div>
         </div>
       )}

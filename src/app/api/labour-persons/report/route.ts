@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
@@ -8,6 +9,9 @@ import { Prisma } from '@prisma/client';
  * Endpoint: /api/labour-persons/report?startDate=...&endDate=...
  */
 export async function GET(request: NextRequest) {
+    const auth = await requireAuth(request, Permissions.LABOUR_MANAGEMENT);
+    if (isAuthError(auth)) return auth;
+
     try {
         const { searchParams } = new URL(request.url);
         const startDateParam = searchParams.get('startDate');

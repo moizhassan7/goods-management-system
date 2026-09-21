@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // src/app/api/trips/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -33,6 +34,9 @@ const TripLogSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+    const auth = await requireAuth(request, Permissions.CORE_OPERATIONS);
+    if (isAuthError(auth)) return auth;
+
   try {
     const body = await request.json();
     const validatedData = TripLogSchema.parse(body);
@@ -143,12 +147,15 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+    const auth = await requireAuth(request, Permissions.REPORTS_VIEW);
+    if (isAuthError(auth)) return auth;
+
   try {
     const url = new URL(request.url);
     const vehicleIdParam = url.searchParams.get('vehicle_id');
     const dateParam = url.searchParams.get('date');
 
-    const where: any = {};
+    const where: { vehicle_id?: number; date?: Date } = {};
     if (vehicleIdParam) where.vehicle_id = parseInt(vehicleIdParam, 10);
     if (dateParam) where.date = new Date(dateParam);
 
@@ -188,10 +195,11 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: { createdAt: 'desc' },
+      take: 500,
     });
 
     // Fetch total_charges from Shipment table for each shipment log
-    const biltyNumbers = tripLogs.flatMap((log: any) => log.shipmentLogs.map((s: any) => s.bilty_number)).filter(Boolean);
+    const biltyNumbers = tripLogs.flatMap((log) => log.shipmentLogs.map((s) => s.bilty_number)).filter(Boolean);
     const shipments = await prisma.shipment.findMany({
       where: {
         bility_number: { in: biltyNumbers },
@@ -204,9 +212,9 @@ export async function GET(request: NextRequest) {
     const shipmentChargesMap = new Map(shipments.map(s => [s.bility_number, s.total_charges]));
 
     // Add total_charges to shipmentLogs
-    const enrichedTripLogs = tripLogs.map((log: any) => ({
+    const enrichedTripLogs = tripLogs.map((log) => ({
       ...log,
-      shipmentLogs: log.shipmentLogs.map((s: any) => ({
+      shipmentLogs: log.shipmentLogs.map((s) => ({
         ...s,
         total_charges: shipmentChargesMap.get(s.bilty_number) || 0,
       })),

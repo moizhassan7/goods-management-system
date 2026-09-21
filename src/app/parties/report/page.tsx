@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
@@ -19,6 +20,9 @@ type Party = {
     credit_amount: number;
     debit_amount: number;
   }[];
+  sentCount?: number;
+  receivedCount?: number;
+  totalCharges?: number;
 };
 
 const formatCurrency = (amount: number) => {
@@ -37,9 +41,13 @@ export default function PartiesReportPage() {
       const params = new URLSearchParams();
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
-      const res = await fetch(`/api/parties/report?${params.toString()}`);
+      const res = await fetchWithTimeout(`/api/parties/report?${params.toString()}`);
+      if (!res.ok) {
+        setParties([]);
+        return;
+      }
       const data: Party[] = await res.json();
-      setParties(data);
+      setParties(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('Failed to fetch report', e);
       setParties([]);
@@ -51,10 +59,10 @@ export default function PartiesReportPage() {
   const totals = useMemo(() => {
     if (!Array.isArray(parties)) return { totalParties: 0, totalSent: 0, totalReceived: 0, totalCharges: 0, totalCredits: 0, totalDebits: 0 };
     return parties.reduce((acc, party) => {
-      const sentCount = party.sentShipments?.length || 0;
-      const receivedCount = party.receivedShipments?.length || 0;
-      const totalCharges = (party.sentShipments?.reduce((sum, s) => sum + Number(s.total_charges || 0), 0) || 0) +
-                          (party.receivedShipments?.reduce((sum, s) => sum + Number(s.total_charges || 0), 0) || 0);
+      const sentCount = party.sentCount ?? party.sentShipments?.length ?? 0;
+      const receivedCount = party.receivedCount ?? party.receivedShipments?.length ?? 0;
+      const totalCharges = party.totalCharges ?? ((party.sentShipments?.reduce((sum, s) => sum + Number(s.total_charges || 0), 0) || 0) +
+                          (party.receivedShipments?.reduce((sum, s) => sum + Number(s.total_charges || 0), 0) || 0));
       const totalCredits = party.transactions?.reduce((sum, t) => sum + Number(t.credit_amount || 0), 0) || 0;
       const totalDebits = party.transactions?.reduce((sum, t) => sum + Number(t.debit_amount || 0), 0) || 0;
       return {
@@ -184,10 +192,10 @@ export default function PartiesReportPage() {
                   </TableHeader>
                   <TableBody>
                     {parties.map((party) => {
-                      const sentCount = party.sentShipments?.length || 0;
-                      const receivedCount = party.receivedShipments?.length || 0;
-                      const totalCharges = (party.sentShipments?.reduce((sum, s) => sum + Number(s.total_charges || 0), 0) || 0) +
-                                          (party.receivedShipments?.reduce((sum, s) => sum + Number(s.total_charges || 0), 0) || 0);
+                      const sentCount = party.sentCount ?? party.sentShipments?.length ?? 0;
+                      const receivedCount = party.receivedCount ?? party.receivedShipments?.length ?? 0;
+                      const totalCharges = party.totalCharges ?? ((party.sentShipments?.reduce((sum, s) => sum + Number(s.total_charges || 0), 0) || 0) +
+                                          (party.receivedShipments?.reduce((sum, s) => sum + Number(s.total_charges || 0), 0) || 0));
                       const balance = Number(party.opening_balance || 0);
 
                       return (

@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
@@ -38,7 +39,7 @@ export default function LabourAssignmentsReportPage() {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
       if (status) params.append('status', status);
-      const res = await fetch(`/api/labour-assignments/report?${params.toString()}`);
+      const res = await fetchWithTimeout(`/api/labour-assignments/report?${params.toString()}`);
       const data: LabourAssignmentReport[] = await res.json();
       setAssignments(data);
     } catch (e) {
@@ -152,11 +153,11 @@ export default function LabourAssignmentsReportPage() {
                                         <TableCell>{new Date(assignment.assigned_date).toLocaleDateString()}</TableCell>
                                         
                                         {/* NEW FINANCIAL COLUMNS DATA */}
-                                        <TableCell className='text-right text-blue-700'>${assignment.shipment_charges.toFixed(2)}</TableCell>
-                                        <TableCell className='text-right text-red-700'>${assignment.total_expenses.toFixed(2)}</TableCell>
-                                        <TableCell className='text-right text-purple-700 font-bold'>${assignment.total_receivable_pre_discount.toFixed(2)}</TableCell>
-                                        <TableCell className='text-right text-red-700'>${assignment.discount_given.toFixed(2)}</TableCell>
-                                        <TableCell className='text-right font-bold text-green-700'>${assignment.net_collected.toFixed(2)}</TableCell>
+                                        <TableCell className='text-right text-blue-700'>Rs. {assignment.shipment_charges.toFixed(2)}</TableCell>
+                                        <TableCell className='text-right text-red-700'>Rs. {assignment.total_expenses.toFixed(2)}</TableCell>
+                                        <TableCell className='text-right text-purple-700 font-bold'>Rs. {assignment.total_receivable_pre_discount.toFixed(2)}</TableCell>
+                                        <TableCell className='text-right text-red-700'>Rs. {assignment.discount_given.toFixed(2)}</TableCell>
+                                        <TableCell className='text-right font-bold text-green-700'>Rs. {assignment.net_collected.toFixed(2)}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -173,14 +174,14 @@ export default function LabourAssignmentsReportPage() {
                 <CardContent>
                     <div className='grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4'>
                         <div><div className='text-gray-500'>Total Assignments</div><div className='font-semibold'>{totals.totalAssignments}</div></div>
-                        <div><div className='text-gray-500'>Total Charges</div><div className='font-semibold text-blue-800'>${totals.totalShipmentCharges.toFixed(2)}</div></div>
-                        <div><div className='text-gray-500'>Total Expenses</div><div className='font-semibold text-red-700'>${totals.totalExpenses.toFixed(2)}</div></div>
-                        <div><div className='text-gray-500'>Total Discount</div><div className='font-semibold text-red-700'>${totals.totalDiscount.toFixed(2)}</div></div>
+                        <div><div className='text-gray-500'>Total Charges</div><div className='font-semibold text-blue-800'>Rs. {totals.totalShipmentCharges.toFixed(2)}</div></div>
+                        <div><div className='text-gray-500'>Total Expenses</div><div className='font-semibold text-red-700'>Rs. {totals.totalExpenses.toFixed(2)}</div></div>
+                        <div><div className='text-gray-500'>Total Discount</div><div className='font-semibold text-red-700'>Rs. {totals.totalDiscount.toFixed(2)}</div></div>
                         {/* total charges and total expesne */}
                         <div>
-<div className='text-gray-500'>Total Receivable (Pre-Discount)</div><div className='font-bold text-purple-700'>${(totals.totalShipmentCharges + totals.totalExpenses).toFixed(2)}</div>
+<div className='text-gray-500'>Total Receivable (Pre-Discount)</div><div className='font-bold text-purple-700'>Rs. {(totals.totalShipmentCharges + totals.totalExpenses).toFixed(2)}</div>
                         </div>
-                        <div><div className='text-gray-500'>Total Net Collected</div><div className='font-bold text-green-700'>${totals.totalNetCollected.toFixed(2)}</div></div>
+                        <div><div className='text-gray-500'>Total Net Collected</div><div className='font-bold text-green-700'>Rs. {totals.totalNetCollected.toFixed(2)}</div></div>
                     </div>
                 </CardContent>
             </Card>

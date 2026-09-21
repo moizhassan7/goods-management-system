@@ -42,11 +42,7 @@ export default function DeliveryPrintingPage() {
     }, []);
 
     const formatCurrency = (amount: number | string) => {
-        return new Intl.NumberFormat('en-PK', {
-            style: 'currency',
-            currency: 'PKR',
-            minimumFractionDigits: 2,
-        }).format(Number(amount));
+        return `Rs. ${Number(amount || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     if (!printData) {

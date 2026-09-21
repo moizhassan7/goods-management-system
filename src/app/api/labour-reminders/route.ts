@@ -1,9 +1,13 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { LabourAssignmentStatus } from '@prisma/client';
 
 // GET: Fetch unsettled assignments (reminders)
-export async function GET() {
+export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.LABOUR_MANAGEMENT);
+    if (isAuthError(auth)) return auth;
+
     try {
         const unsettledAssignments = await prisma.labourAssignment.findMany({
             where: {

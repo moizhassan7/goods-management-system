@@ -1,8 +1,10 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // src/app/api/shipments/report/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { REPORT_ROW_CAP } from '@/lib/report-range';
 
 // NOTE: This prefix MUST match the one used in src/app/api/shipments/route.ts
 const PAYMENT_STATUS_PREFIX = "PAYMENT_STATUS:"; 
@@ -12,6 +14,9 @@ const PAYMENT_STATUS_PREFIX = "PAYMENT_STATUS:";
  * Endpoint: /api/shipments/report?startDate=...&endDate=...&departureCityId=...
  */
 export async function GET(request: NextRequest) {
+    const auth = await requireAuth(request, Permissions.REPORTS_VIEW);
+    if (isAuthError(auth)) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const startDateParam = searchParams.get('startDate');
@@ -65,6 +70,7 @@ export async function GET(request: NextRequest) {
             goodsDetails: true, // Needed for total quantity calculation in the report page
         },
         orderBy: { bility_date: 'desc' },
+        take: REPORT_ROW_CAP,
     });
     
     // Helper function to extract payment status from remarks

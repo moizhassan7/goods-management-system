@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // app/api/items/route.ts
 
 import { NextResponse } from 'next/server';
@@ -15,6 +16,9 @@ interface ItemRequest {
  * Endpoint: /api/items
  */
 export async function POST(request: Request) {
+    const auth = await requireAuth(request, Permissions.MASTER_DATA_WRITE);
+    if (isAuthError(auth)) return auth;
+
   try {
     const { description }: ItemRequest = await request.json(); 
     
@@ -60,7 +64,10 @@ export async function POST(request: Request) {
  * Handles GET requests to retrieve all ItemCatalog records.
  * Endpoint: /api/items
  */
-export async function GET() {
+export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.REPORTS_VIEW);
+    if (isAuthError(auth)) return auth;
+
   try {
     const items = await getOrSetCache(CACHE_KEYS.MASTER_ITEMS, () =>
       prisma.itemCatalog.findMany({

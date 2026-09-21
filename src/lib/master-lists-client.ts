@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from '@/lib/api-client';
 export type MasterListsPayload = {
     cities: Array<{ id: number; name: string }>;
     agencies: Array<{ id: number; name: string }>;
@@ -70,7 +71,7 @@ export async function fetchMasterLists(force = false): Promise<MasterListsPayloa
         }
     }
 
-    const response = await fetch(`/api/lists?t=${Date.now()}`, {
+    const response = await fetchWithTimeout(`/api/lists?t=${Date.now()}`, {
         cache: 'no-store',
         headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',

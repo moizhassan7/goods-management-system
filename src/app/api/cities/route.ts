@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // app/api/cities/route.ts
 import { prisma } from "../../../lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
@@ -6,6 +7,9 @@ import { CACHE_KEYS, getOrSetCache, invalidateMasterCache, MASTER_CACHE_HEADERS 
 
 // API route to handle adding a new city
 export async function POST(request: NextRequest) {
+    const auth = await requireAuth(request, Permissions.MASTER_DATA_WRITE);
+    if (isAuthError(auth)) return auth;
+
   try {
     const { name } = await request.json(); 
     // Validate input
@@ -31,7 +35,10 @@ export async function POST(request: NextRequest) {
 }
 
 // API route to fetch all cities
-export async function GET() {
+export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.REPORTS_VIEW);
+    if (isAuthError(auth)) return auth;
+
     try {
         const cities = await getOrSetCache(CACHE_KEYS.MASTER_CITIES, () => prisma.city.findMany());
         return NextResponse.json(cities, { status: 200, headers: MASTER_CACHE_HEADERS });

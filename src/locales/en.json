@@ -169,5 +169,8 @@
   "trip_log": "Trip Log",
   "trip_registered_success": "Registered Successfully 🚀",
   "nav_edit_security": "Edit Security",
-  "nav_set_edit_password": "Edit Password"
+  "nav_set_edit_password": "Edit Password",
+  "nav_backup": "Backup",
+  "nav_database_backup": "Database Backup",
+  "nav_view_items": "View Items"
 }

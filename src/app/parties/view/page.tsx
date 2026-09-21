@@ -1,4 +1,5 @@
-'use client';
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -53,7 +54,7 @@ export default function ViewParties() {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch('/api/parties');
+            const response = await fetchWithTimeout('/api/parties');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data: Party[] = await response.json();
             setParties(data);
@@ -96,7 +97,7 @@ export default function ViewParties() {
 
         setIsSaving(true);
         try {
-            const res = await fetch(`/api/parties/${editingParty.id}`, {
+            const res = await fetchWithTimeout(`/api/parties/${editingParty.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: editName.trim(), contactInfo: editContact.trim() }),
@@ -128,7 +129,7 @@ export default function ViewParties() {
         
         setIsDeleting(true);
         try {
-            const res = await fetch(`/api/parties/${deletingParty.id}`, {
+            const res = await fetchWithTimeout(`/api/parties/${deletingParty.id}`, {
                 method: 'DELETE',
             });
             const data = await res.json();

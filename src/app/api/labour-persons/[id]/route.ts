@@ -1,9 +1,13 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { checkMasterDataDependencies } from '@/lib/master-data-dependencies';
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    const auth = await requireAuth(request, Permissions.LABOUR_MANAGEMENT);
+    if (isAuthError(auth)) return auth;
+
     const { id } = await params;
     const personId = parseInt(id, 10);
 
@@ -30,13 +34,16 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         });
 
         return NextResponse.json(updatedPerson, { status: 200 });
-    } catch (error: any) {
+    } catch (error) {
         console.error(`Error updating labour person ${personId}:`, error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    const auth = await requireAuth(request, Permissions.LABOUR_MANAGEMENT);
+    if (isAuthError(auth)) return auth;
+
     const { id } = await params;
     const personId = parseInt(id, 10);
 
@@ -60,7 +67,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
             where: { id: personId },
         });
         return NextResponse.json({ message: 'Labour person deleted successfully.' }, { status: 200 });
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
             return NextResponse.json({ error: 'Cannot delete this labour person because they are assigned to shipments.' }, { status: 409 });
         }

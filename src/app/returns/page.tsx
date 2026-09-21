@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import { useEffect, useState } from "react";
 import { ReturnList } from "@/components/returns/ReturnList";
@@ -31,13 +32,13 @@ export default function ReturnsPage() {
   const fetchReturns = async () => {
     setIsLoadingReturns(true);
     try {
-      const response = await fetch("/api/returns");
+      const response = await fetchWithTimeout("/api/returns");
       if (!response.ok) throw new Error("Failed to fetch returns");
       const data = await response.json();
       setReturns(data);
-    } catch (error: any) {
+    } catch (error) {
       toast.error("Error", {
-        description: error.message
+        description: (error instanceof Error ? error.message : "Request failed")
       });
     } finally {
       setIsLoadingReturns(false);
@@ -46,7 +47,7 @@ export default function ReturnsPage() {
 
   const handleStatusChange = async (id: number, status: string) => {
     try {
-      const response = await fetch("/api/returns", {
+      const response = await fetchWithTimeout("/api/returns", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status }),
@@ -59,9 +60,9 @@ export default function ReturnsPage() {
       });
       
       fetchReturns();
-    } catch (error: any) {
+    } catch (error) {
       toast.error("Error", {
-        description: error.message
+        description: (error instanceof Error ? error.message : "Request failed")
       });
     }
   };
@@ -76,25 +77,25 @@ export default function ReturnsPage() {
 
     setIsLoadingShipment(true);
     try {
-      const response = await fetch(`/api/shipments/${shipmentId}`);
+      const response = await fetchWithTimeout(`/api/shipments/${shipmentId}`);
       if (!response.ok) throw new Error("Shipment not found");
       const data = await response.json();
       setSelectedShipment(data);
       toast.success("Shipment Found", {
         description: `Loaded details for Bilty #${data.bility_number}`
       });
-    } catch (error: any) {
+    } catch (error) {
       toast.error("Lookup Error", {
-        description: error.message || "Shipment could not be found."
+        description: (error instanceof Error ? error.message : "Request failed") || "Shipment could not be found."
       });
     } finally {
       setIsLoadingShipment(false);
     }
   };
 
-  const handleCreateReturn = async (values: any) => {
+  const handleCreateReturn = async (values: Record<string, unknown>) => {
     try {
-      const response = await fetch("/api/returns", {
+      const response = await fetchWithTimeout("/api/returns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
@@ -110,9 +111,9 @@ export default function ReturnsPage() {
       setSelectedShipment(null);
       setShipmentId("");
       fetchReturns();
-    } catch (error: any) {
+    } catch (error) {
       toast.error("Error", {
-        description: error.message
+        description: (error instanceof Error ? error.message : "Request failed")
       });
     }
   };

@@ -1,9 +1,13 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 import { NextResponse, NextRequest } from 'next/server';
 import { ApprovalStatus } from '@prisma/client'; 
 import { prisma } from '@/lib/prisma';
 
 // --- REQUIRED GET HANDLER ---
 export async function GET(request: NextRequest) {
+    const auth = await requireAuth(request, Permissions.REPORTS_VIEW);
+    if (isAuthError(auth)) return auth;
+
     const { searchParams } = new URL(request.url);
     const dateParam = searchParams.get('date');
 

@@ -1,4 +1,5 @@
-'use client';
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -82,7 +83,7 @@ export default function DashboardPage() {
         else setIsLoading(true);
 
         try {
-            const response = await fetch('/api/dashboard');
+            const response = await fetchWithTimeout('/api/dashboard');
             if (!response.ok) throw new Error('Failed to fetch dashboard data.');
             const result: DashboardData = await response.json();
             setData(result);
@@ -105,7 +106,7 @@ export default function DashboardPage() {
             <div className="flex flex-col justify-center items-center min-h-[60vh]">
                 <Loader2 className="w-7 h-7 text-blue-600 animate-spin mb-2" />
                 <p className="text-xs font-semibold text-slate-500 font-mono">
-                    Loading logistics telemetry...
+                    Loading dashboard...
                 </p>
             </div>
         );
@@ -247,7 +248,7 @@ export default function DashboardPage() {
                     className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-blue-400 cursor-pointer transition-colors"
                 >
                     <div className="flex items-center justify-between text-slate-500">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">Today's Bilties</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Today&apos;s Bilties</span>
                         <Truck className="h-4 w-4 text-blue-600" />
                     </div>
                     <div className="text-lg font-black text-slate-900 dark:text-white mt-1 tabular-nums">

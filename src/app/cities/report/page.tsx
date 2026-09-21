@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
@@ -11,6 +12,8 @@ type City = {
   name: string;
   departingShipments: { id: string }[];
   arrivingShipments: { id: string }[];
+  departingCount?: number;
+  arrivingCount?: number;
 };
 
 export default function CitiesReportPage() {
@@ -24,9 +27,13 @@ export default function CitiesReportPage() {
   async function fetchReport() {
     setLoading(true);
     try {
-      const res = await fetch('/api/cities/report');
+      const res = await fetchWithTimeout('/api/cities/report');
+      if (!res.ok) {
+        setCities([]);
+        return;
+      }
       const data: City[] = await res.json();
-      setCities(data);
+      setCities(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('Failed to fetch report', e);
       setCities([]);
@@ -39,8 +46,8 @@ export default function CitiesReportPage() {
     return cities.reduce((acc, city) => {
       return {
         totalCities: acc.totalCities + 1,
-        totalDeparting: acc.totalDeparting + city.departingShipments.length,
-        totalArriving: acc.totalArriving + city.arrivingShipments.length,
+        totalDeparting: acc.totalDeparting + (city.departingCount ?? city.departingShipments.length),
+        totalArriving: acc.totalArriving + (city.arrivingCount ?? city.arrivingShipments.length),
       };
     }, { totalCities: 0, totalDeparting: 0, totalArriving: 0 });
   }, [cities]);
@@ -69,8 +76,8 @@ export default function CitiesReportPage() {
               {cities.map((city) => (
                 <TableRow key={city.id}>
                   <TableCell>{city.name}</TableCell>
-                  <TableCell>{city.departingShipments.length}</TableCell>
-                  <TableCell>{city.arrivingShipments.length}</TableCell>
+                  <TableCell>{city.departingCount ?? city.departingShipments.length}</TableCell>
+                  <TableCell>{city.arrivingCount ?? city.arrivingShipments.length}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

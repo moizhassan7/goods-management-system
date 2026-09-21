@@ -80,6 +80,7 @@ model Transaction {
   updatedAt        DateTime @updatedAt @db.Timestamptz(6)
   shipment         Shipment @relation(fields: [shipment_id], references: [register_number])
 
+  @@index([shipment_id])
   @@map("Transactions")
 }
 
@@ -236,6 +237,7 @@ model Delivery {
   updatedAt        DateTime       @updatedAt @db.Timestamptz(6)
   shipment         Shipment       @relation(fields: [shipment_id], references: [register_number])
 
+  @@unique([shipment_id])
   @@map("Delivery")
 }
 
@@ -290,6 +292,7 @@ model LabourAssignment {
   labourPerson     LabourPerson           @relation(fields: [labour_person_id], references: [id])
   shipment         Shipment               @relation(fields: [shipment_id], references: [register_number])
 
+  @@index([shipment_id])
   @@map("Labour_Assignment")
 }
 

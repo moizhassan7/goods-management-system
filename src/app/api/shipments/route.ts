@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // src/app/api/shipments/route.ts
 
 import { NextResponse } from 'next/server';
@@ -6,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { hasPaginationParams, paginationMeta, parsePagination } from '@/lib/pagination';
+import { LIST_ROW_CAP } from '@/lib/report-range';
 import { parseCreatedDate } from '@/lib/created-date';
 import { prismaErrorMessage } from '@/lib/api-client';
 
@@ -53,6 +55,9 @@ const PAYMENT_STATUS_PREFIX = "PAYMENT_STATUS:";
  * Endpoint: /api/shipments
  */
 export async function POST(request: Request) {
+    const auth = await requireAuth(request, Permissions.CORE_OPERATIONS);
+    if (isAuthError(auth)) return auth;
+
     try {
         const payload: ShipmentRequestPayload = await request.json();
 
@@ -226,6 +231,9 @@ export async function POST(request: Request) {
  * FIX: Now supports bility_number query for exact lookup (used by deliveries/add).
  */
 export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.CORE_OPERATIONS);
+    if (isAuthError(auth)) return auth;
+
     try {
         const { searchParams } = new URL(request.url);
         const query = searchParams.get('query');
@@ -359,6 +367,7 @@ export async function GET(request: Request) {
                 where: finalWhere,
                 select,
                 orderBy: { createdAt: 'desc' },
+                take: bilityNumberParam ? 20 : LIST_ROW_CAP,
             });
         }
 

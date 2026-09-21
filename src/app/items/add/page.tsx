@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
@@ -44,7 +45,7 @@ export default function AddItem() {
 
   async function onSubmit(values: ItemFormValues) {
     try {
-      const response = await fetch('/api/items', {
+      const response = await fetchWithTimeout('/api/items', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,10 +67,10 @@ export default function AddItem() {
       form.reset(); 
       router.push('/shipments/add');
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Submission Error:', error);
       toast.error('Error Adding Item', {
-        description: error.message
+        description: (error instanceof Error ? error.message : "Request failed")
       });
     }
   }

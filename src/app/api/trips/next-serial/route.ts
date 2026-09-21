@@ -1,9 +1,13 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // app/api/trips/next-serial/route.ts
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET() {
+export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.CORE_OPERATIONS);
+    if (isAuthError(auth)) return auth;
+
   try {
     const lastTrip = await prisma.tripLog.findFirst({
       orderBy: { id: 'desc' },

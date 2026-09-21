@@ -1,4 +1,5 @@
-'use client';
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -81,7 +82,7 @@ export default function BiltyDetailDialog({
         // If we only have an ID or if initialShipment lacks deep relations, fetch full record
         if (idToFetch && (!initialShipment || !initialShipment.goodsDetails || initialShipment.goodsDetails.length === 0 || initialShipment.station_expense === undefined)) {
             setIsLoading(true);
-            fetch(`/api/shipments/${encodeURIComponent(idToFetch)}`)
+            fetchWithTimeout(`/api/shipments/${encodeURIComponent(idToFetch)}`)
                 .then(res => {
                     if (!res.ok) throw new Error('Could not fetch shipment details');
                     return res.json();

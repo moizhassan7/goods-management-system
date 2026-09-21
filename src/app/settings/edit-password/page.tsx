@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -41,8 +42,7 @@ export default function EditPasswordSettingsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState<string>('');
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [isPasswordSet, setIsPasswordSet] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -58,10 +58,10 @@ export default function EditPasswordSettingsPage() {
   const fetchPasswordSetting = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/settings/edit-password');
+      const res = await fetchWithTimeout('/api/settings/edit-password');
       if (res.ok) {
         const data = await res.json();
-        setCurrentPassword(data.password || '1234');
+        setIsPasswordSet(Boolean(data.isSet));
       }
     } catch (err) {
       console.error('Failed to load edit password setting:', err);
@@ -77,7 +77,7 @@ export default function EditPasswordSettingsPage() {
   async function onSubmit(values: FormValues) {
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/settings/edit-password', {
+      const res = await fetchWithTimeout('/api/settings/edit-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: values.password }),
@@ -92,12 +92,12 @@ export default function EditPasswordSettingsPage() {
         description: 'New security password has been saved successfully.',
       });
 
-      setCurrentPassword(values.password);
+      setIsPasswordSet(true);
       form.reset({ password: '', confirmPassword: '' });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Update error:', err);
       toast.error('Update Failed', {
-        description: err.message || 'Could not update edit password.',
+        description: err instanceof Error ? err.message : 'Could not update edit password.',
       });
     } finally {
       setIsSubmitting(false);
@@ -158,26 +158,16 @@ export default function EditPasswordSettingsPage() {
               <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Current Password
               </p>
-              <p className="text-sm font-mono font-bold text-slate-900 dark:text-white mt-0.5 tracking-wider">
+              <p className="text-sm font-medium text-slate-900 dark:text-white mt-0.5">
                 {isLoading ? (
                   <span className="text-slate-400 text-xs font-normal">Loading...</span>
-                ) : showCurrentPassword ? (
-                  currentPassword
+                ) : isPasswordSet ? (
+                  'A custom edit password is set. It is stored hashed and is not shown.'
                 ) : (
-                  '••••••••'
+                  'No custom password has been saved yet. The built-in default is still active until you set one.'
                 )}
               </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-              className="rounded-lg text-xs font-medium h-8 border-slate-200 dark:border-slate-700 gap-1.5"
-            >
-              {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              {showCurrentPassword ? 'Hide Password' : 'Show Password'}
-            </Button>
           </div>
         </CardContent>
       </Card>

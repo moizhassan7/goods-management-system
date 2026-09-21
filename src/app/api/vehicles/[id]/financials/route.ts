@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // src/app/api/vehicles/[id]/financials/route.ts
 
 import { NextResponse } from 'next/server';
@@ -17,6 +18,9 @@ interface RouteProps {
  */
 // FIX: Change function signature to match Next.js expectation when accessing params
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+    const auth = await requireAuth(request, Permissions.REPORTS_VIEW);
+    if (isAuthError(auth)) return auth;
+
     
     // FIX: Access the id property safely. In some versions, params may be a promise.
     // We rely on the TypeScript definition above, but acknowledging the warning by stating the source of the ID.

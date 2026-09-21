@@ -1,5 +1,6 @@
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 // src/contexts/AuthContext.tsx
-'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 
@@ -35,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchSession = useCallback(async (showLoader = true) => {
     if (showLoader) setIsLoading(true);
     try {
-        const response = await fetch('/api/auth/session', { cache: 'no-store' });
+        const response = await fetchWithTimeout('/api/auth/session', { cache: 'no-store' });
         if (response.ok) {
             const session: UserSession = await response.json();
             setUser(session);
@@ -63,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout handler
   const logout = useCallback(async () => {
     try {
-        const response = await fetch('/api/auth/logout', { method: 'POST' });
+        const response = await fetchWithTimeout('/api/auth/logout', { method: 'POST' });
         if (response.ok) {
             setUser(null);
             // Redirect to login page immediately on success

@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
@@ -48,7 +49,7 @@ export default function AddParty() {
 
   async function onSubmit(values: PartyFormValues) {
     try {
-      const response = await fetch('/api/parties', {
+      const response = await fetchWithTimeout('/api/parties', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,10 +80,10 @@ export default function AddParty() {
 
       router.push('/parties/view');
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Submission Error:', error);
       toast.error('Error Registering Party', {
-        description: error.message
+        description: (error instanceof Error ? error.message : "Request failed")
       });
     }
   }

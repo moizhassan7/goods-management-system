@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
@@ -12,6 +13,8 @@ type Agency = {
   shipments: {
     total_charges: number;
   }[];
+  shipmentCount?: number;
+  totalCharges?: number;
 };
 
 export default function AgencyReportPage() {
@@ -30,9 +33,13 @@ export default function AgencyReportPage() {
       const params = new URLSearchParams();
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
-      const res = await fetch(`/api/agencies/report?${params.toString()}`);
+      const res = await fetchWithTimeout(`/api/agencies/report?${params.toString()}`);
+      if (!res.ok) {
+        setAgencies([]);
+        return;
+      }
       const data: Agency[] = await res.json();
-      setAgencies(data);
+      setAgencies(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('Failed to fetch report', e);
       setAgencies([]);
@@ -43,8 +50,8 @@ export default function AgencyReportPage() {
 
   const totals = useMemo(() => {
     return agencies.reduce((acc, agency) => {
-      const shipmentCount = agency.shipments.length;
-      const totalCharges = agency.shipments.reduce((sum, s) => sum + Number(s.total_charges || 0), 0);
+      const shipmentCount = agency.shipmentCount ?? agency.shipments.length;
+      const totalCharges = agency.totalCharges ?? agency.shipments.reduce((sum, s) => sum + Number(s.total_charges || 0), 0);
       return {
         totalAgencies: acc.totalAgencies + 1,
         totalShipments: acc.totalShipments + shipmentCount,
@@ -89,13 +96,13 @@ export default function AgencyReportPage() {
             </TableHeader>
             <TableBody>
               {agencies.map((agency) => {
-                const shipmentCount = agency.shipments.length;
-                const totalCharges = agency.shipments.reduce((sum, s) => sum + Number(s.total_charges || 0), 0);
+                const shipmentCount = agency.shipmentCount ?? agency.shipments.length;
+                const totalCharges = agency.totalCharges ?? agency.shipments.reduce((sum, s) => sum + Number(s.total_charges || 0), 0);
                 return (
                   <TableRow key={agency.id}>
                     <TableCell>{agency.name}</TableCell>
                     <TableCell>{shipmentCount}</TableCell>
-                    <TableCell>{totalCharges.toFixed(2)}</TableCell>
+                    <TableCell>Rs. {totalCharges.toFixed(2)}</TableCell>
                   </TableRow>
                 );
               })}
@@ -105,7 +112,7 @@ export default function AgencyReportPage() {
           <div className='grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded bg-white'>
             <div><div className='text-gray-500'>Total Agencies</div><div className='font-semibold'>{totals.totalAgencies}</div></div>
             <div><div className='text-gray-500'>Total Shipments</div><div className='font-semibold'>{totals.totalShipments}</div></div>
-            <div><div className='text-gray-500'>Total Charges</div><div className='font-semibold'>{totals.totalCharges.toFixed(2)}</div></div>
+            <div><div className='text-gray-500'>Total Charges</div><div className='font-semibold'>Rs. {totals.totalCharges.toFixed(2)}</div></div>
           </div>
         </div>
       )}

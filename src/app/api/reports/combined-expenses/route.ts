@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // src/app/api/reports/combined-expenses/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
@@ -9,6 +10,9 @@ import { Prisma } from '@prisma/client';
  * Endpoint: /api/reports/combined-expenses?startDate=...&endDate=...
  */
 export async function GET(request: NextRequest) {
+    const auth = await requireAuth(request, Permissions.REPORTS_VIEW);
+    if (isAuthError(auth)) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const startDateParam = searchParams.get('startDate');

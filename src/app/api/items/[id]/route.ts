@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
@@ -5,6 +6,9 @@ import { checkMasterDataDependencies } from '@/lib/master-data-dependencies';
 import { invalidateMasterCache } from '@/lib/cache';
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    const auth = await requireAuth(request, Permissions.MASTER_DATA_WRITE);
+    if (isAuthError(auth)) return auth;
+
     const { id } = await params;
     const itemId = parseInt(id, 10);
 
@@ -26,7 +30,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
         await invalidateMasterCache();
         return NextResponse.json(updatedItem, { status: 200 });
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
             return NextResponse.json({ error: 'Item description already exists' }, { status: 409 });
         }
@@ -36,6 +40,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    const auth = await requireAuth(request, Permissions.MASTER_DATA_WRITE);
+    if (isAuthError(auth)) return auth;
+
     const { id } = await params;
     const itemId = parseInt(id, 10);
 
@@ -60,7 +67,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
         });
         await invalidateMasterCache();
         return NextResponse.json({ message: 'Item deleted successfully.' }, { status: 200 });
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
             return NextResponse.json({ error: 'Cannot delete this item because it is being used in existing shipments.' }, { status: 409 });
         }

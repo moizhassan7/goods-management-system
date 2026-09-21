@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
@@ -69,7 +70,7 @@ export default function TripReportPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ vehicle_id: String(vehicleId), date });
-      const res = await fetch(`/api/trips?${params.toString()}`);
+      const res = await fetchWithTimeout(`/api/trips?${params.toString()}`);
       const data: TripLog[] = await res.json();
       setTripLog(data.length > 0 ? data[0] : null);
     } catch (e) {
@@ -154,7 +155,7 @@ export default function TripReportPage() {
                     <TableCell>{log.receiver_name}</TableCell>
                     <TableCell>{log.item_details}</TableCell>
                     <TableCell>{log.quantity}</TableCell>
-                    <TableCell>{Number(log.total_charges).toFixed(2)}</TableCell>
+                    <TableCell>Rs. {Number(log.total_charges).toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -162,10 +163,10 @@ export default function TripReportPage() {
           </div>
 
           <div className='grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded bg-white'>
-            <div><div className='text-gray-500'>Total Fare</div><div className='font-semibold'>{totals.totalFare.toFixed(2)}</div></div>
-            <div><div className='text-gray-500'>Received</div><div className='font-semibold'>{Number(tripLog.received_amount).toFixed(2)}</div></div>
-            <div><div className='text-gray-500'>Cuts</div><div className='font-semibold'>{Number(tripLog.cuts).toFixed(2)}</div></div>
-            <div><div className='text-gray-500'>Muhshiana</div><div className='font-semibold'>{Number(tripLog.accountant_charges).toFixed(2)}</div></div>
+            <div><div className='text-gray-500'>Total Fare</div><div className='font-semibold'>Rs. {totals.totalFare.toFixed(2)}</div></div>
+            <div><div className='text-gray-500'>Received</div><div className='font-semibold'>Rs. {Number(tripLog.received_amount).toFixed(2)}</div></div>
+            <div><div className='text-gray-500'>Cuts</div><div className='font-semibold'>Rs. {Number(tripLog.cuts).toFixed(2)}</div></div>
+            <div><div className='text-gray-500'>Muhshiana</div><div className='font-semibold'>Rs. {Number(tripLog.accountant_charges).toFixed(2)}</div></div>
           </div>
         </div>
       )}

@@ -166,5 +166,7 @@
   "trip_log": "سفر کا ریکارڈ",
   "trip_registered_success": "کامیابی سے درج ہو گیا",
   "nav_edit_security": "ایڈٹ سیکیورٹی",
-  "nav_set_edit_password": "ایڈٹ پاس ورڈ"
+  "nav_set_edit_password": "ایڈٹ پاس ورڈ",
+  "nav_backup": "بیک اپ",
+  "nav_database_backup": "ڈیٹا بیس بیک اپ"
 }

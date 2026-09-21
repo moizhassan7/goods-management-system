@@ -1,4 +1,5 @@
-'use client';
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -43,7 +44,7 @@ export default function ViewCities() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/cities'); 
+      const response = await fetchWithTimeout('/api/cities'); 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data: City[] = await response.json();
       setCities(data);
@@ -81,7 +82,7 @@ export default function ViewCities() {
 
     setIsSaving(true);
     try {
-      const res = await fetch(`/api/cities/${editingCity.id}`, {
+      const res = await fetchWithTimeout(`/api/cities/${editingCity.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: editName.trim() }),
@@ -112,7 +113,7 @@ export default function ViewCities() {
     
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/cities/${deletingCity.id}`, {
+      const res = await fetchWithTimeout(`/api/cities/${deletingCity.id}`, {
         method: 'DELETE',
       });
       const data = await res.json();

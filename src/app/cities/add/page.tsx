@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
@@ -44,7 +45,7 @@ export default function AddCity() {
 
   async function onSubmit(values: CityFormValues) {
     try {
-      const response = await fetch('/api/cities', {
+      const response = await fetchWithTimeout('/api/cities', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,10 +67,10 @@ export default function AddCity() {
       form.reset(); 
       router.push('/cities/view');
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Submission Error:', error);
       toast.error('Error Adding City', {
-        description: error.message
+        description: (error instanceof Error ? error.message : "Request failed")
       });
     }
   }

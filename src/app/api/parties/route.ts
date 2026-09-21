@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma'; // Assumes shared Prisma client utility
 import { Prisma } from '@prisma/client';
@@ -20,7 +21,10 @@ interface PartyRequest {
  * Handles GET requests to retrieve all Party records.
  * Endpoint: /api/parties
  */
-export async function GET() {
+export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.REPORTS_VIEW);
+    if (isAuthError(auth)) return auth;
+
     try {
         const parties = await getOrSetCache(CACHE_KEYS.MASTER_PARTIES, () =>
             prisma.party.findMany({
@@ -49,6 +53,9 @@ export async function GET() {
  * Endpoint: /api/parties
  */
 export async function POST(request: Request) {
+    const auth = await requireAuth(request, Permissions.MASTER_DATA_WRITE);
+    if (isAuthError(auth)) return auth;
+
     try {
         const { name, contactInfo, openingBalance }: PartyRequest = await request.json(); 
         

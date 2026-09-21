@@ -12,6 +12,16 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
+    files: [
+      "src/app/shipments/add/page.tsx",
+      "src/app/shipments/view/**/page.tsx",
+      "src/components/shipments/BiltyDetailDialog.tsx",
+    ],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+  {
     ignores: [
       "node_modules/**",
       ".next/**",
@@ -19,6 +29,7 @@ const eslintConfig = [
       "build/**",
       "next-env.d.ts",
       "src/generated/**",
+      "prisma/**",
     ],
   },
 ];

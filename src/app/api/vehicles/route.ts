@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // app/api/vehicles/route.ts
 
 import { NextResponse } from 'next/server';
@@ -15,6 +16,9 @@ interface VehicleRequest {
  * Endpoint: /api/vehicles
  */
 export async function POST(request: Request) {
+    const auth = await requireAuth(request, Permissions.MASTER_DATA_WRITE);
+    if (isAuthError(auth)) return auth;
+
   try {
     // Note: The key is expected to be 'vehicleNumber' as per the client form
     const { vehicleNumber }: VehicleRequest = await request.json(); 
@@ -56,7 +60,10 @@ export async function POST(request: Request) {
   }
 }
 // Note: GET method
-export async function GET() {
+export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.REPORTS_VIEW);
+    if (isAuthError(auth)) return auth;
+
     try {
         const vehicles = await getOrSetCache(CACHE_KEYS.MASTER_VEHICLES, () => prisma.vehicle.findMany());
         return NextResponse.json(vehicles, { status: 200, headers: MASTER_CACHE_HEADERS });

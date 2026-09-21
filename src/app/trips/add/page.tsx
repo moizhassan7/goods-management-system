@@ -1,6 +1,7 @@
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 // src/app/trips/add/page.tsx
 
-"use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -122,7 +123,7 @@ export default function AddTrip() {
   const [nextSerialNumber, setNextSerialNumber] = useState(1);
 
   const form = useForm<TripLogFormValues>({
-    resolver: zodResolver(TripLogFormSchema) as any,
+    resolver: zodResolver(TripLogFormSchema) as unknown as import('react-hook-form').Resolver<TripLogFormValues>,
     defaultValues: generateDefaultValues(),
     mode: 'onChange',
   });
@@ -146,7 +147,7 @@ export default function AddTrip() {
       try {
         const lists = await fetchMasterLists();
         setData({ ...lists, shipments: [] });
-      } catch (error: any) {
+      } catch (error) {
         console.error("Data fetch error:", error);
       } finally {
         setIsLoadingData(false);
@@ -159,7 +160,7 @@ export default function AddTrip() {
   useEffect(() => {
     async function fetchNextSerial() {
       try {
-        const response = await fetch('/api/trips/next-serial');
+        const response = await fetchWithTimeout('/api/trips/next-serial');
         if (response.ok) {
           const { nextSerial } = await response.json();
           setNextSerialNumber(nextSerial);
@@ -181,7 +182,7 @@ export default function AddTrip() {
 
       setLoadingShipments(true);
       try {
-        const response = await fetch(
+        const response = await fetchWithTimeout(
           `/api/shipments/by-vehicle-date?vehicle_id=${watchedVehicleId}&date=${watchedDate}`
         );
         
@@ -201,7 +202,7 @@ export default function AddTrip() {
         }));
         
         replace(mappedLogs);
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error loading shipments:', error);
         replace([]);
       } finally {
@@ -245,7 +246,7 @@ export default function AddTrip() {
           departure_time: '00:00',
       }
       
-      const response = await fetch('/api/trips', {
+      const response = await fetchWithTimeout('/api/trips', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payloadToSend),
@@ -262,9 +263,9 @@ export default function AddTrip() {
       setNextSerialNumber(prev => prev + 1);
       form.reset(generateDefaultValues());
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Submission Error:', error);
-      alert(`Error: ${error.message}`);
+      alert(`Error: ${(error instanceof Error ? error.message : "Request failed")}`);
     }
   }
 
@@ -427,7 +428,7 @@ export default function AddTrip() {
                         </td>
                         <td className="border border-gray-300 px-4 py-2">{findNameById(data, 'items', form.watch(`shipmentLogs.${index}.item_id`))}</td>
                         <td className="border border-gray-300 px-4 py-2">{form.watch(`shipmentLogs.${index}.quantity`)}</td>
-                        <td className="border border-gray-300 px-4 py-2 font-semibold">{Number(form.watch(`shipmentLogs.${index}.total_charges`)).toFixed(2)}</td>
+                        <td className="border border-gray-300 px-4 py-2 font-semibold">Rs. {Number(form.watch(`shipmentLogs.${index}.total_charges`)).toFixed(2)}</td>
                       </tr>
                     ))}
                     <tr className="bg-gray-100 font-bold">

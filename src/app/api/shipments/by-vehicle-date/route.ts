@@ -1,9 +1,13 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // app/api/shipments/by-vehicle-date/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
+    const auth = await requireAuth(request, Permissions.CORE_OPERATIONS);
+    if (isAuthError(auth)) return auth;
+
   try {
     const url = new URL(request.url);
     const vehicleIdParam = url.searchParams.get('vehicle_id');

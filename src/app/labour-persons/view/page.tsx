@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -89,12 +90,12 @@ export default function ViewLabourPersons() {
     const fetchLabourPersons = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('/api/labour-persons');
+            const response = await fetchWithTimeout('/api/labour-persons');
             if (!response.ok) throw new Error('Failed to fetch labour persons');
 
             const data = await response.json();
             setLabourPersons(data);
-        } catch (error: any) {
+        } catch (error) {
             toast.error({
                 title: 'Error',
                 description: 'Failed to load labour persons.'
@@ -145,7 +146,7 @@ export default function ViewLabourPersons() {
 
         setIsSaving(true);
         try {
-            const res = await fetch(`/api/labour-persons/${editingPerson.id}`, {
+            const res = await fetchWithTimeout(`/api/labour-persons/${editingPerson.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: editName.trim(), contact_info: editContact.trim() }),
@@ -176,7 +177,7 @@ export default function ViewLabourPersons() {
         
         setIsDeleting(true);
         try {
-            const res = await fetch(`/api/labour-persons/${deletingPerson.id}`, {
+            const res = await fetchWithTimeout(`/api/labour-persons/${deletingPerson.id}`, {
                 method: 'DELETE',
             });
             const data = await res.json();

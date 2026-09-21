@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -63,7 +64,7 @@ export default function AddLabourPerson() {
     const handleSubmit = async (values: LabourPersonFormValues) => {
         setIsSubmitting(true);
         try {
-            const response = await fetch('/api/labour-persons', {
+            const response = await fetchWithTimeout('/api/labour-persons', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(values),
@@ -82,11 +83,11 @@ export default function AddLabourPerson() {
 
             form.reset();
 
-        } catch (error: any) {
+        } catch (error) {
             console.error('Submission Error:', error);
             toast.error({
                 title: 'Error Adding Labour Person ⚠️',
-                description: error.message
+                description: (error instanceof Error ? error.message : "Request failed")
             });
         } finally {
             setIsSubmitting(false);

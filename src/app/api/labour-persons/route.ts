@@ -1,8 +1,12 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 // GET: Fetch all labour persons
-export async function GET() {
+export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.LABOUR_MANAGEMENT);
+    if (isAuthError(auth)) return auth;
+
     try {
         const labourPersons = await prisma.labourPerson.findMany({
             include: {
@@ -33,6 +37,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+    const auth = await requireAuth(request, Permissions.LABOUR_MANAGEMENT);
+    if (isAuthError(auth)) return auth;
+
     try {
         const { name, contactInfo } = await request.json(); 
 

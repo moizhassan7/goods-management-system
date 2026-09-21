@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // src/app/api/vehicles/[id]/transaction/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
@@ -10,6 +11,9 @@ import { Prisma } from '@prisma/client';
  * Endpoint: /api/vehicles/[id]/transaction
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    const auth = await requireAuth(request, Permissions.MASTER_DATA_WRITE);
+    if (isAuthError(auth)) return auth;
+
     const { id } = await params;
     const vehicleId = parseInt(id, 10);
 
@@ -48,10 +52,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             transaction: newTransaction
         }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error(`Error recording manual transaction for vehicle ${vehicleId}:`, error);
         return NextResponse.json(
-            { message: `Internal Server Error: Failed to record transaction. Details: ${error.message}` },
+            { message: 'Internal Server Error: Failed to record transaction.' },
             { status: 500 }
         );
     }

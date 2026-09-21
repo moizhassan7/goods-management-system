@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
@@ -39,7 +40,7 @@ export default function DeliveriesReportPage() {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
       if (shipmentId) params.append('shipment_id', shipmentId);
-      const res = await fetch(`/api/deliveries/report?${params.toString()}`);
+      const res = await fetchWithTimeout(`/api/deliveries/report?${params.toString()}`);
       const data: Delivery[] = await res.json();
       setDeliveries(data);
     } catch (e) {
@@ -109,7 +110,7 @@ export default function DeliveriesReportPage() {
                   <TableCell>{delivery.shipment.bility_number}</TableCell>
                   <TableCell>{delivery.receiver_name}</TableCell>
                   <TableCell>{new Date(delivery.delivery_date).toLocaleDateString()}</TableCell>
-                  <TableCell>{Number(delivery.total_expenses).toFixed(2)}</TableCell>
+                  <TableCell>Rs. {Number(delivery.total_expenses).toFixed(2)}</TableCell>
                   <TableCell>{delivery.delivery_notes || '-'}</TableCell>
                 </TableRow>
               ))}
@@ -118,7 +119,7 @@ export default function DeliveriesReportPage() {
 
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded bg-white'>
             <div><div className='text-gray-500'>Total Deliveries</div><div className='font-semibold'>{totals.totalDeliveries}</div></div>
-            <div><div className='text-gray-500'>Total Expenses</div><div className='font-semibold'>{totals.totalExpenses.toFixed(2)}</div></div>
+            <div><div className='text-gray-500'>Total Expenses</div><div className='font-semibold'>Rs. {totals.totalExpenses.toFixed(2)}</div></div>
           </div>
         </div>
       )}

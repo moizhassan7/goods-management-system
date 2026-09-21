@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -100,7 +101,7 @@ export default function AssignShipments() {
 
     const fetchLabourPersons = async () => {
         try {
-            const response = await fetch('/api/labour-persons');
+            const response = await fetchWithTimeout('/api/labour-persons');
             if (response.ok) {
                 const data = await response.json();
                 setLabourPersons(data);
@@ -113,7 +114,7 @@ export default function AssignShipments() {
     const fetchUndeliveredShipments = async () => {
         try {
             // Fetch shipments without delivery_date (undelivered)
-            const response = await fetch('/api/shipments?delivered=false');
+            const response = await fetchWithTimeout('/api/shipments?delivered=false');
             if (response.ok) {
                 const data = await response.json();
                 setShipments(data);
@@ -150,7 +151,7 @@ export default function AssignShipments() {
                 notes: values.notes || null,
             };
 
-            const response = await fetch('/api/labour-assignments', {
+            const response = await fetchWithTimeout('/api/labour-assignments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -176,11 +177,11 @@ export default function AssignShipments() {
             }); 
             setSelectedShipments([]);
 
-        } catch (error: any) {
+        } catch (error) {
             console.error('Submission Error:', error);
             toast.error({
                 title: 'Error Creating Assignments ⚠️',
-                description: error.message
+                description: (error instanceof Error ? error.message : "Request failed")
             });
         } finally {
             setIsSubmitting(false);
@@ -291,7 +292,7 @@ export default function AssignShipments() {
                                                     <TableCell>{shipment.receiver.name}</TableCell>
                                                     <TableCell>{shipment.departureCity.name}</TableCell>
                                                     <TableCell>{shipment.toCity?.name || 'N/A'}</TableCell>
-                                                    <TableCell>${shipment.total_charges}</TableCell>
+                                                    <TableCell>Rs. {shipment.total_charges}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>

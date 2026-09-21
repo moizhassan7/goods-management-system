@@ -6,7 +6,7 @@ import {
     Truck, FileText, MapPin, Users, Package,
     ChevronDown, ChevronUp, ChevronRight, ChevronLeft,
     Home, Building, Car, Box, ListChecks, Package2,
-    DollarSign, ShieldCheck
+    DollarSign, ShieldCheck, Database
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { useAuth } from '@/contexts/AuthContext';
@@ -253,6 +253,14 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                         translationKey: 'nav_returns',
                         links: [
                             { name: t('nav_create_return'), href: '/returns', translationKey: 'nav_create_return', permissionKey: 'CORE_OPERATIONS' },
+                        ]
+                    },
+                    {
+                        name: t('nav_backup') || 'Backup',
+                        icon: Database,
+                        translationKey: 'nav_backup',
+                        links: [
+                            { name: t('nav_database_backup') || 'Database Backup', href: '/backup', translationKey: 'nav_database_backup', permissionKey: 'MASTER_DATA_WRITE' },
                         ]
                     },
                     {

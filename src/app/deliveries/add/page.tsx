@@ -1,6 +1,7 @@
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 // src/app/deliveries/add/page.tsx
 
-"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -165,7 +166,7 @@ export default function AddDelivery() {
         }, { keepDefaultValues: true }); 
 
         try {
-            const response = await fetch(`/api/shipments?bility_number=${bilityNumber}`);
+            const response = await fetchWithTimeout(`/api/shipments?bility_number=${bilityNumber}`);
             
             if (!response.ok) {
                  throw new Error('Failed to search shipment or shipment not found.');
@@ -199,9 +200,9 @@ export default function AddDelivery() {
                     description: `Shipment with bility number: ${bilityNumber} not found.` 
                 });
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error("Search error:", error);
-            toast.error({ title: t('delivery_search_button'), description: error.message || 'Could not search for shipment.' });
+            toast.error({ title: t('delivery_search_button'), description: (error instanceof Error ? error.message : "Request failed") || 'Could not search for shipment.' });
         } finally {
             setIsSearching(false);
         }
@@ -228,7 +229,7 @@ export default function AddDelivery() {
                 shipment_id: shipmentData.register_number, 
             };
 
-            const response = await fetch('/api/deliveries', {
+            const response = await fetchWithTimeout('/api/deliveries', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -247,9 +248,9 @@ export default function AddDelivery() {
             form.reset(generateDefaultValues());
             setShipmentData(null);
 
-        } catch (error: any) {
+        } catch (error) {
             console.error('Submission Error:', error);
-            toast.error({ title: t('delivery_recording_button'), description: error.message });
+            toast.error({ title: t('delivery_recording_button'), description: (error instanceof Error ? error.message : "Request failed") });
         } finally {
             setIsSubmitting(false);
         }
@@ -261,11 +262,7 @@ export default function AddDelivery() {
     };
 
     const formatCurrency = (amount: number | string) => {
-        return new Intl.NumberFormat('en-PK', {
-            style: 'currency',
-            currency: 'PKR',
-            minimumFractionDigits: 2,
-        }).format(Number(amount));
+        return `Rs. ${Number(amount || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     const handlePrintDelivery = (values: DeliveryFormValues) => {
@@ -586,7 +583,7 @@ export default function AddDelivery() {
                                         <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_total_amount')}</label>
                                         <p className='text-lg font-semibold text-green-600'>
                                             {/* FIX: Ensure total_charges is converted to string before Number() to handle Prisma Decimal type reliably */}
-                                            Rs {Number(shipmentData.total_charges.toString()).toFixed(2)}/-
+                                            Rs. {Number(shipmentData.total_charges.toString()).toFixed(2)}
                                         </p>
                                     </div>
                                     <div>

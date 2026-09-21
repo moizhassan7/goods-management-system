@@ -17,8 +17,23 @@ import { format } from "date-fns";
 import { RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+type ReturnItemRow = {
+  id: number;
+  quantity_returned: number;
+  goodsDetail?: { itemCatalog?: { item_description?: string } };
+};
+
+type ReturnRow = {
+  id: number;
+  status: string;
+  original_shipment_id: string;
+  return_date?: string;
+  reason?: string;
+  returnItems?: ReturnItemRow[];
+};
+
 interface ReturnListProps {
-  returns: any[];
+  returns: ReturnRow[];
   onStatusChange: (id: number, status: string) => void;
 }
 
@@ -70,7 +85,7 @@ export function ReturnList({ returns, onStatusChange }: ReturnListProps) {
                 </TableCell>
                 <TableCell>
                   <div className="space-y-1">
-                    {ret.returnItems?.map((item: any) => (
+                    {ret.returnItems?.map((item) => (
                       <div key={item.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-700 dark:text-slate-300 mr-1">
                         <span className="font-bold">{item.goodsDetail?.itemCatalog?.item_description || 'Item'}</span>
                         <span>•</span>

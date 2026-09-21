@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
@@ -8,6 +9,9 @@ import { Prisma } from '@prisma/client';
  * Endpoint: POST /api/labour-settlements
  */
 export async function POST(request: NextRequest) {
+    const auth = await requireAuth(request, Permissions.LABOUR_MANAGEMENT);
+    if (isAuthError(auth)) return auth;
+
     try {
         const { assignment_id, amount_paid, notes } = await request.json();
 
@@ -28,47 +32,36 @@ export async function POST(request: NextRequest) {
 
         // FIX: Added timeout option to prevent P2028 transaction timeout errors.
         const updatedAssignment = await prisma.$transaction(async (tx) => {
-            
-            // 1. Fetch current assignment to get current total and IDs
             const assignment = await tx.labourAssignment.findUnique({
                 where: { id: assignment_id },
                 select: { 
-                    collected_amount: true, 
                     shipment_id: true,
                     labour_person_id: true,
                 }
             });
 
             if (!assignment) {
-                throw new Error('Labour Assignment not found.');
+                throw new Error('NOT_FOUND');
             }
 
-            // 2. Calculate the new total collected amount
-            const currentCollected = assignment.collected_amount || new Prisma.Decimal(0);
-            const newCollectedAmount = currentCollected.plus(amountDecimal);
-
-            // 3. Log the payment to LabourPaymentHistory (for the ledger)
             await tx.labourPaymentHistory.create({
                 data: {
                     labour_person_id: assignment.labour_person_id,
                     shipment_id: assignment.shipment_id,
                     amount_paid: amountDecimal,
                     payment_date: new Date(),
-                    payment_method: 'CASH', // Assuming cash for simplicity
+                    payment_method: 'CASH',
                     notes,
                 }
             });
 
-            // 4. Update the collected_amount on the LabourAssignment (the running total)
-            const updated = await tx.labourAssignment.update({
+            return tx.labourAssignment.update({
                 where: { id: assignment_id },
                 data: {
-                    collected_amount: newCollectedAmount,
+                    collected_amount: { increment: amountDecimal },
                 },
                 select: { id: true, collected_amount: true }
             });
-            
-            return updated;
         }, {
             // Increase timeout from default 5000ms to 30000ms (30 seconds)
             timeout: 30000, 
@@ -76,14 +69,17 @@ export async function POST(request: NextRequest) {
 
         const totalPaid = updatedAssignment.collected_amount ? updatedAssignment.collected_amount.toFixed(2) : '0.00';
         return NextResponse.json({
-            message: `Payment of $${amountDecimal.toFixed(2)} recorded successfully. Total paid is now $${totalPaid}.`,
+            message: `Payment of Rs. ${amountDecimal.toFixed(2)} recorded successfully. Total paid is now Rs. ${totalPaid}.`,
             assignment: updatedAssignment,
         }, { status: 200 });
 
-    } catch (error: any) {
-        console.error('Error recording labour payment:', error);
+    } catch (error) {
+        if (error instanceof Error && error.message === 'NOT_FOUND') {
+            return NextResponse.json({ message: 'Labour assignment not found.' }, { status: 404 });
+        }
+        console.error('Error recording labour payment:', error instanceof Error ? error.message : 'unknown');
         return NextResponse.json(
-            { message: `Internal Server Error: Failed to record payment. Details: ${error.message}` },
+            { message: 'Internal Server Error: Failed to record payment.' },
             { status: 500 }
         );
     }

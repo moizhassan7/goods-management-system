@@ -1,4 +1,5 @@
-'use client';
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -161,7 +162,6 @@ export default function ViewShipments() {
         totalBiltyCount: 0,
         totalBaraKaraya: 0,
         totalChotaKaraya: 0,
-        deliveredCount: 0,
     });
 
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -195,7 +195,7 @@ export default function ViewShipments() {
             params.append('page', String(page));
             params.append('pageSize', String(size));
 
-            const response = await fetch(`/api/shipments/view-all?${params.toString()}`);
+            const response = await fetchWithTimeout(`/api/shipments/view-all?${params.toString()}`);
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -214,7 +214,6 @@ export default function ViewShipments() {
                     totalBiltyCount: list.length,
                     totalBaraKaraya: list.reduce((sum: number, s: ShipmentData) => sum + (Number(s.total_charges) || 0), 0),
                     totalChotaKaraya: list.reduce((sum: number, s: ShipmentData) => sum + (Number(s.total_delivery_charges) || 0), 0),
-                    deliveredCount: list.filter((s: ShipmentData) => !!s.delivery_date).length,
                 });
             }
         } catch (error: any) {
@@ -225,7 +224,7 @@ export default function ViewShipments() {
             setShipments([]);
             setTotalItems(0);
             setTotalPages(1);
-            setStats({ totalBiltyCount: 0, totalBaraKaraya: 0, totalChotaKaraya: 0, deliveredCount: 0 });
+            setStats({ totalBiltyCount: 0, totalBaraKaraya: 0, totalChotaKaraya: 0 });
         } finally {
             setIsLoading(false);
         }
@@ -457,7 +456,7 @@ export default function ViewShipments() {
 
     const handleDeleteShipment = async (shipmentId: string) => {
         try {
-            const res = await fetch(`/api/shipments/${encodeURIComponent(shipmentId)}`, {
+            const res = await fetchWithTimeout(`/api/shipments/${encodeURIComponent(shipmentId)}`, {
                 method: 'DELETE',
             });
             const data = await res.json();
@@ -497,7 +496,7 @@ export default function ViewShipments() {
         setIsVerifyingPassword(true);
         setPasswordError(null);
         try {
-            const res = await fetch('/api/settings/verify-edit-password', {
+            const res = await fetchWithTimeout('/api/settings/verify-edit-password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password: passwordInput.trim() }),
@@ -557,7 +556,7 @@ export default function ViewShipments() {
             </div>
 
             {/* Quick Metrics Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
                     <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Consignments</p>
                     <p className="text-lg font-mono font-extrabold text-slate-900 dark:text-white mt-0.5">{stats.totalBiltyCount}</p>
@@ -569,10 +568,6 @@ export default function ViewShipments() {
                 <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
                     <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Bara Karaya</p>
                     <p className="text-sm font-mono font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">{formatCurrency(stats.totalBaraKaraya)}</p>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Delivered Status</p>
-                    <p className="text-lg font-mono font-extrabold text-blue-700 dark:text-blue-400 mt-0.5">{stats.deliveredCount} / {stats.totalBiltyCount}</p>
                 </div>
             </div>
 
@@ -843,13 +838,22 @@ export default function ViewShipments() {
                             <p className="text-xs">Querying database...</p>
                         </div>
                     ) : shipments.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                            <p className="text-xs font-medium">No matching bilty records found</p>
+                        <div className="flex flex-col items-center justify-center py-12 gap-3">
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                                {searchTerm ? 'No matching bilty records found' : 'No bilties yet'}
+                            </p>
+                            <Button
+                                type="button"
+                                onClick={() => router.push('/shipments/add')}
+                                className="h-9 px-4 text-xs font-semibold"
+                            >
+                                Add bilty
+                            </Button>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <Table className="min-w-[1150px]">
-                                <TableHeader className="bg-slate-50 dark:bg-slate-800/60">
+                        <div>
+                            <Table containerClassName="max-h-[calc(100vh-220px)]" className="min-w-[1150px]">
+                                <TableHeader className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-slate-50 dark:[&_th]:bg-slate-900">
                                     <TableRow className="hover:bg-transparent">
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 whitespace-nowrap">Bilty #</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Bilty Date</TableHead>
@@ -988,32 +992,39 @@ export default function ViewShipments() {
 
                                                 {/* 13. Action */}
                                                 <TableCell className="text-center pr-4">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-7 px-2 text-[11px] font-semibold"
+                                                            onClick={() => router.push(`/shipments/view/${encodeURIComponent(shipment.register_number)}`)}
+                                                        >
+                                                            <Eye className="w-3.5 h-3.5" />
+                                                            View
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-7 px-2 text-[11px] font-semibold"
+                                                            onClick={() => handlePrintShipmentRow(shipment)}
+                                                        >
+                                                            <Printer className="w-3.5 h-3.5" />
+                                                            Print
+                                                        </Button>
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button
                                                                 size="sm"
                                                                 variant="ghost"
                                                                 className="h-7 w-7 p-0 rounded text-slate-600 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                                                title="Options"
+                                                                title="More"
                                                             >
                                                                 <MoreVertical className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end" className="w-40 rounded-lg shadow-md border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs">
-                                                            <DropdownMenuItem
-                                                                onClick={() => handleOpenDetailModal(shipment)}
-                                                                className="gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800 py-1.5"
-                                                            >
-                                                                <Eye className="w-3.5 h-3.5 text-blue-600" />
-                                                                Quick View
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem
-                                                                onClick={() => router.push(`/shipments/view/${encodeURIComponent(shipment.register_number)}`)}
-                                                                className="gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-200 focus:bg-indigo-50 focus:text-indigo-700 dark:focus:bg-indigo-950/40 dark:focus:text-indigo-300 py-1.5"
-                                                            >
-                                                                <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
-                                                                Full View
-                                                            </DropdownMenuItem>
                                                             <DropdownMenuItem
                                                                 onClick={() => handleRequestEdit(shipment)}
                                                                 className="gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-200 focus:bg-blue-50 focus:text-blue-700 dark:focus:bg-blue-950/40 dark:focus:text-blue-300 py-1.5"
@@ -1037,6 +1048,7 @@ export default function ViewShipments() {
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         );

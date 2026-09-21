@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { LabourAssignmentStatus, Prisma, ApprovalStatus } from '@prisma/client';
@@ -12,12 +13,18 @@ import { LabourAssignmentStatus, Prisma, ApprovalStatus } from '@prisma/client';
  * Endpoint: /api/labour-assignments
  */
 export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.LABOUR_MANAGEMENT);
+    if (isAuthError(auth)) return auth;
+
     try {
         const { searchParams } = new URL(request.url);
         const labour_person_id = searchParams.get('labour_person_id');
         const status = searchParams.get('status');
 
-        const where: any = {
+        const where: {
+            status: LabourAssignmentStatus | { not: LabourAssignmentStatus };
+            labour_person_id?: number;
+        } = {
             // EXCLUDE SETTLED assignments as requested
             status: { not: LabourAssignmentStatus.SETTLED }
         };
@@ -103,6 +110,9 @@ export async function GET(request: Request) {
 // POST Handler: Assign shipments to labour person (Unchanged)
 // -------------------------------------------------------------
 export async function POST(request: Request) {
+    const auth = await requireAuth(request, Permissions.LABOUR_MANAGEMENT);
+    if (isAuthError(auth)) return auth;
+
     try {
         const { labour_person_id, shipment_ids, due_date, notes } = await request.json();
 
@@ -178,6 +188,9 @@ export async function POST(request: Request) {
 // PATCH Handler: Update assignment (DELIVER, COLLECT, SETTLE) 
 // -------------------------------------------------------------
 export async function PATCH(request: Request) {
+    const auth = await requireAuth(request, Permissions.LABOUR_MANAGEMENT);
+    if (isAuthError(auth)) return auth;
+
     try {
         const { 
             assignment_id, 
@@ -221,7 +234,7 @@ export async function PATCH(request: Request) {
             : new Prisma.Decimal(0);
             
         const deliveryDate = new Date(); 
-        const updateData: any = { notes };
+        const updateData: Prisma.LabourAssignmentUpdateInput = { notes };
 
         const result = await prisma.$transaction(async (tx) => {
             
@@ -365,10 +378,28 @@ export async function PATCH(request: Request) {
             assignment: result
         }, { status: 200 });
 
-    } catch (error: any) {
-        console.error('Error updating labour assignment:', error);
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            return NextResponse.json(
+                { message: 'A delivery record already exists for this shipment.' },
+                { status: 409 }
+            );
+        }
+        if (error instanceof Error) {
+            const safe = [
+                'A delivery record already exists for this shipment.',
+                'Assignment must be marked delivered or already collected for expense recording/correction.',
+                'Cannot collect: Delivery record is missing. Please mark the shipment as DELIVERED first.',
+                'Assignment must be collected before settlement.',
+                'Invalid action. Use DELIVER, COLLECT, or SETTLE.',
+            ];
+            if (safe.includes(error.message)) {
+                return NextResponse.json({ message: error.message }, { status: 400 });
+            }
+        }
+        console.error('Error updating labour assignment:', error instanceof Error ? error.message : 'unknown');
         return NextResponse.json(
-            { message: `Internal Server Error: Failed to update assignment. Details: ${error.message}` },
+            { message: 'Internal Server Error: Failed to update assignment.' },
             { status: 500 }
         );
     }

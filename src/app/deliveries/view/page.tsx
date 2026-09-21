@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -38,11 +39,7 @@ interface DeliveryData {
 }
 
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-PK', {
-        style: 'currency',
-        currency: 'PKR',
-        minimumFractionDigits: 2,
-    }).format(amount);
+    return `Rs. ${Number(amount || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 export default function ViewDeliveries() {
@@ -55,11 +52,11 @@ export default function ViewDeliveries() {
     const fetchDeliveries = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('/api/deliveries');
+            const response = await fetchWithTimeout('/api/deliveries');
             if (!response.ok) throw new Error('Failed to load delivery records.');
             const data = await response.json();
             setDeliveries(data);
-        } catch (error: any) {
+        } catch (error) {
             console.error("Deliveries fetch error:", error);
         } finally {
             setIsLoading(false);

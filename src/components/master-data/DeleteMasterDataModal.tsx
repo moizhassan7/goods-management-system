@@ -1,4 +1,5 @@
-'use client';
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -66,7 +67,7 @@ export default function DeleteMasterDataModal({
     setCheckError(null);
 
     try {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         `/api/master-data/dependencies?type=${entityType}&id=${entityId}`
       );
       const data = await res.json();
@@ -76,9 +77,9 @@ export default function DeleteMasterDataModal({
       }
 
       setCheckResult(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching dependencies:', err);
-      setCheckError(err.message || 'Failed to check dependencies.');
+      setCheckError((err instanceof Error ? err.message : "Request failed") || 'Failed to check dependencies.');
     } finally {
       setIsChecking(false);
     }
@@ -101,7 +102,7 @@ export default function DeleteMasterDataModal({
     setIsDeleting(true);
     try {
       const endpoint = `${API_PATHS[entityType]}/${entityId}`;
-      const res = await fetch(endpoint, {
+      const res = await fetchWithTimeout(endpoint, {
         method: 'DELETE',
       });
       const data = await res.json();
@@ -118,8 +119,8 @@ export default function DeleteMasterDataModal({
       } else {
         toast.error(data.error || `Failed to delete ${entityTitle}.`);
       }
-    } catch (err: any) {
-      toast.error(err.message || `Could not delete ${entityTitle}.`);
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "Request failed") || `Could not delete ${entityTitle}.`);
     } finally {
       setIsDeleting(false);
     }

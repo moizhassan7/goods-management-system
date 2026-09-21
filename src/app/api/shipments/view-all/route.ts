@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // src/app/api/shipments/view-all/route.ts
 
 import { NextResponse } from 'next/server';
@@ -88,6 +89,9 @@ function buildWhere(searchParams: URLSearchParams): Prisma.ShipmentWhereInput {
  * Paginated shipment list for the view page, with filter totals.
  */
 export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.REPORTS_VIEW);
+    if (isAuthError(auth)) return auth;
+
     try {
         const { searchParams } = new URL(request.url);
         const where = buildWhere(searchParams);

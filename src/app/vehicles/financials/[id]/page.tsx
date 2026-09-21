@@ -1,6 +1,7 @@
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 // src/app/vehicles/financials/[id]/page.tsx
 
-'use client';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button'; 
 import { Input } from '@/components/ui/input'; 
@@ -42,11 +43,7 @@ interface LedgerData {
 }
 
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-PK', {
-        style: 'currency',
-        currency: 'PKR',
-        minimumFractionDigits: 2,
-    }).format(amount);
+    return `Rs. ${Number(amount || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 
@@ -77,7 +74,7 @@ export default function VehicleFinancialsPage() {
         }
 
         try {
-            const response = await fetch(`/api/vehicles/${vehicleId}/financials`);
+            const response = await fetchWithTimeout(`/api/vehicles/${vehicleId}/financials`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -126,7 +123,7 @@ export default function VehicleFinancialsPage() {
         setIsProcessing(true);
         try {
             // Hitting the generic transaction API to record a CREDIT
-            const response = await fetch(`/api/vehicles/${vehicleId}/transaction`, {
+            const response = await fetchWithTimeout(`/api/vehicles/${vehicleId}/transaction`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -148,9 +145,9 @@ export default function VehicleFinancialsPage() {
             setAmountPaid('');
             setPaymentDescription('');
 
-        } catch (error: any) {
+        } catch (error) {
             console.error('Payment Error:', error);
-            sonnerToast.error('Payment Failed', { description: error.message });
+            sonnerToast.error('Payment Failed', { description: (error instanceof Error ? error.message : "Request failed") });
         } finally {
             setIsProcessing(false);
         }
@@ -291,15 +288,15 @@ export default function VehicleFinancialsPage() {
                                             {transaction.description || 'N/A'}
                                         </TableCell>
                                         <TableCell className="py-2 px-4 border-b text-right text-green-600">
-                                            {transaction.credit_amount > 0 ? transaction.credit_amount.toFixed(2) : '-'}
+                                            {transaction.credit_amount > 0 ? `Rs. ${transaction.credit_amount.toFixed(2)}` : '-'}
                                         </TableCell>
                                         <TableCell className="py-2 px-4 border-b text-right text-red-600">
-                                            {transaction.debit_amount > 0 ? transaction.debit_amount.toFixed(2) : '-'}
+                                            {transaction.debit_amount > 0 ? `Rs. ${transaction.debit_amount.toFixed(2)}` : '-'}
                                         </TableCell>
                                         <TableCell className={`py-2 px-4 border-b text-right font-semibold ${
                                             transaction.balance >= 0 ? 'text-green-600' : 'text-red-600'
                                         }`}>
-                                            {transaction.balance.toFixed(2)}
+                                            Rs. {transaction.balance.toFixed(2)}
                                         </TableCell>
                                     </TableRow>
                                 ))}

@@ -1,5 +1,6 @@
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 // src/app/labour-settlements/page.tsx
-'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -106,7 +107,7 @@ interface SettleRemainingProps {
     assignment: LabourAssignment;
     remainingAmount: number;
     // Function to proceed with the SETTLE action after handling the remaining amount
-    onSettleConfirmed: (id: number, finalAmount: number) => void;
+    onSettleConfirmed: (id: number, finalAmount: number) => void | Promise<void>;
     onClose: () => void;
 }
 
@@ -122,20 +123,23 @@ function SettleRemainingDialog({ assignment, remainingAmount, onSettleConfirmed,
     const [finalCollectedAmountInput, setFinalCollectedAmountInput] = useState(requiredTotalCollection.toFixed(2));
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleConfirmSettle = () => {
+    const handleConfirmSettle = async () => {
         const finalAmount = parseFloat(finalCollectedAmountInput);
         
-        // This check ensures the user commits to the correct final amount
         if (Math.abs(finalAmount - requiredTotalCollection) > 0.01) { 
             toast.error({ 
                 title: "Validation Error", 
-                description: `To settle, the final Collected Amount must be exactly $${requiredTotalCollection.toFixed(2)}. Please correct the amount.` 
+                description: `To settle, the final Collected Amount must be exactly Rs. ${requiredTotalCollection.toFixed(2)}. Please correct the amount.` 
             });
             return;
         }
 
         setIsSubmitting(true);
-        onSettleConfirmed(assignment.id, finalAmount); 
+        try {
+            await onSettleConfirmed(assignment.id, finalAmount);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -145,7 +149,7 @@ function SettleRemainingDialog({ assignment, remainingAmount, onSettleConfirmed,
                     {isOverpaid ? 'Account Overpaid - Finalize Refund' : 'Remaining Payment Due - Finalize Collection'}
                 </DialogTitle>
                 <DialogDescription>
-                    The collected amount (${assignment.collected_amount.toFixed(2)}) requires adjustment to finalize settlement. 
+                    The collected amount (Rs. {assignment.collected_amount.toFixed(2)}) requires adjustment to finalize settlement. 
                 </DialogDescription>
             </DialogHeader>
             <div className='space-y-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md'>
@@ -155,7 +159,7 @@ function SettleRemainingDialog({ assignment, remainingAmount, onSettleConfirmed,
                         Final Corrected Total Paid
                     </Label>
                     <span className='text-xl text-blue-800'>
-                        ${requiredTotalCollection.toFixed(2)}
+                        Rs. {requiredTotalCollection.toFixed(2)}
                     </span>
                 </div>
                 
@@ -174,7 +178,7 @@ function SettleRemainingDialog({ assignment, remainingAmount, onSettleConfirmed,
                     />
                 </div>
                 <p className='text-xs text-gray-600 italic'>
-                    *By clicking 'Settle Now', you confirm this corrected amount is the final collected value, and the assignment status will be set to SETTLED.
+                    *By clicking &apos;Settle Now&apos;, you confirm this corrected amount is the final collected value, and the assignment status will be set to SETTLED.
                 </p>
             </div>
             
@@ -197,7 +201,7 @@ function SettleRemainingDialog({ assignment, remainingAmount, onSettleConfirmed,
 
 interface RecordPaymentProps {
     assignment: LabourAssignment;
-    onRecordPaymentConfirmed: (id: number, amount: number, notes: string) => void;
+    onRecordPaymentConfirmed: (id: number, amount: number, notes: string) => void | Promise<void>;
     onClose: () => void;
 }
 
@@ -225,7 +229,7 @@ function RecordPaymentDialog({ assignment, onRecordPaymentConfirmed, onClose }: 
     }, [absRemaining, isDue]);
 
 
-    const handleConfirmPayment = () => {
+    const handleConfirmPayment = async () => {
         const amount = parseFloat(paymentAmount || '0');
         
         if (amount <= 0 || isNaN(amount)) {
@@ -234,13 +238,16 @@ function RecordPaymentDialog({ assignment, onRecordPaymentConfirmed, onClose }: 
         }
 
         if (isDue && amount > absRemaining + 0.01) { // Adding small tolerance
-            toast.error({ title: "Validation Error", description: `Payment amount cannot exceed the remaining balance of $${absRemaining.toFixed(2)}.` });
+            toast.error({ title: "Validation Error", description: `Payment amount cannot exceed the remaining balance of Rs. ${absRemaining.toFixed(2)}.` });
             return;
         }
 
         setIsSubmitting(true);
-        // Call the parent handler
-        onRecordPaymentConfirmed(assignment.id, amount, paymentNotes); 
+        try {
+            await onRecordPaymentConfirmed(assignment.id, amount, paymentNotes);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
     
     // Group payment records by day for a clearer ledger view (Requirement 1)
@@ -271,16 +278,16 @@ function RecordPaymentDialog({ assignment, onRecordPaymentConfirmed, onClose }: 
             <div className='space-y-4 p-4 bg-blue-50/50 rounded-md border border-blue-200'>
                 <div className='flex justify-between font-bold text-lg'>
                     <span className='text-gray-700'>Total Due</span>
-                    <span className='text-blue-900'>${totalDue.toFixed(2)}</span>
+                    <span className='text-blue-900'>Rs. {totalDue.toFixed(2)}</span>
                 </div>
                  <div className='flex justify-between font-bold'>
                     <span className='text-gray-700'>Total Paid</span>
-                    <span className='text-green-600'>${totalPaid.toFixed(2)}</span>
+                    <span className='text-green-600'>Rs. {totalPaid.toFixed(2)}</span>
                 </div>
                  <div className='flex justify-between font-extrabold pt-2 border-t border-blue-200'>
                     <span className='text-gray-900'>{isDue ? 'Remaining Balance Due' : 'Account Settled'}</span>
                     <span className={`text-xl ${isDue ? 'text-red-700' : 'text-green-700'}`}>
-                        ${absRemaining.toFixed(2)}
+                        Rs. {absRemaining.toFixed(2)}
                     </span>
                 </div>
             </div>
@@ -297,7 +304,7 @@ function RecordPaymentDialog({ assignment, onRecordPaymentConfirmed, onClose }: 
                                 <h5 className='text-sm font-bold text-gray-600'>{date}</h5>
                                 {payments.map((payment) => (
                                     <div key={payment.id} className='flex justify-between text-sm ml-2 border-l pl-2'>
-                                        <span className='text-gray-800'>${payment.amount_paid.toFixed(2)}</span>
+                                        <span className='text-gray-800'>Rs. {payment.amount_paid.toFixed(2)}</span>
                                         <span className='text-xs text-gray-500 italic'>{payment.notes || 'No notes'}</span>
                                     </div>
                                 ))}
@@ -399,7 +406,7 @@ export default function LabourSettlements() {
             // NOTE: Assuming the backend correctly returns a list of assignments, 
             // where `collected_amount` is the total paid sum, and `paymentHistory` 
             // is an array of individual payments for the ledger view.
-            const response = await fetch('/api/labour-assignments'); 
+            const response = await fetchWithTimeout('/api/labour-assignments'); 
             if (!response.ok) throw new Error('Failed to fetch assignments');
 
             const data = await response.json();
@@ -418,11 +425,11 @@ export default function LabourSettlements() {
             }));
             
             setAssignments(mappedData);
-        } catch (error: any) {
+        } catch (error) {
             console.error(error);
             toast.error({
                 title: 'Error',
-                description: error.message || 'Failed to load assignments.'
+                description: (error instanceof Error ? error.message : "Request failed") || 'Failed to load assignments.'
             });
         } finally {
             setIsLoading(false);
@@ -448,7 +455,7 @@ export default function LabourSettlements() {
         // This is the implementation of the mock/placeholder function needed for Requirement 3
         try {
             // NOTE: Assuming this API route returns a single delivery object or an array of size 1
-            const response = await fetch(`/api/deliveries/report?shipment_id=${shipmentId}`); 
+            const response = await fetchWithTimeout(`/api/deliveries/report?shipment_id=${shipmentId}`); 
             if (!response.ok) return null;
             
             const data = await response.json();
@@ -482,7 +489,7 @@ export default function LabourSettlements() {
         const currentAction = forcedAction === 'RECORD_EXPENSES' ? 'COLLECT' : (forcedAction || action); 
 
         try {
-            const payload: any = {
+            const payload: Record<string, unknown> = {
                 assignment_id: assignmentId,
                 action: currentAction,
                 notes: notes || undefined,
@@ -509,7 +516,7 @@ export default function LabourSettlements() {
             }
 
 
-            const response = await fetch('/api/labour-assignments', {
+            const response = await fetchWithTimeout('/api/labour-assignments', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -529,10 +536,10 @@ export default function LabourSettlements() {
             resetModalStates(); 
             fetchAssignments(); 
 
-        } catch (error: any) {
+        } catch (error) {
             toast.error({
                 title: 'Error',
-                description: error.message
+                description: (error instanceof Error ? error.message : "Request failed")
             });
         }
     };
@@ -547,7 +554,7 @@ export default function LabourSettlements() {
             const mockApiRoute = '/api/labour-settlements'; 
 
             // Sending new payment data to the hypothetical new endpoint
-            const response = await fetch(mockApiRoute, {
+            const response = await fetchWithTimeout(mockApiRoute, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -565,16 +572,16 @@ export default function LabourSettlements() {
 
             toast.success({
                 title: 'Payment Recorded',
-                description: `Payment of $${amount.toFixed(2)} recorded successfully.`
+                description: `Payment of Rs. ${amount.toFixed(2)} recorded successfully.`
             });
 
             resetModalStates();
             fetchAssignments(); // Refetch to update the collected_amount/balance
 
-        } catch (error: any) {
+        } catch (error) {
             toast.error({
                 title: 'Payment Recording Failed',
-                description: error.message
+                description: (error instanceof Error ? error.message : "Request failed")
             });
             setIsLoading(false);
         }
@@ -585,7 +592,7 @@ export default function LabourSettlements() {
     const handleSettleCorrection = async (assignmentId: number, finalAmount: number) => {
         // 1. Update the stored collected amount to the final, corrected value using the COLLECT action
         try {
-            const response = await fetch('/api/labour-assignments', {
+            const response = await fetchWithTimeout('/api/labour-assignments', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -608,10 +615,10 @@ export default function LabourSettlements() {
             // 2. Proceed with the final SETTLE action
             await handleAction(assignmentId, 'SETTLE'); 
             
-        } catch (error: any) {
+        } catch (error) {
             toast.error({
                 title: 'Settlement Correction Failed',
-                description: error.message
+                description: (error instanceof Error ? error.message : "Request failed")
             });
             resetModalStates();
         }
@@ -756,22 +763,22 @@ export default function LabourSettlements() {
                                                 
                                                 {/* Total Amount Due (Charges + Expenses) */}
                                                 <TableCell className='font-extrabold text-right text-blue-900'>
-                                                    ${totalDue.toFixed(2)}
+                                                    Rs. {totalDue.toFixed(2)}
                                                 </TableCell>
                                                 
                                                 {/* Total Expenses */}
                                                 <TableCell className='font-medium text-right text-red-600'>
-                                                    ${formatCurrencyDisplay(totalExpenses)}
+                                                    Rs. {formatCurrencyDisplay(totalExpenses)}
                                                 </TableCell>
 
                                                 {/* Collected Amount (Total Paid) */}
                                                 <TableCell className={`font-medium text-right ${totalPaid > 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                                                    ${totalPaid.toFixed(2)}
+                                                    Rs. {totalPaid.toFixed(2)}
                                                 </TableCell>
                                                 
                                                 {/* Balance Due (New Calculation) */}
                                                 <TableCell className={`font-extrabold text-right ${isOverpaid ? 'text-green-700' : isDue ? 'text-red-700' : 'text-gray-900'}`}>
-                                                    ${Math.abs(balanceDue).toFixed(2)}
+                                                    Rs. {Math.abs(balanceDue).toFixed(2)}
                                                 </TableCell>
 
                                                 <TableCell>{getStatusBadge(assignment.status)}</TableCell>
@@ -829,15 +836,15 @@ export default function LabourSettlements() {
                             <div className='space-y-1 p-3 bg-blue-50/50 rounded-md border border-blue-200'>
                                 <div className='flex justify-between font-medium'>
                                     <span className='text-gray-700'>Shipment Charges (Receivable)</span>
-                                    <span className='text-blue-800'>${formatCurrencyDisplay(shipmentCharges)}</span>
+                                    <span className='text-blue-800'>Rs. {formatCurrencyDisplay(shipmentCharges)}</span>
                                 </div>
                                 <div className='flex justify-between font-medium'>
                                     <span className='text-gray-700'>Total Expenses (Claimed)</span>
-                                    <span className='text-red-600'>${totalEstimatedExpenses.toFixed(2)}</span>
+                                    <span className='text-red-600'>Rs. {totalEstimatedExpenses.toFixed(2)}</span>
                                 </div>
                                 <div className='flex justify-between font-bold pt-1 border-t border-blue-200'>
                                     <span className='text-blue-900'>TOTAL DUE (Charges + Expenses)</span>
-                                    <span className='text-blue-900'>${(shipmentCharges + totalEstimatedExpenses).toFixed(2)}</span>
+                                    <span className='text-blue-900'>Rs. {(shipmentCharges + totalEstimatedExpenses).toFixed(2)}</span>
                                 </div>
                             </div>
                             

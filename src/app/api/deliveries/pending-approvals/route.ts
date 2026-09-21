@@ -1,10 +1,14 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // src/app/api/deliveries/pending-approvals/route.ts
 
 import { NextResponse } from 'next/server';
 import { ApprovalStatus } from '@prisma/client'; 
 import { prisma } from '@/lib/prisma';
 
-export async function GET() {
+export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.DELIVERY_APPROVAL_ADMIN);
+    if (isAuthError(auth)) return auth;
+
     try {
         const pendingDeliveries = await prisma.delivery.findMany({
             where: {
@@ -53,10 +57,8 @@ export async function GET() {
         // Returning a 500 status code here is often better if the error is due to server logic/Prisma connection,
         // unless you are certain the 400 status is correct based on schema validation.
         return NextResponse.json(
-            { error: 'Internal server error or Prisma error while fetching pending deliveries.' },
-            { status: 500 } // Changed to 500 to better reflect a server-side data issue.
+            { error: 'Internal server error while fetching pending deliveries.' },
+            { status: 500 }
         );
-    } finally {
-        await prisma.$disconnect();
     }
 }

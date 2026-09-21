@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
@@ -13,6 +14,8 @@ type Item = {
     quantity: number;
     charges: number;
   }[];
+  totalQuantity?: number;
+  totalCharges?: number;
 };
 
 export default function ItemsReportPage() {
@@ -27,9 +30,13 @@ export default function ItemsReportPage() {
       const params = new URLSearchParams();
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
-      const res = await fetch(`/api/items/report?${params.toString()}`);
+      const res = await fetchWithTimeout(`/api/items/report?${params.toString()}`);
+      if (!res.ok) {
+        setItems([]);
+        return;
+      }
       const data: Item[] = await res.json();
-      setItems(data);
+      setItems(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('Failed to fetch report', e);
       setItems([]);
@@ -40,8 +47,8 @@ export default function ItemsReportPage() {
 
   const totals = useMemo(() => {
     return items.reduce((acc, item) => {
-      const totalQuantity = item.goodsDetails.reduce((sum, gd) => sum + gd.quantity, 0);
-      const totalCharges = item.goodsDetails.reduce((sum, gd) => sum + Number(gd.charges || 0), 0);
+      const totalQuantity = item.totalQuantity ?? item.goodsDetails.reduce((sum, gd) => sum + gd.quantity, 0);
+      const totalCharges = item.totalCharges ?? item.goodsDetails.reduce((sum, gd) => sum + Number(gd.charges || 0), 0);
       return {
         totalItems: acc.totalItems + 1,
         totalQuantity: acc.totalQuantity + totalQuantity,
@@ -86,13 +93,13 @@ export default function ItemsReportPage() {
             </TableHeader>
             <TableBody>
               {items.map((item) => {
-                const totalQuantity = item.goodsDetails.reduce((sum, gd) => sum + gd.quantity, 0);
-                const totalCharges = item.goodsDetails.reduce((sum, gd) => sum + Number(gd.charges || 0), 0);
+                const totalQuantity = item.totalQuantity ?? item.goodsDetails.reduce((sum, gd) => sum + gd.quantity, 0);
+                const totalCharges = item.totalCharges ?? item.goodsDetails.reduce((sum, gd) => sum + Number(gd.charges || 0), 0);
                 return (
                   <TableRow key={item.id}>
                     <TableCell>{item.item_description}</TableCell>
                     <TableCell>{totalQuantity}</TableCell>
-                    <TableCell>{totalCharges.toFixed(2)}</TableCell>
+                    <TableCell>Rs. {totalCharges.toFixed(2)}</TableCell>
                   </TableRow>
                 );
               })}
@@ -102,7 +109,7 @@ export default function ItemsReportPage() {
           <div className='grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded bg-white'>
             <div><div className='text-gray-500'>Total Items</div><div className='font-semibold'>{totals.totalItems}</div></div>
             <div><div className='text-gray-500'>Total Quantity</div><div className='font-semibold'>{totals.totalQuantity}</div></div>
-            <div><div className='text-gray-500'>Total Charges</div><div className='font-semibold'>{totals.totalCharges.toFixed(2)}</div></div>
+            <div><div className='text-gray-500'>Total Charges</div><div className='font-semibold'>Rs. {totals.totalCharges.toFixed(2)}</div></div>
           </div>
         </div>
       )}

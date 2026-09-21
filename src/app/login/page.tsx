@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
@@ -43,7 +44,7 @@ export default function LoginPage() {
 
   async function onSubmit(values: LoginFormValues) {
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetchWithTimeout('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -58,18 +59,12 @@ export default function LoginPage() {
       }
 
       setSessionUser(data.user);
-
-      toast.success('Authentication Successful', {
-        description: `Welcome back, ${data.user.username} (${data.user.role}).`,
-      });
-
-      // Immediate clean redirect to dashboard on single click
       window.location.href = '/';
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Login Error:', error);
       toast.error('Authentication Error', {
-        description: error.message,
+        description: (error instanceof Error ? error.message : "Request failed"),
       });
     }
   }

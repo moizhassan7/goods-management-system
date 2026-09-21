@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
@@ -44,7 +45,7 @@ export default function AddAgency() {
 
   async function onSubmit(values: AgencyFormValues) {
     try {
-      const response = await fetch('/api/agencies', {
+      const response = await fetchWithTimeout('/api/agencies', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,10 +67,10 @@ export default function AddAgency() {
       form.reset(); 
       router.push('/agency/view');
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Submission Error:', error);
       toast.error('Error Registering Agency', {
-        description: error.message
+        description: (error instanceof Error ? error.message : "Request failed")
       });
     }
   }

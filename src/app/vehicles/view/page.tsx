@@ -1,4 +1,5 @@
-'use client';
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -44,7 +45,7 @@ export default function ViewVehicles() {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch('/api/vehicles');
+            const response = await fetchWithTimeout('/api/vehicles');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data: Vehicle[] = await response.json();
             setVehicles(data);
@@ -85,7 +86,7 @@ export default function ViewVehicles() {
 
         setIsSaving(true);
         try {
-            const res = await fetch(`/api/vehicles/${editingVehicle.id}`, {
+            const res = await fetchWithTimeout(`/api/vehicles/${editingVehicle.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ vehicleNumber: editNumber.trim() }),
@@ -116,7 +117,7 @@ export default function ViewVehicles() {
         
         setIsDeleting(true);
         try {
-            const res = await fetch(`/api/vehicles/${deletingVehicle.id}`, {
+            const res = await fetchWithTimeout(`/api/vehicles/${deletingVehicle.id}`, {
                 method: 'DELETE',
             });
             const data = await res.json();

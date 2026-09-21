@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
@@ -36,9 +37,13 @@ export default function ReturnsReportPage() {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
       if (status) params.append('status', status);
-      const res = await fetch(`/api/returns/report?${params.toString()}`);
+      const res = await fetchWithTimeout(`/api/returns/report?${params.toString()}`);
+      if (!res.ok) {
+        setReturns([]);
+        return;
+      }
       const data: ReturnShipment[] = await res.json();
-      setReturns(data);
+      setReturns(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('Failed to fetch report', e);
       setReturns([]);

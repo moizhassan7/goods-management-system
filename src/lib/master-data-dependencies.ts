@@ -33,7 +33,7 @@ const formatDate = (date: Date | null | undefined): string => {
   }
 };
 
-const formatCurrency = (amount: any): string => {
+const formatCurrency = (amount: unknown): string => {
   const num = Number(amount || 0);
   return `Rs. ${num.toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 };
@@ -44,7 +44,6 @@ export async function checkMasterDataDependencies(
 ): Promise<DependencyCheckResult> {
   const categories: DependencyCategory[] = [];
   let entityName = '';
-  let notFound = false;
 
   switch (type) {
     case 'city': {

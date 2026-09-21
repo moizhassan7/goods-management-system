@@ -58,11 +58,7 @@ const ShipmentPrintForm = ({ data, onSave, onSaveAndPrint, onPrint }: ShipmentPr
     };
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-PK', {
-            style: 'currency',
-            currency: 'PKR',
-            minimumFractionDigits: 2,
-        }).format(amount);
+        return `Rs. ${Number(amount || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     return (

@@ -1,25 +1,47 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { readSessionCookie, verifySessionToken } from '@/lib/session';
 
-const AUTH_COOKIE_NAME = 'goods_auth_session';
-const publicPaths = ['/login', '/signup'];
+const publicPages = ['/login', '/signup'];
+const publicApi = new Set([
+  '/api/auth/login',
+  '/api/auth/logout',
+  '/api/auth/session',
+  '/api/auth/signup',
+]);
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionCookie = request.cookies.get(AUTH_COOKIE_NAME)?.value;
+  const token = readSessionCookie(request);
 
-  const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
-
-  // If unauthenticated user tries to access protected pages -> redirect to /login immediately on server
-  if (!sessionCookie && !isPublicPath) {
-    const loginUrl = new URL('/login', request.url);
-    return NextResponse.redirect(loginUrl);
+  let authenticated = false;
+  if (token) {
+    try {
+      authenticated = Boolean(await verifySessionToken(token));
+    } catch (error) {
+      console.error('Session verification failed:', error instanceof Error ? error.message : 'unknown');
+      authenticated = false;
+    }
   }
 
-  // If authenticated user tries to access /login or /signup -> redirect to dashboard /
-  if (sessionCookie && isPublicPath) {
-    const dashboardUrl = new URL('/', request.url);
-    return NextResponse.redirect(dashboardUrl);
+  if (pathname.startsWith('/api/')) {
+    if (publicApi.has(pathname)) {
+      return NextResponse.next();
+    }
+    if (!authenticated) {
+      return NextResponse.json({ message: 'Authentication required.' }, { status: 401 });
+    }
+    return NextResponse.next();
+  }
+
+  const isPublicPage = publicPages.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+
+  if (!authenticated && !isPublicPage) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  if (authenticated && isPublicPage) {
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   return NextResponse.next();
@@ -27,14 +49,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for:
-     * - api routes (/api/*)
-     * - _next/static (static assets)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon)
-     * - static image/font assets (.svg, .png, .jpg, .woff, etc.)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2|ttf|ico)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2|ttf|ico)$).*)',
   ],
 };

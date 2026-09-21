@@ -266,7 +266,7 @@ export default function AddShipment() {
                 page: String(page),
                 pageSize: String(pageSize),
             });
-            const response = await fetch(`/api/shipments?${params.toString()}`);
+            const response = await fetchWithTimeout(`/api/shipments?${params.toString()}`);
             if (!response.ok) throw new Error('Failed to fetch shipments.');
             const payload = await response.json();
             const list = Array.isArray(payload) ? payload : (payload.data || []);
@@ -461,7 +461,7 @@ export default function AddShipment() {
         setIsVerifyingPassword(true);
         setPasswordError(null);
         try {
-            const res = await fetch('/api/settings/verify-edit-password', {
+            const res = await fetchWithTimeout('/api/settings/verify-edit-password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password: passwordInput.trim() }),
@@ -496,7 +496,7 @@ export default function AddShipment() {
                 const editId = urlParams.get('edit');
                 if (editId) {
                     try {
-                        const res = await fetch(`/api/shipments/${encodeURIComponent(editId)}`);
+                        const res = await fetchWithTimeout(`/api/shipments/${encodeURIComponent(editId)}`);
                         if (res.ok) {
                             const editData = await res.json();
                             if (sessionStorage.getItem('bilty_edit_auth') === 'true') {
@@ -524,7 +524,7 @@ export default function AddShipment() {
         }
         setIsFetchingRegNum(true);
         try {
-            const res = await fetch(`/api/shipments/next-register-number?bility_date=${dateToUse}`);
+            const res = await fetchWithTimeout(`/api/shipments/next-register-number?bility_date=${dateToUse}`);
             if (res.ok) {
                 const { register_number } = await res.json();
                 setValue('register_number', register_number);
@@ -617,7 +617,7 @@ export default function AddShipment() {
                     throw new Error('Invalid master data type.');
             }
 
-            const response = await fetch(endpoint, {
+            const response = await fetchWithTimeout(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -778,41 +778,37 @@ export default function AddShipment() {
         }
     }, [form, paymentStatusToSend, toast, editingShipmentId, fetchShipments, fetchNextRegNum, focusBilityNumber, createdDate, shipmentsPageSize]);
 
-    const onInvalid = useCallback((errors: any) => {
-        console.error("Form Validation Errors:", errors);
-        const friendlyNames: Record<string, string> = {
-            bility_number: 'Bilty Number',
-            bility_date: 'Bilty Date',
-            departure_city_id: 'Departure City',
-            to_city_id: 'Destination City',
-            forwarding_agency_id: 'Forwarding Agency',
-            vehicle_number_id: 'Fleet Vehicle',
-            goods_details: 'Goods / Item Category',
-            item_id: 'Goods / Item Category',
-            sender_id: 'Sender Party',
-            receiver_id: 'Receiver Party',
-            total_amount: 'Chota Karaya / Bara Karaya',
-        };
-
-        const labels: string[] = [];
-        const walk = (obj: any, parent?: string) => {
-            if (!obj || typeof obj !== 'object') return;
-            if (typeof obj.message === 'string') {
-                labels.push(friendlyNames[parent || ''] || obj.message);
-                return;
+    const onInvalid = useCallback((errors: Record<string, unknown>) => {
+        const order = [
+            'bility_number',
+            'bility_date',
+            'departure_city_id',
+            'forwarding_agency_id',
+            'vehicle_number_id',
+            'goods_details.0.quantity',
+            'goods_details.0.item_id',
+            'sender_id',
+            'receiver_id',
+            'to_city_id',
+            'total_delivery_charges',
+            'total_amount',
+            'is_free_of_cost',
+        ];
+        const hasError = (path: string) => {
+            let current: unknown = errors;
+            for (const part of path.split('.')) {
+                if (!current || typeof current !== 'object') return false;
+                current = (current as Record<string, unknown>)[part];
             }
-            Object.entries(obj).forEach(([key, value]) => walk(value, parent || key));
+            return Boolean(current);
         };
-        walk(errors);
-
-        const missing = [...new Set(labels)].join(', ');
-        toast.error({
-            title: "Bilty Save Blocked",
-            description: missing
-                ? `Please complete: ${missing}`
-                : 'Some required fields are missing or invalid. Please check the form and try again.',
-        });
-    }, [toast]);
+        const first = order.find(hasError);
+        if (!first) return;
+        const node = document.getElementById(`field-${first.replace(/\./g, '-')}`);
+        node?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const focusable = node?.querySelector('input, button');
+        if (focusable instanceof HTMLElement) focusable.focus();
+    }, []);
 
     const createPrintContent = (shipmentData: any) => {
         return `
@@ -1180,7 +1176,7 @@ export default function AddShipment() {
 
     const handlePrintTable = async () => {
         try {
-            const response = await fetch(`/api/shipments?date=${savedBiltiesDate}`);
+            const response = await fetchWithTimeout(`/api/shipments?date=${savedBiltiesDate}`);
             if (!response.ok) throw new Error('Failed to load day sheet.');
             const list = await response.json();
             const dayShipments = Array.isArray(list) ? list : [];
@@ -1287,7 +1283,7 @@ export default function AddShipment() {
                         {/* Row 1: Bilty details and Departure */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <FormField control={form.control} name="bility_number" render={({ field }) => (
-                                <FormItem>
+                                <FormItem id="field-bility_number">
                                     <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
                                         Bilty Number <span className="text-red-500">*</span>
                                     </FormLabel>
@@ -1309,7 +1305,7 @@ export default function AddShipment() {
                             )} />
 
                             <FormField control={form.control} name="bility_date" render={({ field }) => (
-                                <FormItem>
+                                <FormItem id="field-bility_date">
                                     <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
                                         Bilty Date <span className="text-red-500">*</span>
                                     </FormLabel>
@@ -1324,44 +1320,53 @@ export default function AddShipment() {
                                 </FormItem>
                             )} />
 
-                            <FormField control={form.control} name="departure_city_id" render={({ field }) => (
-                                <SearchableDropdown
-                                    label="Departure City *"
-                                    endpoint="/api/cities"
-                                    placeholder="Select departure"
-                                    value={field.value}
-                                    onSelectItem={(it) => field.onChange(Number(it.id))}
-                                    items={data?.cities}
-                                    onNewItemAdded={() => fetchDropdownData(true)}
-                                />
+                            <FormField control={form.control} name="departure_city_id" render={({ field, fieldState }) => (
+                                <div id="field-departure_city_id">
+                                    <SearchableDropdown
+                                        label="Departure City *"
+                                        endpoint="/api/cities"
+                                        placeholder="Select departure"
+                                        value={field.value}
+                                        onSelectItem={(it) => field.onChange(Number(it.id))}
+                                        items={data?.cities}
+                                        onNewItemAdded={() => fetchDropdownData(true)}
+                                        error={fieldState.error?.message}
+                                    />
+                                </div>
                             )} />
                         </div>
 
                         {/* Row 2: Forwarding Agency & Vehicle */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <FormField control={form.control} name="forwarding_agency_id" render={({ field }) => (
-                                <SearchableDropdown
-                                    label="Forwarding Agency *"
-                                    endpoint="/api/agencies"
-                                    placeholder="Select forwarding partner agency"
-                                    value={field.value}
-                                    onSelectItem={(it) => field.onChange(Number(it.id))}
-                                    items={data?.agencies}
-                                    onNewItemAdded={() => fetchDropdownData(true)}
-                                />
+                            <FormField control={form.control} name="forwarding_agency_id" render={({ field, fieldState }) => (
+                                <div id="field-forwarding_agency_id">
+                                    <SearchableDropdown
+                                        label="Forwarding Agency *"
+                                        endpoint="/api/agencies"
+                                        placeholder="Select forwarding partner agency"
+                                        value={field.value}
+                                        onSelectItem={(it) => field.onChange(Number(it.id))}
+                                        items={data?.agencies}
+                                        onNewItemAdded={() => fetchDropdownData(true)}
+                                        error={fieldState.error?.message}
+                                    />
+                                </div>
                             )} />
 
-                            <FormField control={form.control} name="vehicle_number_id" render={({ field }) => (
-                                <SearchableDropdown
-                                    label="Vehicle Number (License Plate) *"
-                                    endpoint="/api/vehicles"
-                                    placeholder="Select truck license plate"
-                                    value={field.value}
-                                    onSelectItem={(it) => field.onChange(Number(it.id))}
-                                    items={data?.vehicles}
-                                    createPropertyName="vehicleNumber"
-                                    onNewItemAdded={() => fetchDropdownData(true)}
-                                />
+                            <FormField control={form.control} name="vehicle_number_id" render={({ field, fieldState }) => (
+                                <div id="field-vehicle_number_id">
+                                    <SearchableDropdown
+                                        label="Vehicle Number (License Plate) *"
+                                        endpoint="/api/vehicles"
+                                        placeholder="Select truck license plate"
+                                        value={field.value}
+                                        onSelectItem={(it) => field.onChange(Number(it.id))}
+                                        items={data?.vehicles}
+                                        createPropertyName="vehicleNumber"
+                                        onNewItemAdded={() => fetchDropdownData(true)}
+                                        error={fieldState.error?.message}
+                                    />
+                                </div>
                             )} />
                         </div>
 
@@ -1369,7 +1374,7 @@ export default function AddShipment() {
                         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                             <div className="sm:col-span-1">
                                 <FormField control={form.control} name="goods_details.0.quantity" render={({ field }) => (
-                                    <FormItem>
+                                    <FormItem id="field-goods_details-0-quantity">
                                         <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
                                             Quantity (Units/Boxes) *
                                         </FormLabel>
@@ -1390,64 +1395,76 @@ export default function AddShipment() {
                             </div>
 
                             <div className="sm:col-span-3">
-                                <FormField control={form.control} name="goods_details.0.item_id" render={({ field }) => (
-                                    <SearchableDropdown
-                                        label="Item Category / Goods Description *"
-                                        endpoint="/api/items"
-                                        placeholder="Select or enter item category"
-                                        value={field.value}
-                                        onSelectItem={(it) => field.onChange(Number(it.id))}
-                                        items={data?.items}
-                                        createPropertyName="description"
-                                        onNewItemAdded={() => fetchDropdownData(true)}
-                                    />
+                                <FormField control={form.control} name="goods_details.0.item_id" render={({ field, fieldState }) => (
+                                    <div id="field-goods_details-0-item_id">
+                                        <SearchableDropdown
+                                            label="Item Category / Goods Description *"
+                                            endpoint="/api/items"
+                                            placeholder="Select or enter item category"
+                                            value={field.value}
+                                            onSelectItem={(it) => field.onChange(Number(it.id))}
+                                            items={data?.items}
+                                            createPropertyName="description"
+                                            onNewItemAdded={() => fetchDropdownData(true)}
+                                            error={fieldState.error?.message}
+                                        />
+                                    </div>
                                 )} />
                             </div>
                         </div>
 
                         {/* Row 4: Sender & Receiver Parties and Destination */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <FormField control={form.control} name="sender_id" render={({ field }) => (
-                                <SearchableDropdown
-                                    label="Sender Party *"
-                                    endpoint="/api/parties"
-                                    placeholder="Select sender party"
-                                    value={field.value}
-                                    onSelectItem={(it) => field.onChange(Number(it.id))}
-                                    items={data?.parties}
-                                    onNewItemAdded={() => fetchDropdownData(true)}
-                                />
+                            <FormField control={form.control} name="sender_id" render={({ field, fieldState }) => (
+                                <div id="field-sender_id">
+                                    <SearchableDropdown
+                                        label="Sender Party *"
+                                        endpoint="/api/parties"
+                                        placeholder="Select sender party"
+                                        value={field.value}
+                                        onSelectItem={(it) => field.onChange(Number(it.id))}
+                                        items={data?.parties}
+                                        onNewItemAdded={() => fetchDropdownData(true)}
+                                        error={fieldState.error?.message}
+                                    />
+                                </div>
                             )} />
 
-                            <FormField control={form.control} name="receiver_id" render={({ field }) => (
-                                <SearchableDropdown
-                                    label="Receiver Party *"
-                                    endpoint="/api/parties"
-                                    placeholder="Select receiver party"
-                                    value={field.value}
-                                    onSelectItem={(it) => field.onChange(Number(it.id))}
-                                    items={data?.parties}
-                                    onNewItemAdded={() => fetchDropdownData(true)}
-                                />
+                            <FormField control={form.control} name="receiver_id" render={({ field, fieldState }) => (
+                                <div id="field-receiver_id">
+                                    <SearchableDropdown
+                                        label="Receiver Party *"
+                                        endpoint="/api/parties"
+                                        placeholder="Select receiver party"
+                                        value={field.value}
+                                        onSelectItem={(it) => field.onChange(Number(it.id))}
+                                        items={data?.parties}
+                                        onNewItemAdded={() => fetchDropdownData(true)}
+                                        error={fieldState.error?.message}
+                                    />
+                                </div>
                             )} />
 
-                            <FormField control={form.control} name="to_city_id" render={({ field }) => (
-                                <SearchableDropdown
-                                    label="Destination City *"
-                                    endpoint="/api/cities"
-                                    placeholder="Select destination"
-                                    value={field.value}
-                                    onSelectItem={(it) => field.onChange(Number(it.id))}
-                                    items={data?.cities}
-                                    onNewItemAdded={() => fetchDropdownData(true)}
-                                />
+                            <FormField control={form.control} name="to_city_id" render={({ field, fieldState }) => (
+                                <div id="field-to_city_id">
+                                    <SearchableDropdown
+                                        label="Destination City *"
+                                        endpoint="/api/cities"
+                                        placeholder="Select destination"
+                                        value={field.value}
+                                        onSelectItem={(it) => field.onChange(Number(it.id))}
+                                        items={data?.cities}
+                                        onNewItemAdded={() => fetchDropdownData(true)}
+                                        error={fieldState.error?.message}
+                                    />
+                                </div>
                             )} />
                         </div>
 
                         {/* Row 5: Financials & Settlement */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <FormField control={form.control} name="total_delivery_charges" render={({ field }) => (
-                                <FormItem>
+                                <FormItem id="field-total_delivery_charges">
                                     <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
                                         Chota Karaya (Rs.)
                                     </FormLabel>
@@ -1468,7 +1485,7 @@ export default function AddShipment() {
                             )} />
 
                             <FormField control={form.control} name="total_amount" render={({ field }) => (
-                                <FormItem>
+                                <FormItem id="field-total_amount">
                                     <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
                                         Bara Karaya (Rs.)
                                     </FormLabel>

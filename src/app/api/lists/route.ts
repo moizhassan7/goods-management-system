@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { CACHE_KEYS, getOrSetCache, MASTER_CACHE_HEADERS } from '@/lib/cache';
@@ -10,7 +11,10 @@ export const revalidate = 0;
  * Endpoint: /api/lists
  * Master data is cached (in-memory, Redis if REDIS_URL is set).
  */
-export async function GET() {
+export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.REPORTS_VIEW);
+    if (isAuthError(auth)) return auth;
+
   try {
     const payload = await getOrSetCache(CACHE_KEYS.MASTER_LISTS, async () => {
       const [cities, agencies, vehicles, parties, items] = await prisma.$transaction([

@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // src/app/api/vehicles/ledgers/route.ts
 
 import { NextResponse } from 'next/server';
@@ -19,7 +20,10 @@ interface VehiclePaymentSummary {
  * Handles GET requests to retrieve a simplified payment summary for all vehicles.
  * Endpoint: /api/vehicles/ledgers
  */
-export async function GET() {
+export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.REPORTS_VIEW);
+    if (isAuthError(auth)) return auth;
+
     try {
         // Fetch all vehicles with their transactions and the latest trip log.
         // We fetch the latest trip log to determine the current payment status and due amount.

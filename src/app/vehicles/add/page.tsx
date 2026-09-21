@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
@@ -46,7 +47,7 @@ export default function AddVehicle() {
 
   async function onSubmit(values: VehicleFormValues) {
     try {
-      const response = await fetch('/api/vehicles', {
+      const response = await fetchWithTimeout('/api/vehicles', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -68,10 +69,10 @@ export default function AddVehicle() {
       form.reset(); 
       router.push('/vehicles/view');
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Submission Error:', error);
       toast.error('Error Registering Vehicle', {
-        description: error.message
+        description: (error instanceof Error ? error.message : "Request failed")
       });
     }
   }

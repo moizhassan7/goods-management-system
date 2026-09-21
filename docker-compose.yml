@@ -9,11 +9,11 @@ services:
     container_name: goods_postgres
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password123
-      POSTGRES_DB: goods
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
+      POSTGRES_DB: ${POSTGRES_DB:-goods}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -38,7 +38,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 9050
-      DATABASE_URL: "postgresql://postgres:password123@postgres:5432/goods?schema=public"
+      DATABASE_URL: "${DATABASE_URL:-postgresql://postgres:password123@postgres:5432/goods?schema=public&connection_limit=10}"
+      AUTH_SECRET: "${AUTH_SECRET:-dev-only-compose-secret-change-me}"
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,5 +1,6 @@
-// src/app/deliveries/expense-report/page.tsx
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
+// src/app/deliveries/expense-report/page.tsx
 
 import React, { useEffect, useState } from 'react';
 import { Label } from '@/components/ui/label';
@@ -44,11 +45,7 @@ interface ReportData {
 
 // --- Utility ---
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-PK', {
-        style: 'currency',
-        currency: 'PKR',
-        minimumFractionDigits: 2,
-    }).format(amount);
+    return `Rs. ${Number(amount || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 const today = new Date().toISOString().substring(0, 10);
@@ -60,15 +57,17 @@ export default function CombinedExpensesReportPage() {
     const [endDate, setEndDate] = useState<string>(today);
     const [loading, setLoading] = useState<boolean>(false);
 
-    async function fetchReport() {
+    async function fetchReport(range?: { start?: string; end?: string }) {
+        const start = range?.start ?? startDate;
+        const end = range?.end ?? endDate;
         setLoading(true);
         setReportData(null);
         try {
             const params = new URLSearchParams();
-            if (startDate) params.append('startDate', startDate);
-            if (endDate) params.append('endDate', endDate);
+            if (start) params.append('startDate', start);
+            if (end) params.append('endDate', end);
             
-            const res = await fetch(`/api/reports/combined-expenses?${params.toString()}`);
+            const res = await fetchWithTimeout(`/api/reports/combined-expenses?${params.toString()}`);
             if (!res.ok) throw new Error('Failed to fetch combined expenses report.');
             
             const data: ReportData = await res.json();
@@ -85,11 +84,11 @@ export default function CombinedExpensesReportPage() {
     useEffect(() => {
         const defaultStart = new Date();
         defaultStart.setDate(defaultStart.getDate() - 30);
-        setStartDate(defaultStart.toISOString().split('T')[0]);
-        
-        // Use a slight delay to ensure state update is processed before initial fetch
-        const timer = setTimeout(() => fetchReport(), 50);
-        return () => clearTimeout(timer);
+        const start = defaultStart.toISOString().split('T')[0];
+        const end = new Date().toISOString().split('T')[0];
+        setStartDate(start);
+        setEndDate(end);
+        fetchReport({ start, end });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); 
 
@@ -117,7 +116,7 @@ export default function CombinedExpensesReportPage() {
                             </div>
                         </div>
                         <div className='flex items-end'>
-                            <Button className='w-full' onClick={fetchReport} disabled={loading}>
+                            <Button className='w-full' onClick={() => fetchReport()} disabled={loading}>
                                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : 'Load Report'}
                             </Button>
                         </div>

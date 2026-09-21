@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
@@ -52,7 +53,7 @@ export default function SignupPage() {
 
   async function onSubmit(values: SignupFormValues) {
     try {
-      const response = await fetch('/api/auth/signup', {
+      const response = await fetchWithTimeout('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

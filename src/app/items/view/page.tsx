@@ -1,4 +1,5 @@
-'use client';
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -43,7 +44,7 @@ export default function ViewItems() {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch('/api/items');
+            const response = await fetchWithTimeout('/api/items');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data: ItemCatalog[] = await response.json();
             setItems(data);
@@ -84,7 +85,7 @@ export default function ViewItems() {
 
         setIsSaving(true);
         try {
-            const res = await fetch(`/api/items/${editingItem.id}`, {
+            const res = await fetchWithTimeout(`/api/items/${editingItem.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ description: editDescription.trim() }),
@@ -115,7 +116,7 @@ export default function ViewItems() {
         
         setIsDeleting(true);
         try {
-            const res = await fetch(`/api/items/${deletingItem.id}`, {
+            const res = await fetchWithTimeout(`/api/items/${deletingItem.id}`, {
                 method: 'DELETE',
             });
             const data = await res.json();

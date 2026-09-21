@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
@@ -15,6 +16,12 @@ type Vehicle = {
     credit_amount: number;
     debit_amount: number;
   }[];
+  shipmentCount?: number;
+  totalCharges?: number;
+  tripCount?: number;
+  totalFares?: number;
+  totalCredits?: number;
+  totalDebits?: number;
 };
 
 export default function VehiclesReportPage() {
@@ -29,9 +36,13 @@ export default function VehiclesReportPage() {
       const params = new URLSearchParams();
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
-      const res = await fetch(`/api/vehicles/report?${params.toString()}`);
+      const res = await fetchWithTimeout(`/api/vehicles/report?${params.toString()}`);
+      if (!res.ok) {
+        setVehicles([]);
+        return;
+      }
       const data: Vehicle[] = await res.json();
-      setVehicles(data);
+      setVehicles(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('Failed to fetch report', e);
       setVehicles([]);
@@ -42,12 +53,12 @@ export default function VehiclesReportPage() {
 
   const totals = useMemo(() => {
     return vehicles.reduce((acc, vehicle) => {
-      const shipmentCount = vehicle.shipments.length;
-      const totalCharges = vehicle.shipments.reduce((sum, s) => sum + Number(s.total_charges || 0), 0);
-      const tripCount = vehicle.tripLogs.length;
-      const totalFares = vehicle.tripLogs.reduce((sum, t) => sum + Number(t.total_fare_collected || 0), 0);
-      const totalCredits = vehicle.vehicleTransactions.reduce((sum, vt) => sum + Number(vt.credit_amount || 0), 0);
-      const totalDebits = vehicle.vehicleTransactions.reduce((sum, vt) => sum + Number(vt.debit_amount || 0), 0);
+      const shipmentCount = vehicle.shipmentCount ?? vehicle.shipments.length;
+      const totalCharges = vehicle.totalCharges ?? vehicle.shipments.reduce((sum, s) => sum + Number(s.total_charges || 0), 0);
+      const tripCount = vehicle.tripCount ?? vehicle.tripLogs.length;
+      const totalFares = vehicle.totalFares ?? vehicle.tripLogs.reduce((sum, t) => sum + Number(t.total_fare_collected || 0), 0);
+      const totalCredits = vehicle.totalCredits ?? vehicle.vehicleTransactions.reduce((sum, vt) => sum + Number(vt.credit_amount || 0), 0);
+      const totalDebits = vehicle.totalDebits ?? vehicle.vehicleTransactions.reduce((sum, vt) => sum + Number(vt.debit_amount || 0), 0);
       return {
         totalVehicles: acc.totalVehicles + 1,
         totalShipments: acc.totalShipments + shipmentCount,
@@ -98,17 +109,17 @@ export default function VehiclesReportPage() {
             </TableHeader>
             <TableBody>
               {vehicles.map((vehicle) => {
-                const shipmentCount = vehicle.shipments.length;
-                const totalCharges = vehicle.shipments.reduce((sum, s) => sum + Number(s.total_charges || 0), 0);
-                const tripCount = vehicle.tripLogs.length;
-                const totalFares = vehicle.tripLogs.reduce((sum, t) => sum + Number(t.total_fare_collected || 0), 0);
+                const shipmentCount = vehicle.shipmentCount ?? vehicle.shipments.length;
+                const totalCharges = vehicle.totalCharges ?? vehicle.shipments.reduce((sum, s) => sum + Number(s.total_charges || 0), 0);
+                const tripCount = vehicle.tripCount ?? vehicle.tripLogs.length;
+                const totalFares = vehicle.totalFares ?? vehicle.tripLogs.reduce((sum, t) => sum + Number(t.total_fare_collected || 0), 0);
                 return (
                   <TableRow key={vehicle.id}>
                     <TableCell>{vehicle.vehicleNumber}</TableCell>
                     <TableCell>{shipmentCount}</TableCell>
-                    <TableCell>{totalCharges.toFixed(2)}</TableCell>
+                    <TableCell>Rs. {totalCharges.toFixed(2)}</TableCell>
                     <TableCell>{tripCount}</TableCell>
-                    <TableCell>{totalFares.toFixed(2)}</TableCell>
+                    <TableCell>Rs. {totalFares.toFixed(2)}</TableCell>
                   </TableRow>
                 );
               })}
@@ -118,8 +129,8 @@ export default function VehiclesReportPage() {
           <div className='grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded bg-white'>
             <div><div className='text-gray-500'>Total Vehicles</div><div className='font-semibold'>{totals.totalVehicles}</div></div>
             <div><div className='text-gray-500'>Total Shipments</div><div className='font-semibold'>{totals.totalShipments}</div></div>
-            <div><div className='text-gray-500'>Total Charges</div><div className='font-semibold'>{totals.totalCharges.toFixed(2)}</div></div>
-            <div><div className='text-gray-500'>Total Fares</div><div className='font-semibold'>{totals.totalFares.toFixed(2)}</div></div>
+            <div><div className='text-gray-500'>Total Charges</div><div className='font-semibold'>Rs. {totals.totalCharges.toFixed(2)}</div></div>
+            <div><div className='text-gray-500'>Total Fares</div><div className='font-semibold'>Rs. {totals.totalFares.toFixed(2)}</div></div>
           </div>
         </div>
       )}

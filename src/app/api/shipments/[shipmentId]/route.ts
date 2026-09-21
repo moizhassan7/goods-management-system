@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
@@ -7,6 +8,9 @@ import { parseCreatedDate } from '@/lib/created-date';
 const PAYMENT_STATUS_PREFIX = "PAYMENT_STATUS:";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ shipmentId: string }> }) {
+    const auth = await requireAuth(request, Permissions.CORE_OPERATIONS);
+    if (isAuthError(auth)) return auth;
+
   const { shipmentId } = await params;
   
   try {
@@ -78,6 +82,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ shipmentId: string }> }) {
+    const auth = await requireAuth(request, Permissions.CORE_OPERATIONS);
+    if (isAuthError(auth)) return auth;
+
   const { shipmentId } = await params;
   try {
     const payload = await request.json();
@@ -90,7 +97,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       finalRemarks = `PAYMENT_STATUS:${payload.payment_status} ${finalRemarks}`;
     }
 
-    const goodsDetailsForCreate = (payload.goods_details || []).map((detail: any) => ({
+    const goodsDetailsForCreate = ((payload.goods_details || []) as Array<{ item_id: number; quantity?: number }>).map((detail) => ({
       item_name_id: detail.item_id,
       quantity: detail.quantity || 1,
       charges: new Prisma.Decimal(0),
@@ -164,13 +171,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       shipment: updatedShipment,
       register_number: shipmentId,
     }, { status: 200 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating shipment:', error);
     return NextResponse.json({ message: prismaErrorMessage(error, 'Failed to update shipment') }, { status: 500 });
   }
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ shipmentId: string }> }) {
+    const auth = await requireAuth(request, Permissions.MASTER_DATA_WRITE);
+    if (isAuthError(auth)) return auth;
+
   const { shipmentId } = await params;
   try {
     const cleanId = decodeURIComponent(shipmentId).trim();
@@ -192,8 +202,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     });
 
     return NextResponse.json({ message: 'Shipment deleted successfully.' }, { status: 200 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error deleting shipment:', error);
-    return NextResponse.json({ message: error.message || 'Failed to delete shipment' }, { status: 500 });
+    return NextResponse.json({ message: prismaErrorMessage(error, 'Failed to delete shipment') }, { status: 500 });
   }
 }

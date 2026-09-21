@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -6,6 +7,9 @@ import { prisma } from '@/lib/prisma';
  * Returns the next sequential registration number for the given bility_date (month/year)
  */
 export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.CORE_OPERATIONS);
+    if (isAuthError(auth)) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const bility_date = searchParams.get('bility_date');

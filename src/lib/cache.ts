@@ -67,25 +67,28 @@ function writeMemory(key: string, serialized: string, ttlSeconds: number) {
 }
 
 export async function cacheGet<T>(key: string): Promise<T | null> {
+    const memory = readMemory<T>(key);
     try {
         const redis = getRedis();
-        if (!redis) return null;
+        if (!redis) return memory;
         const value = await redis.get(key);
-        if (!value) return null;
+        if (!value) return memory;
         return JSON.parse(value) as T;
     } catch {
-        return null;
+        return memory;
     }
 }
 
 export async function cacheSet(key: string, value: unknown, ttlSeconds = MASTER_TTL_SECONDS) {
+    const serialized = JSON.stringify(value);
+    writeMemory(key, serialized, ttlSeconds);
     try {
         const redis = getRedis();
         if (redis) {
-            await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);
+            await redis.set(key, serialized, 'EX', ttlSeconds);
         }
     } catch {
-        // Ignore remote cache set failures.
+        // Ignore remote cache set failures. In-memory copy is already stored.
     }
 }
 

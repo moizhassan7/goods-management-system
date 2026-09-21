@@ -1,6 +1,7 @@
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 // src/app/vehicles/ledgers/page.tsx
 
-'use client';
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -30,7 +31,7 @@ export default function VehicleLedgers() {
         setError(null);
         try {
             // Fetching from the updated API
-            const response = await fetch('/api/vehicles/ledgers'); 
+            const response = await fetchWithTimeout('/api/vehicles/ledgers'); 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -95,7 +96,7 @@ export default function VehicleLedgers() {
                                     ledger.fareStatus === 'PAID' ? 'text-green-600' : 'text-red-600'
                                 }`}>
                                     {/* Display the amount associated with the last trip */}
-                                    {ledger.amountDue.toFixed(2)}
+                                    Rs. {ledger.amountDue.toFixed(2)}
                                 </td>
                                 <td className="py-2 px-4 border-b text-center text-gray-500">
                                     {ledger.lastTripDate || 'No Trip Recorded'}

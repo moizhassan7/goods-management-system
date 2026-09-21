@@ -1,4 +1,5 @@
-'use client';
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -83,7 +84,7 @@ export default function DeliveryApprovalPage() {
         setNotification(null);
         try {
             // Fetching ONLY PENDING deliveries for the Admin's first stage approval
-            const response = await fetch('/api/deliveries/pending-approvals'); 
+            const response = await fetchWithTimeout('/api/deliveries/pending-approvals'); 
             if (response.ok) {
                 const data = await response.json();
                 setDeliveries(data);
@@ -108,7 +109,7 @@ export default function DeliveryApprovalPage() {
         setIsReportLoading(true); 
         setApprovedDeliveries([]); 
         try {
-            const response = await fetch(`/api/deliveries/approved?date=${date}`);
+            const response = await fetchWithTimeout(`/api/deliveries/approved?date=${date}`);
             if (response.ok) {
                 const data = await response.json();
                 setApprovedDeliveries(data);
@@ -144,7 +145,7 @@ export default function DeliveryApprovalPage() {
         const nextApprovalStatus = action === 'APPROVED' ? 'APPROVED_BY_ADMIN' : 'REJECTED'; 
 
         try {
-            const response = await fetch(`/api/deliveries/${deliveryId}`, { 
+            const response = await fetchWithTimeout(`/api/deliveries/${deliveryId}`, { 
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 // Send the determined next status for the API to process
@@ -368,7 +369,7 @@ export default function DeliveryApprovalPage() {
                                                                 <AlertDialogHeader>
                                                                     <AlertDialogTitle className="text-xl font-bold text-red-700">Confirm Rejection</AlertDialogTitle>
                                                                     <AlertDialogDescription className='text-gray-600'>
-                                                                        Are you certain you wish to **reject** the delivery's financial request for Shipment **{delivery.shipment_id}**?
+                                                                        Are you certain you wish to **reject** the delivery&apos;s financial request for Shipment **{delivery.shipment_id}**?
                                                                         <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                                                                             <h4 className='font-semibold text-red-800 mb-2'>Rejection Summary:</h4>
                                                                             <div className="space-y-1 text-sm text-red-900">

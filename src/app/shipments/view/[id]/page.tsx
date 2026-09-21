@@ -1,4 +1,5 @@
-'use client';
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -71,7 +72,7 @@ export default function SingleBiltyFullViewPage() {
     const handleDeleteShipment = async () => {
         if (!shipmentId) return;
         try {
-            const res = await fetch(`/api/shipments/${encodeURIComponent(shipmentId)}`, {
+            const res = await fetchWithTimeout(`/api/shipments/${encodeURIComponent(shipmentId)}`, {
                 method: 'DELETE',
             });
             const data = await res.json();
@@ -91,7 +92,7 @@ export default function SingleBiltyFullViewPage() {
         setIsLoading(true);
         setError(null);
         try {
-            const res = await fetch(`/api/shipments/${encodeURIComponent(shipmentId)}`);
+            const res = await fetchWithTimeout(`/api/shipments/${encodeURIComponent(shipmentId)}`);
             if (!res.ok) {
                 if (res.status === 404) {
                     throw new Error(`Consignment not found for ID "${shipmentId}".`);
@@ -267,7 +268,7 @@ export default function SingleBiltyFullViewPage() {
         setIsVerifyingPassword(true);
         setPasswordError(null);
         try {
-            const res = await fetch('/api/settings/verify-edit-password', {
+            const res = await fetchWithTimeout('/api/settings/verify-edit-password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password: passwordInput.trim() }),

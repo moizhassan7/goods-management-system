@@ -1,7 +1,6 @@
-// src/moizhassan7/goods-management-system/goods-management-system-36a96deb04db0b296f5178c3c6a89a34c19278dd/src/lib/auth.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-// Assuming the user installs bcryptjs
+import { readSessionCookie, rejectCrossOrigin, verifySessionToken } from '@/lib/session';
 import * as bcrypt from 'bcryptjs'; 
 
 // --- Role Definition (Mirroring Prisma Enum) ---
@@ -23,6 +22,8 @@ export interface UserSession {
 export const Permissions = {
     // Master Data Creation/Management (High Privilege)
     MASTER_DATA_WRITE: [UserRole.ADMIN, UserRole.SUPERADMIN],
+    // Full database restore (destructive — SuperAdmin only)
+    BACKUP_RESTORE: [UserRole.SUPERADMIN],
     // Viewing Reports (Medium Privilege)
     REPORTS_VIEW: [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.OPERATOR],
     // Financial Approval (High Privilege - Only SuperAdmin for Deliveries)
@@ -45,29 +46,19 @@ export async function comparePassword(password: string, hash: string): Promise<b
     return bcrypt.compare(password, hash);
 }
 
-// --- Session/Cookie Management ---
-
-// This function mirrors the client's cookie name
-const AUTH_COOKIE_NAME = 'goods_auth_session';
-
 /**
- * Retrieves the user session based on the stored cookie/session token.
+ * Verifies the signed session cookie, then loads the user from the database
+ * so role changes take effect without waiting for the token to expire.
  */
 export async function getSession(request: NextRequest | Request): Promise<UserSession | null> {
-    let userId: string | undefined;
+    const token = readSessionCookie(request);
+    if (!token) return null;
 
-    if ('cookies' in request && typeof (request as NextRequest).cookies?.get === 'function') {
-        userId = (request as NextRequest).cookies.get(AUTH_COOKIE_NAME)?.value;
-    } else {
-        const cookieHeader = request.headers.get('cookie') || '';
-        const match = cookieHeader.match(new RegExp(`(?:^|; )${AUTH_COOKIE_NAME}=([^;]*)`));
-        userId = match ? decodeURIComponent(match[1]) : undefined;
-    }
-
-    if (!userId || isNaN(parseInt(userId, 10))) return null;
+    const claims = await verifySessionToken(token);
+    if (!claims) return null;
 
     const user = await prisma.user.findUnique({
-        where: { id: parseInt(userId, 10) },
+        where: { id: claims.id },
         select: { id: true, username: true, role: true }
     });
 
@@ -99,9 +90,21 @@ export type AuthResult =
  * Middleware-like function for API Routes
  */
 export async function authenticate(request: NextRequest | Request, requiredRoles: UserRole[]): Promise<AuthResult> {
+    const originBlock = rejectCrossOrigin(request);
+    if (originBlock) {
+        return { authorized: false, response: originBlock };
+    }
+
     const session = await getSession(request);
 
-    if (!session || !checkPermission(session, requiredRoles)) {
+    if (!session) {
+        return {
+            authorized: false,
+            response: NextResponse.json({ message: 'Authentication required.' }, { status: 401 }),
+        };
+    }
+
+    if (!checkPermission(session, requiredRoles)) {
         return {
             authorized: false,
             response: NextResponse.json({ message: 'Authorization required: Insufficient permissions.' }, { status: 403 }),
@@ -112,5 +115,18 @@ export async function authenticate(request: NextRequest | Request, requiredRoles
         authorized: true,
         session: session,
     };
+}
+
+export async function requireAuth(
+    request: NextRequest | Request,
+    requiredRoles: UserRole[],
+): Promise<UserSession | NextResponse> {
+    const result = await authenticate(request, requiredRoles);
+    if (!result.authorized) return result.response;
+    return result.session;
+}
+
+export function isAuthError(value: UserSession | NextResponse): value is NextResponse {
+    return value instanceof NextResponse;
 }
 

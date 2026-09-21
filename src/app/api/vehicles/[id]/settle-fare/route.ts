@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 // src/app/api/vehicles/[id]/settle-fare/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
@@ -10,6 +11,9 @@ import { Prisma } from '@prisma/client';
  * Endpoint: /api/vehicles/[id]/settle-fare
  */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    const auth = await requireAuth(request, Permissions.MASTER_DATA_WRITE);
+    if (isAuthError(auth)) return auth;
+
     const { id } = await params;
     const vehicleId = parseInt(id, 10);
 
@@ -22,58 +26,70 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     try {
         // MODIFIED: Accept new fields for custom description and owed amount
-        const { paymentAmount, tripId, owedAmount, paymentDescription } = await request.json(); 
-        
-        const amountDecimal = new Prisma.Decimal(paymentAmount);
-        const owedDecimal = new Prisma.Decimal(owedAmount); 
+        const { paymentAmount, tripId, paymentDescription } = await request.json();
+        const parsedTripId = Number(tripId);
 
-        if (!tripId || amountDecimal.lte(0)) {
+        if (!Number.isInteger(parsedTripId) || parsedTripId <= 0) {
             return NextResponse.json(
-                { message: 'Payment amount must be greater than zero and a valid Trip ID is required.' },
+                { message: 'A valid Trip ID is required.' },
                 { status: 400 }
             );
         }
 
-        // FIX (Issue 2): Enforce full payment to set the fare as paid.
-        // We check if the payment covers the full owed amount for the current outstanding trip.
-        const isFullPayment = amountDecimal.gte(owedDecimal);
-        
-        if (!isFullPayment) {
-            // Rejects partial payment to prevent premature PAID status update, as requested.
+        let amountDecimal: Prisma.Decimal;
+        try {
+            amountDecimal = new Prisma.Decimal(paymentAmount);
+        } catch {
+            return NextResponse.json({ message: 'Payment amount is invalid.' }, { status: 400 });
+        }
+
+        if (amountDecimal.lte(0)) {
             return NextResponse.json(
-                { message: 'Payment must cover the full outstanding fare amount to settle the trip.' },
+                { message: 'Payment amount must be greater than zero.' },
                 { status: 400 }
             );
         }
-        
-        // FIX (Issue 1): Use the custom description if provided.
-        const finalDescription = paymentDescription 
-            ? paymentDescription 
-            : `Fare settlement payment for Trip ID #${tripId}`;
+
+        const finalDescription = paymentDescription
+            ? String(paymentDescription).slice(0, 255)
+            : `Fare settlement payment for Trip ID #${parsedTripId}`;
 
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Create a CREDIT transaction for the vehicle (Company pays the vehicle)
-            const newTransaction = await tx.vehicleTransaction.create({
+            const trip = await tx.tripLog.findUnique({
+                where: { id: parsedTripId },
+                select: { id: true, vehicle_id: true, fare_is_paid: true, received_amount: true },
+            });
+
+            if (!trip || trip.vehicle_id !== vehicleId) {
+                throw new Error('TRIP_NOT_FOUND');
+            }
+            if (trip.fare_is_paid) {
+                throw new Error('ALREADY_PAID');
+            }
+
+            const owed = new Prisma.Decimal(trip.received_amount);
+            if (amountDecimal.lt(owed)) {
+                throw new Error('PARTIAL');
+            }
+
+            const marked = await tx.tripLog.updateMany({
+                where: { id: parsedTripId, vehicle_id: vehicleId, fare_is_paid: false },
+                data: { fare_is_paid: true },
+            });
+            if (marked.count !== 1) {
+                throw new Error('ALREADY_PAID');
+            }
+
+            return tx.vehicleTransaction.create({
                 data: {
                     vehicle_id: vehicleId,
-                    trip_id: tripId,
+                    trip_id: parsedTripId,
                     transaction_date: new Date(),
-                    credit_amount: amountDecimal,
+                    credit_amount: owed,
                     debit_amount: new Prisma.Decimal(0),
-                    description: finalDescription, // Use custom description
+                    description: finalDescription,
                 },
             });
-
-            // 2. Update the corresponding TripLog to mark the fare as paid
-            // This is safe because we already verified `isFullPayment` above.
-            await tx.tripLog.update({
-                where: { id: tripId },
-                data: {
-                    fare_is_paid: true,
-                },
-            });
-
-            return newTransaction;
         });
 
         return NextResponse.json({
@@ -81,10 +97,22 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             transaction: result
         }, { status: 200 });
 
-    } catch (error: any) {
-        console.error(`Error settling fare for vehicle ${vehicleId}:`, error);
+    } catch (error) {
+        if (error instanceof Error && error.message === 'TRIP_NOT_FOUND') {
+            return NextResponse.json({ message: 'Trip was not found for this vehicle.' }, { status: 404 });
+        }
+        if (error instanceof Error && error.message === 'ALREADY_PAID') {
+            return NextResponse.json({ message: 'This trip fare is already settled.' }, { status: 409 });
+        }
+        if (error instanceof Error && error.message === 'PARTIAL') {
+            return NextResponse.json(
+                { message: 'Payment must cover the full outstanding fare amount to settle the trip.' },
+                { status: 400 }
+            );
+        }
+        console.error(`Error settling fare for vehicle ${vehicleId}:`, error instanceof Error ? error.message : 'unknown');
         return NextResponse.json(
-            { message: `Internal Server Error: Failed to settle fare. Details: ${error.message}` },
+            { message: 'Internal Server Error: Failed to settle fare.' },
             { status: 500 }
         );
     }

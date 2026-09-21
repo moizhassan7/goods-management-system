@@ -1,3 +1,4 @@
+import { requireAuth, isAuthError, Permissions } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { LabourAssignmentStatus } from '@prisma/client';
@@ -6,7 +7,10 @@ import { LabourAssignmentStatus } from '@prisma/client';
  * GET /api/dashboard
  * Fetches all necessary metrics for the dashboard overview.
  */
-export async function GET() {
+export async function GET(request: Request) {
+    const auth = await requireAuth(request, Permissions.REPORTS_VIEW);
+    if (isAuthError(auth)) return auth;
+
     try {
         const todayDate = new Date();
         const startOfToday = new Date(todayDate);

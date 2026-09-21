@@ -1,4 +1,5 @@
-'use client';
+"use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -43,7 +44,7 @@ export default function ViewAgencies() {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch('/api/agencies');
+            const response = await fetchWithTimeout('/api/agencies');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data: Agency[] = await response.json();
             setAgencies(data);
@@ -81,7 +82,7 @@ export default function ViewAgencies() {
 
         setIsSaving(true);
         try {
-            const res = await fetch(`/api/agencies/${editingAgency.id}`, {
+            const res = await fetchWithTimeout(`/api/agencies/${editingAgency.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: editName.trim() }),
@@ -112,7 +113,7 @@ export default function ViewAgencies() {
         
         setIsDeleting(true);
         try {
-            const res = await fetch(`/api/agencies/${deletingAgency.id}`, {
+            const res = await fetchWithTimeout(`/api/agencies/${deletingAgency.id}`, {
                 method: 'DELETE',
             });
             const data = await res.json();

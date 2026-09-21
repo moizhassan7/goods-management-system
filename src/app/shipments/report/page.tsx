@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
@@ -64,7 +65,7 @@ export default function ShipmentsReportPage() {
       if (departureCityId) params.append('departureCityId', String(departureCityId));
       if (toCityId) params.append('toCityId', String(toCityId));
       if (vehicleId) params.append('vehicleId', String(vehicleId));
-      const res = await fetch(`/api/shipments/report?${params.toString()}`);
+      const res = await fetchWithTimeout(`/api/shipments/report?${params.toString()}`);
       const data: Shipment[] = await res.json();
       setShipments(data);
     } catch (e) {
