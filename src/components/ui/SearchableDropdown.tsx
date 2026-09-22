@@ -1,5 +1,5 @@
 import { fetchWithTimeout } from '@/lib/api-client';
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import {
   Popover,
   PopoverTrigger,
@@ -48,6 +48,7 @@ export default function SearchableDropdown({
   const [items, setItems] = useState<{ id: string; name: string }[]>([])
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(false)
+  const savingRef = useRef(false)
 
   useEffect(() => {
     if (Array.isArray(itemsProp)) {
@@ -111,7 +112,8 @@ export default function SearchableDropdown({
 
   const handleAddNew = async () => {
     const trimmed = toTitleCase(search.trim())
-    if (!trimmed) return
+    if (!trimmed || savingRef.current) return
+    savingRef.current = true
 
     const exists = items.some(
       (item) => item.name.toLowerCase() === trimmed.toLowerCase()
@@ -120,6 +122,7 @@ export default function SearchableDropdown({
     if (exists) {
       const matched = items.find((it) => it.name.toLowerCase() === trimmed.toLowerCase())!
       handleSelect(matched)
+      savingRef.current = false
       return
     }
 
@@ -128,6 +131,7 @@ export default function SearchableDropdown({
       if (onSelectItem) onSelectItem({ id: '', name: trimmed })
       setSearch("")
       setOpen(false)
+      savingRef.current = false
       return
     }
 
@@ -168,8 +172,16 @@ export default function SearchableDropdown({
       console.error(error)
       toast.error(error instanceof Error ? error.message : "Failed to add record.")
     } finally {
+      savingRef.current = false
       setLoading(false)
     }
+  }
+
+  const saveTypedMasterData = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter" || !(e.ctrlKey || e.metaKey)) return
+    e.preventDefault()
+    e.stopPropagation()
+    void handleAddNew()
   }
 
   const selectedLabel = (value && value !== 0 && value !== '0')
@@ -200,7 +212,11 @@ export default function SearchableDropdown({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[320px] p-0 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-hidden" align="start">
+        <PopoverContent
+          className="w-[320px] p-0 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-hidden"
+          align="start"
+          onKeyDownCapture={saveTypedMasterData}
+        >
           <Command>
             <CommandInput
               placeholder={placeholder}
@@ -210,15 +226,6 @@ export default function SearchableDropdown({
               autoCapitalize="words"
               onFocus={(e) => (e.target as HTMLInputElement).select()}
               onClick={(e) => (e.target as HTMLInputElement).select()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  const trimmed = toTitleCase(search.trim())
-                  if (trimmed && !items.some(it => it.name.toLowerCase() === trimmed.toLowerCase())) {
-                    e.preventDefault()
-                    handleAddNew()
-                  }
-                }
-              }}
             />
             <CommandList className="max-h-60 p-1">
               <CommandEmpty className="p-3 text-center text-xs text-slate-500">
@@ -263,10 +270,16 @@ export default function SearchableDropdown({
                 >
                   {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" /> : <Plus className="h-3.5 w-3.5 shrink-0" />}
                   <span className="truncate">Add &quot;{search.trim()}&quot;</span>
+                  <kbd className="ml-auto shrink-0 rounded border border-blue-200 bg-white px-1 py-0.5 font-mono text-[10px] text-blue-700 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-300">
+                    Ctrl+Enter
+                  </kbd>
                 </Button>
               </div>
             )}
           </Command>
+          <div className="px-3 py-1.5 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-500 dark:text-slate-400">
+            Enter selects · Ctrl+Enter saves
+          </div>
         </PopoverContent>
       </Popover>
       {error ? <p className="text-[11px] font-medium text-red-600">{error}</p> : null}

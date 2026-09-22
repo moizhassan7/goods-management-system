@@ -570,7 +570,7 @@ export default function AddShipment() {
 
     const handleAddMasterData = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!modalType) return;
+        if (!modalType || isModalSubmitting) return;
 
         setIsModalSubmitting(true);
         let endpoint = '';
@@ -580,16 +580,16 @@ export default function AddShipment() {
         try {
             switch (modalType) {
                 case 'city':
-                    if (!modalInput.cityName || modalInput.cityName.trim().length < 2) throw new Error('City name required.');
+                    if (!modalInput.name || modalInput.name.trim().length < 2) throw new Error('City name required.');
                     endpoint = '/api/cities';
-                    payload = { name: modalInput.cityName.trim() };
-                    successMessage = `City "${modalInput.cityName}" added.`;
+                    payload = { name: modalInput.name.trim() };
+                    successMessage = `City "${modalInput.name}" added.`;
                     break;
                 case 'agency':
-                    if (!modalInput.agencyName || modalInput.agencyName.trim().length < 2) throw new Error('Agency name required.');
+                    if (!modalInput.name || modalInput.name.trim().length < 2) throw new Error('Agency name required.');
                     endpoint = '/api/agencies';
-                    payload = { name: modalInput.agencyName.trim() };
-                    successMessage = `Agency "${modalInput.agencyName}" registered.`;
+                    payload = { name: modalInput.name.trim() };
+                    successMessage = `Agency "${modalInput.name}" registered.`;
                     break;
                 case 'vehicle':
                     if (!modalInput.vehicleNumber || modalInput.vehicleNumber.trim().length < 2) throw new Error('Vehicle number required.');
@@ -1636,13 +1636,21 @@ export default function AddShipment() {
 
             {/* Quick-Add Master Data Dialog */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="sm:max-w-[420px] p-5 rounded-xl">
+                <DialogContent
+                    className="sm:max-w-[420px] p-5 rounded-xl"
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                            e.preventDefault();
+                            void handleAddMasterData(e);
+                        }
+                    }}
+                >
                     <DialogHeader>
                         <DialogTitle className="text-sm font-extrabold capitalize text-slate-900 dark:text-white">
                             Quick Add New {modalType}
                         </DialogTitle>
                         <DialogDescription className="text-xs text-slate-500">
-                            Register new {modalType} entry directly into master records.
+                            Register new {modalType} entry directly into master records. Ctrl+Enter to save.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
@@ -1741,7 +1749,7 @@ export default function AddShipment() {
                             disabled={isModalSubmitting}
                             className="rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
                         >
-                            {isModalSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save & Select'}
+                            {isModalSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save & Select (Ctrl+Enter)'}
                         </Button>
                     </div>
                 </DialogContent>
