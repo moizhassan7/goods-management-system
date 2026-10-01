@@ -14,6 +14,7 @@ import { useParams } from 'next/navigation';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea'; // Used for description
 import { cn } from '@/lib/utils';
+import { recordRowClass, recordRowId, useScrollToRecord } from '@/lib/record-deep-link';
 
 
 // --- Data Interfaces ---
@@ -55,6 +56,8 @@ export default function VehicleFinancialsPage() {
     
     const [ledgerData, setLedgerData] = useState<LedgerData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [highlightTx, setHighlightTx] = useState('');
+    useScrollToRecord(highlightTx, !isLoading && highlightTx !== '');
     const [error, setError] = useState<string | null>(null);
     
     // State for the payment form (Amount Paid)
@@ -62,6 +65,11 @@ export default function VehicleFinancialsPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [paymentDescription, setPaymentDescription] = useState('');
 
+
+    useEffect(() => {
+        const tx = new URLSearchParams(window.location.search).get('tx')?.trim() || '';
+        setHighlightTx(tx);
+    }, []);
 
     const fetchLedger = async () => {
         setIsLoading(true);
@@ -280,7 +288,11 @@ export default function VehicleFinancialsPage() {
                             </thead>
                             <tbody>
                                 {ledger.map((transaction) => (
-                                    <TableRow key={transaction.id} className="hover:bg-gray-50">
+                                    <TableRow
+                                        key={transaction.id}
+                                        id={recordRowId(transaction.id)}
+                                        className={recordRowClass(highlightTx === String(transaction.id), 'hover:bg-gray-50')}
+                                    >
                                         <TableCell className="py-2 px-4 border-b">
                                             {new Date(transaction.transaction_date).toLocaleDateString()}
                                         </TableCell>

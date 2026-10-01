@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import DeleteMasterDataModal from '@/components/master-data/DeleteMasterDataModal';
+import { recordRowClass, recordRowId, useDirectoryQuery, useScrollToRecord } from '@/lib/record-deep-link';
 
 interface Vehicle {
     id: number;
@@ -28,7 +29,9 @@ export default function ViewVehicles() {
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const highlightId = useDirectoryQuery(setSearchTerm);
     const [error, setError] = useState<string | null>(null);
+    useScrollToRecord(highlightId, !isLoading && highlightId !== '');
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -222,7 +225,11 @@ export default function ViewVehicles() {
                                 </TableHeader>
                                 <TableBody>
                                     {filteredVehicles.map((vehicle) => (
-                                        <TableRow key={vehicle.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors">
+                                        <TableRow
+                                            key={vehicle.id}
+                                            id={recordRowId(vehicle.id)}
+                                            className={recordRowClass(String(vehicle.id) === highlightId, 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors')}
+                                        >
                                             <TableCell className="pl-4 font-mono font-bold text-slate-400">
                                                 #{vehicle.id}
                                             </TableCell>

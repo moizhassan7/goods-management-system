@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import DeleteMasterDataModal from '@/components/master-data/DeleteMasterDataModal';
 import { clearMasterListsClientCache } from '@/lib/master-lists-client';
+import { recordRowClass, recordRowId, useDirectoryQuery, useScrollToRecord } from '@/lib/record-deep-link';
 
 interface Party {
     id: number;
@@ -36,7 +37,9 @@ export default function ViewParties() {
     const [parties, setParties] = useState<Party[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const highlightId = useDirectoryQuery(setSearchTerm);
     const [error, setError] = useState<string | null>(null);
+    useScrollToRecord(highlightId, !isLoading && highlightId !== '');
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -239,7 +242,11 @@ export default function ViewParties() {
                                         const balance = Number(party.opening_balance ?? party.openingBalance ?? 0);
 
                                         return (
-                                            <TableRow key={party.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors">
+                                            <TableRow
+                                                key={party.id}
+                                                id={recordRowId(party.id)}
+                                                className={recordRowClass(String(party.id) === highlightId, 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors')}
+                                            >
                                                 <TableCell className="pl-4 font-mono font-bold text-slate-400">
                                                     #{party.id}
                                                 </TableCell>

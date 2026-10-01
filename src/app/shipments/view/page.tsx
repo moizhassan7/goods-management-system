@@ -34,6 +34,7 @@ import { toast as sonnerToast } from 'sonner';
 import BiltyDetailDialog from '@/components/shipments/BiltyDetailDialog';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { fetchMasterLists } from '@/lib/master-lists-client';
+import { recordRowClass, recordRowId, useScrollToRecord } from '@/lib/record-deep-link';
 
 export interface Toast {
     id: string;
@@ -171,6 +172,9 @@ export default function ViewShipments() {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+    const [linkedRegister, setLinkedRegister] = useState('');
+    const [linkedSearch, setLinkedSearch] = useState('');
+    const [deepLinkReady, setDeepLinkReady] = useState(false);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -184,11 +188,13 @@ export default function ViewShipments() {
         currentVehicleId: number | 'all',
         page = 1,
         size = 25,
+        currentRegister = '',
     ) => {
         setIsLoading(true);
         try {
             const params = new URLSearchParams();
             if (query) params.append('query', query);
+            if (currentRegister) params.append('register', currentRegister);
             if (currentStartDate) params.append('startDate', currentStartDate);
             if (currentEndDate) params.append('endDate', currentEndDate);
             if (currentVehicleId !== 'all') params.append('vehicleId', String(currentVehicleId));
@@ -251,12 +257,30 @@ export default function ViewShipments() {
     }, [searchTerm]);
 
     useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const register = params.get('register')?.trim() || '';
+        const search = params.get('search')?.trim() || '';
+        if (register || search) {
+            setLinkedRegister(register);
+            setLinkedSearch(search);
+            setSearchTerm(search || register);
+            setDebouncedSearchTerm(search || register);
+            setStartDate('');
+            setEndDate('');
+            setVehicleId('all');
+            setCurrentPage(1);
+        }
+        setDeepLinkReady(true);
+    }, []);
+
+    useEffect(() => {
         setCurrentPage(1);
     }, [debouncedSearchTerm, startDate, endDate, vehicleId, pageSize]);
 
     useEffect(() => {
-        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize);
-    }, [debouncedSearchTerm, fetchShipments, startDate, endDate, vehicleId, currentPage, pageSize]);
+        if (!deepLinkReady) return;
+        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister);
+    }, [deepLinkReady, debouncedSearchTerm, fetchShipments, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister]);
 
     useEffect(() => {
         if (currentPage > totalPages) {
@@ -266,17 +290,19 @@ export default function ViewShipments() {
 
     const handleFilterLoad = () => {
         setCurrentPage(1);
-        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, 1, pageSize);
+        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, 1, pageSize, linkedRegister);
     };
 
     const handleResetFilters = () => {
         const range = getCurrentMonthDateRange();
+        setLinkedRegister('');
+        setLinkedSearch('');
         setStartDate(range.startDate);
         setEndDate(range.endDate);
         setVehicleId('all');
         setSearchTerm('');
         setCurrentPage(1);
-        fetchShipments('', range.startDate, range.endDate, 'all', 1, pageSize);
+        fetchShipments('', range.startDate, range.endDate, 'all', 1, pageSize, '');
     };
 
     const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
@@ -462,7 +488,7 @@ export default function ViewShipments() {
             const data = await res.json();
             if (res.ok) {
                 sonnerToast.success('Deleted', { description: 'Bilty deleted successfully.' });
-                fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize);
+                fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister);
             } else {
                 sonnerToast.error('Error', { description: data.message || 'Failed to delete bilty.' });
             }
@@ -523,6 +549,11 @@ export default function ViewShipments() {
         }
     };
 
+    const focusRegister = linkedRegister
+        || shipments.find((shipment) => shipment.bility_number === linkedSearch || shipment.register_number === linkedSearch)?.register_number
+        || '';
+    useScrollToRecord(focusRegister, deepLinkReady && !isLoading && focusRegister !== '');
+
     return (
         <div className="space-y-4 max-w-7xl mx-auto pb-10">
             {/* Header with Title & Refresh */}
@@ -543,7 +574,7 @@ export default function ViewShipments() {
 
                 <div className="flex items-center gap-2">
                     <Button
-                        onClick={() => fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize)}
+                        onClick={() => fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister)}
                         variant="outline"
                         size="sm"
                         disabled={isLoading}
@@ -585,12 +616,18 @@ export default function ViewShipments() {
                                 <Input
                                     placeholder="Search Bilty #, Sender, Receiver, Vehicle, Agency, Item..."
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => {
+                                        setLinkedRegister('');
+                                        setSearchTerm(e.target.value);
+                                    }}
                                     className="pl-9 h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs"
                                 />
                                 {searchTerm && (
                                     <button 
-                                        onClick={() => setSearchTerm('')}
+                                        onClick={() => {
+                                            setLinkedRegister('');
+                                            setSearchTerm('');
+                                        }}
                                         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                                     >
                                         <X className="w-3.5 h-3.5" />
@@ -894,9 +931,13 @@ export default function ViewShipments() {
                                             : '';
 
                                         return (
-                                            <TableRow 
-                                                key={shipment.register_number} 
-                                                className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors"
+                                            <TableRow
+                                                key={shipment.register_number}
+                                                id={recordRowId(shipment.register_number)}
+                                                className={recordRowClass(
+                                                    focusRegister !== '' && shipment.register_number === focusRegister,
+                                                    'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors',
+                                                )}
                                             >
                                                 {/* 1. Bilty # */}
                                                 <TableCell className="pl-4 whitespace-nowrap">

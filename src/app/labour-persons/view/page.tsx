@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 import DeleteMasterDataModal from '@/components/master-data/DeleteMasterDataModal';
+import { recordRowClass, recordRowId, useDirectoryQuery, useScrollToRecord } from '@/lib/record-deep-link';
 
 export interface Toast {
     id: string;
@@ -70,6 +71,8 @@ export default function ViewLabourPersons() {
     const [labourPersons, setLabourPersons] = useState<LabourPerson[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const highlightId = useDirectoryQuery(setSearchTerm);
+    useScrollToRecord(highlightId, !isLoading && highlightId !== '');
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -262,7 +265,11 @@ export default function ViewLabourPersons() {
             ) : (
                 <div className='space-y-6'>
                     {filteredPersons.map((person) => (
-                        <Card key={person.id} className='shadow-sm rounded-xl border-slate-200'>
+                        <Card
+                            key={person.id}
+                            id={recordRowId(person.id)}
+                            className={recordRowClass(String(person.id) === highlightId, 'shadow-sm rounded-xl border-slate-200')}
+                        >
                             <CardHeader className="flex flex-row items-start justify-between pb-4 border-b border-slate-100">
                                 <div>
                                     <CardTitle className='text-xl text-indigo-800 font-extrabold flex items-center gap-2'>

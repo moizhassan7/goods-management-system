@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import DeleteMasterDataModal from '@/components/master-data/DeleteMasterDataModal';
+import { recordRowClass, recordRowId, useDirectoryQuery, useScrollToRecord } from '@/lib/record-deep-link';
 
 interface ItemCatalog {
     id: number;
@@ -27,7 +28,9 @@ export default function ViewItems() {
     const [items, setItems] = useState<ItemCatalog[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const highlightId = useDirectoryQuery(setSearchTerm);
     const [error, setError] = useState<string | null>(null);
+    useScrollToRecord(highlightId, !isLoading && highlightId !== '');
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -220,7 +223,11 @@ export default function ViewItems() {
                                 </TableHeader>
                                 <TableBody>
                                     {filteredItems.map((item) => (
-                                        <TableRow key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors">
+                                        <TableRow
+                                            key={item.id}
+                                            id={recordRowId(item.id)}
+                                            className={recordRowClass(String(item.id) === highlightId, 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors')}
+                                        >
                                             <TableCell className="pl-4 font-mono font-bold text-slate-400">
                                                 #{item.id}
                                             </TableCell>

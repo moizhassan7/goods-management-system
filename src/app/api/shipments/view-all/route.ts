@@ -17,11 +17,16 @@ function extractPaymentStatus(remarks: string | null): string | null {
 
 function buildWhere(searchParams: URLSearchParams): Prisma.ShipmentWhereInput {
     const query = searchParams.get('query');
+    const register = searchParams.get('register')?.trim();
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
     const vehicleIdParam = searchParams.get('vehicleId');
 
     const where: Prisma.ShipmentWhereInput = {};
+
+    if (register) {
+        where.register_number = register;
+    }
 
     if (query && query.trim()) {
         const cleanQuery = query.trim();

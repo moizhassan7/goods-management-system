@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import DeleteMasterDataModal from '@/components/master-data/DeleteMasterDataModal';
+import { recordRowClass, recordRowId, useDirectoryQuery, useScrollToRecord } from '@/lib/record-deep-link';
 
 interface City {
   id: number; 
@@ -27,7 +28,9 @@ export default function ViewCities() {
   const [cities, setCities] = useState<City[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const highlightId = useDirectoryQuery(setSearchTerm);
   const [error, setError] = useState<string | null>(null);
+  useScrollToRecord(highlightId, !isLoading && highlightId !== '');
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -218,7 +221,11 @@ export default function ViewCities() {
                 </TableHeader>
                 <TableBody>
                   {filteredCities.map((city) => (
-                    <TableRow key={city.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors">
+                    <TableRow
+                      key={city.id}
+                      id={recordRowId(city.id)}
+                      className={recordRowClass(String(city.id) === highlightId, 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors')}
+                    >
                       <TableCell className="pl-4 font-mono font-bold text-slate-400">
                         #{city.id}
                       </TableCell>

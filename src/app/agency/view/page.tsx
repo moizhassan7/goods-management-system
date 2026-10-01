@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import DeleteMasterDataModal from '@/components/master-data/DeleteMasterDataModal';
+import { recordRowClass, recordRowId, useDirectoryQuery, useScrollToRecord } from '@/lib/record-deep-link';
 
 interface Agency {
     id: number;
@@ -27,7 +28,9 @@ export default function ViewAgencies() {
     const [agencies, setAgencies] = useState<Agency[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const highlightId = useDirectoryQuery(setSearchTerm);
     const [error, setError] = useState<string | null>(null);
+    useScrollToRecord(highlightId, !isLoading && highlightId !== '');
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -218,7 +221,11 @@ export default function ViewAgencies() {
                                 </TableHeader>
                                 <TableBody>
                                     {filteredAgencies.map((agency) => (
-                                        <TableRow key={agency.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors">
+                                        <TableRow
+                                            key={agency.id}
+                                            id={recordRowId(agency.id)}
+                                            className={recordRowClass(String(agency.id) === highlightId, 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors')}
+                                        >
                                             <TableCell className="pl-4 font-mono font-bold text-slate-400">
                                                 #{agency.id}
                                             </TableCell>

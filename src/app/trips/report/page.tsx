@@ -65,11 +65,13 @@ export default function TripReportPage() {
     loadVehicles();
   }, []);
 
-  async function fetchReport() {
-    if (!vehicleId || !date) return;
+  async function fetchReport(nextVehicleId?: number, nextDate?: string) {
+    const vehicle = nextVehicleId ?? vehicleId;
+    const reportDate = nextDate ?? date;
+    if (!vehicle || !reportDate) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ vehicle_id: String(vehicleId), date });
+      const params = new URLSearchParams({ vehicle_id: String(vehicle), date: reportDate });
       const res = await fetchWithTimeout(`/api/trips?${params.toString()}`);
       const data: TripLog[] = await res.json();
       setTripLog(data.length > 0 ? data[0] : null);
@@ -80,6 +82,18 @@ export default function TripReportPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const linkedVehicle = Number(params.get('vehicle_id') || 0);
+    const linkedDate = params.get('date')?.trim() || '';
+    if (!linkedVehicle || !linkedDate) return;
+    setVehicleId(linkedVehicle);
+    setDate(linkedDate);
+    void fetchReport(linkedVehicle, linkedDate);
+    // Load the exact trip when opened from a master-data dependency link.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const totals = useMemo(() => {
     if (!tripLog) return { totalFare: 0 };
@@ -115,7 +129,7 @@ export default function TripReportPage() {
           </div>
         </div>
         <div className='flex items-end'>
-          <Button className='w-full' onClick={fetchReport} disabled={!vehicleId || !date || loading}>
+          <Button className='w-full' onClick={() => fetchReport()} disabled={!vehicleId || !date || loading}>
             {loading ? 'Loading...' : 'Load Report'}
           </Button>
         </div>

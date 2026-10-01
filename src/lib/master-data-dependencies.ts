@@ -38,6 +38,11 @@ const formatCurrency = (amount: unknown): string => {
   return `Rs. ${num.toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 };
 
+function shipmentViewLink(registerNumber?: string | null) {
+  if (!registerNumber) return undefined;
+  return `/shipments/view?register=${encodeURIComponent(registerNumber)}`;
+}
+
 export async function checkMasterDataDependencies(
   type: MasterDataType,
   id: number
@@ -82,7 +87,7 @@ export async function checkMasterDataDependencies(
             primaryText: `Bilty #${s.bility_number}`,
             secondaryText: `Register #${s.register_number} • ${formatDate(s.bility_date)} • ${formatCurrency(s.total_charges)}`,
             badge: 'Departure',
-            link: `/shipments/view?search=${encodeURIComponent(s.bility_number)}`,
+            link: shipmentViewLink(s.register_number),
           })),
         });
       }
@@ -112,7 +117,7 @@ export async function checkMasterDataDependencies(
             primaryText: `Bilty #${s.bility_number}`,
             secondaryText: `Register #${s.register_number} • ${formatDate(s.bility_date)} • ${formatCurrency(s.total_charges)}`,
             badge: 'Destination',
-            link: `/shipments/view?search=${encodeURIComponent(s.bility_number)}`,
+            link: shipmentViewLink(s.register_number),
           })),
         });
       }
@@ -154,7 +159,7 @@ export async function checkMasterDataDependencies(
             primaryText: `Bilty #${s.bility_number}`,
             secondaryText: `Register #${s.register_number} • ${formatDate(s.bility_date)} • ${formatCurrency(s.total_charges)}`,
             badge: 'Agency',
-            link: `/shipments/view?search=${encodeURIComponent(s.bility_number)}`,
+            link: shipmentViewLink(s.register_number),
           })),
         });
       }
@@ -197,7 +202,7 @@ export async function checkMasterDataDependencies(
             primaryText: `Bilty #${s.bility_number}`,
             secondaryText: `Register #${s.register_number} • ${formatDate(s.bility_date)} • ${formatCurrency(s.total_charges)}`,
             badge: 'Vehicle',
-            link: `/shipments/view?search=${encodeURIComponent(s.bility_number)}`,
+            link: shipmentViewLink(s.register_number),
           })),
         });
       }
@@ -227,6 +232,9 @@ export async function checkMasterDataDependencies(
             primaryText: `Trip Log #${t.id} (${t.station_name || 'Station'})`,
             secondaryText: `Date: ${formatDate(t.date)} • Driver: ${t.driver_name || 'N/A'}`,
             badge: 'Trip',
+            link: formatDate(t.date) !== 'N/A'
+              ? `/trips/report?vehicle_id=${id}&date=${encodeURIComponent(formatDate(t.date))}`
+              : undefined,
           })),
         });
       }
@@ -257,6 +265,7 @@ export async function checkMasterDataDependencies(
             primaryText: `Transaction #${tx.id} - ${tx.description || 'Ledger Entry'}`,
             secondaryText: `Date: ${formatDate(tx.transaction_date)} • Credit: ${formatCurrency(tx.credit_amount)} • Debit: ${formatCurrency(tx.debit_amount)}`,
             badge: 'Ledger',
+            link: `/vehicles/financials/${id}?tx=${tx.id}`,
           })),
         });
       }
@@ -299,7 +308,7 @@ export async function checkMasterDataDependencies(
             primaryText: `Bilty #${s.bility_number}`,
             secondaryText: `Register #${s.register_number} • ${formatDate(s.bility_date)} • ${formatCurrency(s.total_charges)}`,
             badge: 'Sender',
-            link: `/shipments/view?search=${encodeURIComponent(s.bility_number)}`,
+            link: shipmentViewLink(s.register_number),
           })),
         });
       }
@@ -329,7 +338,7 @@ export async function checkMasterDataDependencies(
             primaryText: `Bilty #${s.bility_number}`,
             secondaryText: `Register #${s.register_number} • ${formatDate(s.bility_date)} • ${formatCurrency(s.total_charges)}`,
             badge: 'Receiver',
-            link: `/shipments/view?search=${encodeURIComponent(s.bility_number)}`,
+            link: shipmentViewLink(s.register_number),
           })),
         });
       }
@@ -361,6 +370,7 @@ export async function checkMasterDataDependencies(
             primaryText: `Trx #${tx.transaction_id} (Shipment: ${tx.shipment_id})`,
             secondaryText: `Date: ${formatDate(tx.transaction_date)} • ${tx.description || 'Entry'} • Cr: ${formatCurrency(tx.credit_amount)} / Dr: ${formatCurrency(tx.debit_amount)}`,
             badge: 'Transaction',
+            link: shipmentViewLink(tx.shipment_id),
           })),
         });
       }
@@ -408,7 +418,7 @@ export async function checkMasterDataDependencies(
             primaryText: `Bilty #${g.shipment?.bility_number || 'N/A'}`,
             secondaryText: `Register #${g.shipment?.register_number || 'N/A'} • Quantity: ${g.quantity} • Charges: ${formatCurrency(g.charges)}`,
             badge: 'Goods Item',
-            link: g.shipment?.bility_number ? `/shipments/view?search=${encodeURIComponent(g.shipment.bility_number)}` : undefined,
+            link: shipmentViewLink(g.shipment?.register_number),
           })),
         });
       }
@@ -456,7 +466,7 @@ export async function checkMasterDataDependencies(
             primaryText: `Assignment #${a.id} (Bilty #${a.shipment?.bility_number || 'N/A'})`,
             secondaryText: `Date: ${formatDate(a.assigned_date)} • Status: ${a.status}`,
             badge: 'Assignment',
-            link: a.shipment?.bility_number ? `/shipments/view?search=${encodeURIComponent(a.shipment.bility_number)}` : undefined,
+            link: shipmentViewLink(a.shipment?.register_number),
           })),
         });
       }
@@ -491,6 +501,7 @@ export async function checkMasterDataDependencies(
             primaryText: `Payment #${p.id} - ${formatCurrency(p.amount_paid)}`,
             secondaryText: `Date: ${formatDate(p.payment_date)} • Bilty #${p.shipment?.bility_number || 'N/A'}`,
             badge: 'Payment',
+            link: shipmentViewLink(p.shipment?.register_number),
           })),
         });
       }
