@@ -121,6 +121,34 @@ export async function checkMasterDataDependencies(
           })),
         });
       }
+
+      const cityBookingCount = await prisma.booking.count({
+        where: { OR: [{ from_city_id: id }, { to_city_id: id }] },
+      });
+      if (cityBookingCount > 0) {
+        const sampleBookings = await prisma.booking.findMany({
+          where: { OR: [{ from_city_id: id }, { to_city_id: id }] },
+          select: {
+            id: true,
+            bility_number: true,
+            booking_date: true,
+            total_amount: true,
+          },
+          orderBy: { booking_date: 'desc' },
+          take: 10,
+        });
+        categories.push({
+          title: 'Bookings',
+          count: cityBookingCount,
+          items: sampleBookings.map((b) => ({
+            id: b.id,
+            primaryText: `Booking #${b.bility_number}`,
+            secondaryText: `${formatDate(b.booking_date)} • ${formatCurrency(b.total_amount)}`,
+            badge: 'Booking',
+            link: `/bookings/view?q=${encodeURIComponent(b.bility_number)}`,
+          })),
+        });
+      }
       break;
     }
 
@@ -343,6 +371,34 @@ export async function checkMasterDataDependencies(
         });
       }
 
+      const partyBookingCount = await prisma.booking.count({
+        where: { OR: [{ sender_id: id }, { receiver_id: id }] },
+      });
+      if (partyBookingCount > 0) {
+        const sampleBookings = await prisma.booking.findMany({
+          where: { OR: [{ sender_id: id }, { receiver_id: id }] },
+          select: {
+            id: true,
+            bility_number: true,
+            booking_date: true,
+            total_amount: true,
+          },
+          orderBy: { booking_date: 'desc' },
+          take: 10,
+        });
+        categories.push({
+          title: 'Bookings',
+          count: partyBookingCount,
+          items: sampleBookings.map((b) => ({
+            id: b.id,
+            primaryText: `Booking #${b.bility_number}`,
+            secondaryText: `${formatDate(b.booking_date)} • ${formatCurrency(b.total_amount)}`,
+            badge: 'Booking',
+            link: `/bookings/view?q=${encodeURIComponent(b.bility_number)}`,
+          })),
+        });
+      }
+
       // 3. Transactions referencing party
       const txCount = await prisma.transaction.count({
         where: { party_ref_id: id },
@@ -419,6 +475,37 @@ export async function checkMasterDataDependencies(
             secondaryText: `Register #${g.shipment?.register_number || 'N/A'} • Quantity: ${g.quantity} • Charges: ${formatCurrency(g.charges)}`,
             badge: 'Goods Item',
             link: shipmentViewLink(g.shipment?.register_number),
+          })),
+        });
+      }
+
+      const itemBookingCount = await prisma.bookingItem.count({
+        where: { item_name_id: id },
+      });
+      if (itemBookingCount > 0) {
+        const sampleItems = await prisma.bookingItem.findMany({
+          where: { item_name_id: id },
+          select: {
+            id: true,
+            quantity: true,
+            booking: {
+              select: {
+                bility_number: true,
+                booking_date: true,
+              },
+            },
+          },
+          take: 10,
+        });
+        categories.push({
+          title: 'Bookings Containing This Item',
+          count: itemBookingCount,
+          items: sampleItems.map((row) => ({
+            id: row.id,
+            primaryText: `Booking #${row.booking.bility_number}`,
+            secondaryText: `${formatDate(row.booking.booking_date)} • Quantity: ${row.quantity}`,
+            badge: 'Booking Item',
+            link: `/bookings/view?q=${encodeURIComponent(row.booking.bility_number)}`,
           })),
         });
       }

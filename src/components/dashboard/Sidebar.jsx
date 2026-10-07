@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-    Truck, FileText, MapPin, Users, Package,
+    Truck, FileText, MapPin, Users, Package, ClipboardList,
     ChevronDown, ChevronUp, ChevronRight, ChevronLeft,
     Home, Building, Car, Box, ListChecks, Package2,
     DollarSign, ShieldCheck, Database
@@ -193,6 +193,16 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                     { name: t('nav_register_new_shipment'), href: '/shipments/add', icon: Package, translationKey: 'nav_register_new_shipment', permissionKey: 'CORE_OPERATIONS' },
                     { name: t('nav_view_search_shipments'), href: '/shipments/view', icon: FileText, translationKey: 'nav_view_search_shipments', permissionKey: 'REPORTS_VIEW' },
                     { name: t('nav_shipments_report'), href: '/shipments/report', icon: FileText, translationKey: 'nav_shipments_report', permissionKey: 'REPORTS_VIEW' },
+                ]
+            },
+            {
+                name: t('nav_booking'),
+                icon: ClipboardList,
+                translationKey: 'nav_booking',
+                permissionKey: 'CORE_OPERATIONS',
+                links: [
+                    { name: t('nav_new_booking'), href: '/bookings/add', icon: ClipboardList, translationKey: 'nav_new_booking', permissionKey: 'CORE_OPERATIONS' },
+                    { name: t('nav_view_bookings'), href: '/bookings/view', icon: FileText, translationKey: 'nav_view_bookings', permissionKey: 'CORE_OPERATIONS' },
                 ]
             },
             {
