@@ -195,16 +195,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                     { name: t('nav_shipments_report'), href: '/shipments/report', icon: FileText, translationKey: 'nav_shipments_report', permissionKey: 'REPORTS_VIEW' },
                 ]
             },
-            {
-                name: t('nav_booking'),
-                icon: ClipboardList,
-                translationKey: 'nav_booking',
-                permissionKey: 'CORE_OPERATIONS',
-                links: [
-                    { name: t('nav_new_booking'), href: '/bookings/add', icon: ClipboardList, translationKey: 'nav_new_booking', permissionKey: 'CORE_OPERATIONS' },
-                    { name: t('nav_view_bookings'), href: '/bookings/view', icon: FileText, translationKey: 'nav_view_bookings', permissionKey: 'CORE_OPERATIONS' },
-                ]
-            },
+
             {
                 name: t('nav_master_data'),
                 icon: ListChecks,
