@@ -11,9 +11,10 @@ export function parseCreatedDate(dateStr?: string | null) {
     const selectedStamp = Date.UTC(year, month - 1, day);
     if (selectedStamp > todayStamp) return null;
 
+    const now = new Date();
     return {
         created_day: new Date(selectedStamp),
-        createdAt: new Date(year, month - 1, day, 12, 0, 0, 0),
+        createdAt: new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds()),
     };
 }
 

@@ -126,7 +126,10 @@ export async function GET(request: Request) {
                         }
                     }
                 },
-                orderBy: { createdAt: 'desc' },
+                orderBy: [
+                    { createdAt: 'desc' },
+                    { register_number: 'desc' },
+                ],
                 skip,
                 take: pageSize,
             }),

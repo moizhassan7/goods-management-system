@@ -82,7 +82,7 @@ const formatCurrency = (amount: number) => {
 const GoodsDetailSchema = z.object({
     id: z.string().optional(),
     item_id: z.coerce.number().int().min(1, 'Item is required'),
-    quantity: z.coerce.number().min(1, 'Min quantity is 1'),
+    quantity: z.coerce.number().min(0, 'Quantity cannot be negative'),
 });
 
 const ShipmentFormSchema = z.object({
@@ -197,7 +197,7 @@ const generateDefaultValues = (): ShipmentFormValues => ({
     forwarding_agency_id: 0,
     vehicle_number_id: 0,
     goods_details: [
-        { id: uuidv4(), item_id: 0, quantity: 1 }
+        { id: uuidv4(), item_id: 0, quantity: 0 }
     ],
     sender_id: 0,
     receiver_id: 0,
@@ -269,8 +269,14 @@ export default function AddShipment() {
             const response = await fetchWithTimeout(`/api/shipments?${params.toString()}`);
             if (!response.ok) throw new Error('Failed to fetch shipments.');
             const payload = await response.json();
-            const list = Array.isArray(payload) ? payload : (payload.data || []);
-            setShipments(list);
+            const list: ShipmentData[] = Array.isArray(payload) ? payload : (payload.data || []);
+            const sortedList = [...list].sort((a, b) => {
+                const timeA = new Date(a.createdAt || a.created_day || 0).getTime();
+                const timeB = new Date(b.createdAt || b.created_day || 0).getTime();
+                if (timeB !== timeA) return timeB - timeA;
+                return String(b.register_number || '').localeCompare(String(a.register_number || ''), undefined, { numeric: true });
+            });
+            setShipments(sortedList);
             setShipmentsTotal(Array.isArray(payload) ? payload.length : Number(payload.total || 0));
             setShipmentsTotalPages(Array.isArray(payload) ? 1 : Number(payload.totalPages || 1));
         } catch (error: any) {
@@ -398,9 +404,9 @@ export default function AddShipment() {
                 ? shipment.goodsDetails.map((gd: any) => ({
                     id: uuidv4(),
                     item_id: gd.item_name_id || gd.itemCatalog?.id || gd.item_id || 0,
-                    quantity: Number(gd.quantity || 1),
+                    quantity: Number(gd.quantity ?? 0),
                 }))
-                : [{ id: uuidv4(), item_id: 0, quantity: 1 }],
+                : [{ id: uuidv4(), item_id: 0, quantity: 0 }],
             sender_id: Number(shipment.sender_id),
             receiver_id: Number(shipment.receiver_id),
             to_city_id: shipment.to_city_id ? Number(shipment.to_city_id) : 0,
@@ -1381,10 +1387,14 @@ export default function AddShipment() {
                                         <FormControl>
                                             <Input
                                                 type="number"
-                                                min={1}
-                                                placeholder="1"
+                                                min={0}
+                                                placeholder="0"
                                                 {...field}
-                                                onChange={(e) => field.onChange(e.target.valueAsNumber || 1)}
+                                                value={field.value !== undefined && field.value !== null ? field.value : 0}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    field.onChange(val === '' ? '' : (isNaN(e.target.valueAsNumber) ? 0 : e.target.valueAsNumber));
+                                                }}
                                                 className="rounded-lg h-9 border-slate-200 dark:border-slate-700 text-xs font-mono font-bold"
                                                 onFocus={(e) => e.currentTarget.select()}
                                             />

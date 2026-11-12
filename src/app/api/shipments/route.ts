@@ -354,7 +354,10 @@ export async function GET(request: Request) {
                 prisma.shipment.findMany({
                     where: finalWhere,
                     select,
-                    orderBy: { createdAt: 'desc' },
+                    orderBy: [
+                        { createdAt: 'desc' },
+                        { register_number: 'desc' },
+                    ],
                     skip,
                     take: pageSize,
                 }),
@@ -366,7 +369,10 @@ export async function GET(request: Request) {
             shipments = await prisma.shipment.findMany({
                 where: finalWhere,
                 select,
-                orderBy: { createdAt: 'desc' },
+                orderBy: [
+                    { createdAt: 'desc' },
+                    { register_number: 'desc' },
+                ],
                 take: bilityNumberParam ? 20 : LIST_ROW_CAP,
             });
         }
