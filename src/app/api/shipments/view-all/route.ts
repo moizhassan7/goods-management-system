@@ -102,6 +102,30 @@ export async function GET(request: Request) {
         const where = buildWhere(searchParams);
         const { page, pageSize, skip } = parsePagination(searchParams);
 
+        const sortOrderParam = searchParams.get('sortOrder')?.toLowerCase();
+        const sortOrder: Prisma.SortOrder = sortOrderParam === 'desc' ? 'desc' : 'asc';
+        const sortBy = searchParams.get('sortBy')?.toLowerCase();
+
+        let orderBy: Prisma.ShipmentOrderByWithRelationInput[] = [
+            { createdAt: sortOrder },
+            { register_number: sortOrder },
+        ];
+
+        if (sortBy === 'bility_date') {
+            orderBy = [
+                { bility_date: sortOrder },
+                { register_number: sortOrder },
+            ];
+        } else if (sortBy === 'register_number') {
+            orderBy = [
+                { register_number: sortOrder },
+            ];
+        } else if (sortBy === 'bility_number') {
+            orderBy = [
+                { bility_number: sortOrder },
+            ];
+        }
+
         const [shipments, total, aggregates, deliveredCount] = await prisma.$transaction([
             prisma.shipment.findMany({
                 where,
@@ -126,10 +150,7 @@ export async function GET(request: Request) {
                         }
                     }
                 },
-                orderBy: [
-                    { createdAt: 'desc' },
-                    { register_number: 'desc' },
-                ],
+                orderBy,
                 skip,
                 take: pageSize,
             }),

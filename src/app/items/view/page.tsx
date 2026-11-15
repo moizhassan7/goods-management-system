@@ -3,7 +3,7 @@ import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import DeleteMasterDataModal from '@/components/master-data/DeleteMasterDataModal';
 import { recordRowClass, recordRowId, useDirectoryQuery, useScrollToRecord } from '@/lib/record-deep-link';
+import { TablePagination } from '@/components/ui/TablePagination';
 
 interface ItemCatalog {
     id: number;
@@ -31,6 +32,10 @@ export default function ViewItems() {
     const highlightId = useDirectoryQuery(setSearchTerm);
     const [error, setError] = useState<string | null>(null);
     useScrollToRecord(highlightId, !isLoading && highlightId !== '');
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -71,6 +76,36 @@ export default function ViewItems() {
             String(i.id).includes(q)
         );
     }, [items, searchTerm]);
+
+    // Reset to first page when search changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(1);
+        }
+    }, [currentPage, totalPages]);
+
+    // Jump to the page of the highlighted item if applicable
+    useEffect(() => {
+        if (!highlightId || filteredItems.length === 0) return;
+        const index = filteredItems.findIndex(item => String(item.id) === highlightId);
+        if (index !== -1) {
+            const targetPage = Math.floor(index / pageSize) + 1;
+            if (targetPage !== currentPage) {
+                setCurrentPage(targetPage);
+            }
+        }
+    }, [highlightId, filteredItems, pageSize, currentPage]);
+
+    const paginatedItems = useMemo(() => {
+        const startIndex = (currentPage - 1) * pageSize;
+        return filteredItems.slice(startIndex, startIndex + pageSize);
+    }, [filteredItems, currentPage, pageSize]);
 
     const handleEditClick = (item: ItemCatalog) => {
         setEditingItem(item);
@@ -216,48 +251,69 @@ export default function ViewItems() {
                             <Table>
                                 <TableHeader className="bg-slate-50 dark:bg-slate-800/60">
                                     <TableRow className="hover:bg-transparent">
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 w-20">ID</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 w-24 whitespace-nowrap">Serial No.</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Item Description</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right pr-4 w-20">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredItems.map((item) => (
-                                        <TableRow
-                                            key={item.id}
-                                            id={recordRowId(item.id)}
-                                            className={recordRowClass(String(item.id) === highlightId, 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors')}
-                                        >
-                                            <TableCell className="pl-4 font-mono font-bold text-slate-400">
-                                                #{item.id}
-                                            </TableCell>
-                                            <TableCell className="font-bold text-slate-900 dark:text-white">
-                                                {item.item_description}
-                                            </TableCell>
-                                            <TableCell className="text-right pr-4">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-900 dark:hover:text-white">
-                                                            <MoreVertical className="w-3.5 h-3.5" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-36 rounded-xl border-slate-200 dark:border-slate-800">
-                                                        <DropdownMenuItem onClick={() => handleEditClick(item)} className="gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-                                                            <Pencil className="w-3.5 h-3.5 text-blue-600" /> Edit
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleDeleteClick(item)} className="gap-2 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/50">
-                                                            <Trash2 className="w-3.5 h-3.5" /> Delete
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {paginatedItems.map((item, index) => {
+                                        const serialNumber = (currentPage - 1) * pageSize + index + 1;
+                                        return (
+                                            <TableRow
+                                                key={item.id}
+                                                id={recordRowId(item.id)}
+                                                className={recordRowClass(String(item.id) === highlightId, 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors')}
+                                            >
+                                                <TableCell className="pl-4 font-mono font-semibold text-slate-500 dark:text-slate-400" title={`ID: #${item.id}`}>
+                                                    {serialNumber}
+                                                </TableCell>
+                                                <TableCell className="font-bold text-slate-900 dark:text-white">
+                                                    {item.item_description}
+                                                </TableCell>
+                                                <TableCell className="text-right pr-4">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                                                                <MoreVertical className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-36 rounded-xl border-slate-200 dark:border-slate-800">
+                                                            <DropdownMenuItem onClick={() => handleEditClick(item)} className="gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                                                <Pencil className="w-3.5 h-3.5 text-blue-600" /> Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleDeleteClick(item)} className="gap-2 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/50">
+                                                                <Trash2 className="w-3.5 h-3.5" /> Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </div>
                     )}
                 </CardContent>
+                {filteredItems.length > 0 && (
+                    <CardFooter className="p-0">
+                        <TablePagination
+                            className="w-full"
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            totalItems={filteredItems.length}
+                            pageSize={pageSize}
+                            onPageChange={setCurrentPage}
+                            onPageSizeChange={(size) => {
+                                setPageSize(size);
+                                setCurrentPage(1);
+                            }}
+                            isLoading={isLoading}
+                            pageSizeOptions={[10, 25, 50, 100]}
+                        />
+                    </CardFooter>
+                )}
             </Card>
 
             {/* Edit Modal */}

@@ -176,9 +176,10 @@ export default function ViewShipments() {
     const [linkedSearch, setLinkedSearch] = useState('');
     const [deepLinkReady, setDeepLinkReady] = useState(false);
 
-    // Pagination State
+    // Pagination & Sorting State
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(25);
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const tableTopRef = useRef<HTMLDivElement>(null);
 
     const fetchShipments = useCallback(async (
@@ -189,6 +190,7 @@ export default function ViewShipments() {
         page = 1,
         size = 25,
         currentRegister = '',
+        currentSortOrder: 'asc' | 'desc' = 'asc',
     ) => {
         setIsLoading(true);
         try {
@@ -200,6 +202,7 @@ export default function ViewShipments() {
             if (currentVehicleId !== 'all') params.append('vehicleId', String(currentVehicleId));
             params.append('page', String(page));
             params.append('pageSize', String(size));
+            params.append('sortOrder', currentSortOrder);
 
             const response = await fetchWithTimeout(`/api/shipments/view-all?${params.toString()}`);
 
@@ -275,12 +278,12 @@ export default function ViewShipments() {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [debouncedSearchTerm, startDate, endDate, vehicleId, pageSize]);
+    }, [debouncedSearchTerm, startDate, endDate, vehicleId, pageSize, sortOrder]);
 
     useEffect(() => {
         if (!deepLinkReady) return;
-        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister);
-    }, [deepLinkReady, debouncedSearchTerm, fetchShipments, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister]);
+        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder);
+    }, [deepLinkReady, debouncedSearchTerm, fetchShipments, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder]);
 
     useEffect(() => {
         if (currentPage > totalPages) {
@@ -290,7 +293,7 @@ export default function ViewShipments() {
 
     const handleFilterLoad = () => {
         setCurrentPage(1);
-        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, 1, pageSize, linkedRegister);
+        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, 1, pageSize, linkedRegister, sortOrder);
     };
 
     const handleResetFilters = () => {
@@ -301,8 +304,9 @@ export default function ViewShipments() {
         setEndDate(range.endDate);
         setVehicleId('all');
         setSearchTerm('');
+        setSortOrder('asc');
         setCurrentPage(1);
-        fetchShipments('', range.startDate, range.endDate, 'all', 1, pageSize, '');
+        fetchShipments('', range.startDate, range.endDate, 'all', 1, pageSize, '', 'asc');
     };
 
     const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
@@ -488,7 +492,7 @@ export default function ViewShipments() {
             const data = await res.json();
             if (res.ok) {
                 sonnerToast.success('Deleted', { description: 'Bilty deleted successfully.' });
-                fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister);
+                fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder);
             } else {
                 sonnerToast.error('Error', { description: data.message || 'Failed to delete bilty.' });
             }
@@ -574,7 +578,7 @@ export default function ViewShipments() {
 
                 <div className="flex items-center gap-2">
                     <Button
-                        onClick={() => fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister)}
+                        onClick={() => fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder)}
                         variant="outline"
                         size="sm"
                         disabled={isLoading}
@@ -818,6 +822,25 @@ export default function ViewShipments() {
                     {totalItems > 0 && (
                         <div className="flex items-center gap-2.5 self-end sm:self-auto">
                             <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                <span className="text-[11px] font-medium hidden sm:inline">Order:</span>
+                                <Select
+                                    value={sortOrder}
+                                    onValueChange={(val: 'asc' | 'desc') => {
+                                        setSortOrder(val);
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <SelectTrigger className="h-8 w-[105px] text-xs font-semibold rounded-lg border-slate-200 dark:border-slate-700">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent align="end" className="rounded-lg">
+                                        <SelectItem value="asc">Ascending</SelectItem>
+                                        <SelectItem value="desc">Descending</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
                                 <span className="text-[11px] font-medium hidden sm:inline">Per page:</span>
                                 <Select
                                     value={String(pageSize)}
@@ -892,7 +915,8 @@ export default function ViewShipments() {
                             <Table containerClassName="max-h-[calc(100vh-220px)]" className="min-w-[1150px]">
                                 <TableHeader className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-slate-50 dark:[&_th]:bg-slate-900">
                                     <TableRow className="hover:bg-transparent">
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 whitespace-nowrap">Bilty #</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 w-16 whitespace-nowrap">Serial No.</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Bilty #</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Bilty Date</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Entry Date</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Departure</TableHead>
@@ -909,7 +933,8 @@ export default function ViewShipments() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {shipments.map((shipment) => {
+                                    {shipments.map((shipment, index) => {
+                                        const serialNumber = (currentPage - 1) * pageSize + index + 1;
                                         const createdVal = shipment.createdAt || shipment.created_day || shipment.created_at;
 
                                         const isAlreadyPaid = shipment.payment_status === 'ALREADY_PAID' || shipment.payment_status === 'PAID' || (shipment.remarks?.includes('PAYMENT_STATUS:ALREADY_PAID') ?? false);
@@ -939,8 +964,13 @@ export default function ViewShipments() {
                                                     'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors',
                                                 )}
                                             >
+                                                {/* 0. Serial Number */}
+                                                <TableCell className="pl-4 font-mono font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap text-xs">
+                                                    {serialNumber}
+                                                </TableCell>
+
                                                 {/* 1. Bilty # */}
-                                                <TableCell className="pl-4 whitespace-nowrap">
+                                                <TableCell className="whitespace-nowrap">
                                                     <button
                                                         type="button"
                                                         onClick={() => handleOpenDetailModal(shipment)}

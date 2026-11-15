@@ -3,7 +3,7 @@ import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import DeleteMasterDataModal from '@/components/master-data/DeleteMasterDataModal';
 import { clearMasterListsClientCache } from '@/lib/master-lists-client';
 import { recordRowClass, recordRowId, useDirectoryQuery, useScrollToRecord } from '@/lib/record-deep-link';
+import { TablePagination } from '@/components/ui/TablePagination';
 
 interface Party {
     id: number;
@@ -40,6 +41,10 @@ export default function ViewParties() {
     const highlightId = useDirectoryQuery(setSearchTerm);
     const [error, setError] = useState<string | null>(null);
     useScrollToRecord(highlightId, !isLoading && highlightId !== '');
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -82,6 +87,36 @@ export default function ViewParties() {
             String(p.id).includes(q)
         );
     }, [parties, searchTerm]);
+
+    // Reset to first page when search changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredParties.length / pageSize));
+
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(1);
+        }
+    }, [currentPage, totalPages]);
+
+    // Jump to the page of the highlighted party if applicable
+    useEffect(() => {
+        if (!highlightId || filteredParties.length === 0) return;
+        const index = filteredParties.findIndex(party => String(party.id) === highlightId);
+        if (index !== -1) {
+            const targetPage = Math.floor(index / pageSize) + 1;
+            if (targetPage !== currentPage) {
+                setCurrentPage(targetPage);
+            }
+        }
+    }, [highlightId, filteredParties, pageSize, currentPage]);
+
+    const paginatedParties = useMemo(() => {
+        const startIndex = (currentPage - 1) * pageSize;
+        return filteredParties.slice(startIndex, startIndex + pageSize);
+    }, [filteredParties, currentPage, pageSize]);
 
     const handleEditClick = (party: Party) => {
         setEditingParty(party);
@@ -230,7 +265,7 @@ export default function ViewParties() {
                             <Table>
                                 <TableHeader className="bg-slate-50 dark:bg-slate-800/60">
                                     <TableRow className="hover:bg-transparent">
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 w-16">ID</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 w-24 whitespace-nowrap">Serial No.</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Party Name</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Contact Details</TableHead>
                                         {/* <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right pr-4">Opening Balance</TableHead> */}
@@ -238,7 +273,8 @@ export default function ViewParties() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredParties.map((party) => {
+                                    {paginatedParties.map((party, index) => {
+                                        const serialNumber = (currentPage - 1) * pageSize + index + 1;
                                         const balance = Number(party.opening_balance ?? party.openingBalance ?? 0);
 
                                         return (
@@ -247,8 +283,8 @@ export default function ViewParties() {
                                                 id={recordRowId(party.id)}
                                                 className={recordRowClass(String(party.id) === highlightId, 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors')}
                                             >
-                                                <TableCell className="pl-4 font-mono font-bold text-slate-400">
-                                                    #{party.id}
+                                                <TableCell className="pl-4 font-mono font-semibold text-slate-500 dark:text-slate-400" title={`ID: #${party.id}`}>
+                                                    {serialNumber}
                                                 </TableCell>
                                                 <TableCell className="font-bold text-slate-900 dark:text-white">
                                                     {party.name}
@@ -293,6 +329,24 @@ export default function ViewParties() {
                         </div>
                     )}
                 </CardContent>
+                {filteredParties.length > 0 && (
+                    <CardFooter className="p-0">
+                        <TablePagination
+                            className="w-full"
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            totalItems={filteredParties.length}
+                            pageSize={pageSize}
+                            onPageChange={setCurrentPage}
+                            onPageSizeChange={(size) => {
+                                setPageSize(size);
+                                setCurrentPage(1);
+                            }}
+                            isLoading={isLoading}
+                            pageSizeOptions={[10, 25, 50, 100]}
+                        />
+                    </CardFooter>
+                )}
             </Card>
 
             {/* Edit Modal */}

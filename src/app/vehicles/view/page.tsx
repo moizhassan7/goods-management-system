@@ -3,12 +3,12 @@ import { fetchWithTimeout } from '@/lib/api-client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
-    Car, Plus, Search, Loader2, RefreshCw, 
+    Plus, Search, Loader2, RefreshCw, 
     Truck, AlertCircle, MoreVertical, Pencil, Trash2
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import DeleteMasterDataModal from '@/components/master-data/DeleteMasterDataModal';
 import { recordRowClass, recordRowId, useDirectoryQuery, useScrollToRecord } from '@/lib/record-deep-link';
+import { TablePagination } from '@/components/ui/TablePagination';
 
 interface Vehicle {
     id: number;
@@ -32,6 +33,10 @@ export default function ViewVehicles() {
     const highlightId = useDirectoryQuery(setSearchTerm);
     const [error, setError] = useState<string | null>(null);
     useScrollToRecord(highlightId, !isLoading && highlightId !== '');
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -72,6 +77,36 @@ export default function ViewVehicles() {
             String(v.id).includes(q)
         );
     }, [vehicles, searchTerm]);
+
+    // Reset to first page when search changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredVehicles.length / pageSize));
+
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(1);
+        }
+    }, [currentPage, totalPages]);
+
+    // Jump to the page of the highlighted vehicle if applicable
+    useEffect(() => {
+        if (!highlightId || filteredVehicles.length === 0) return;
+        const index = filteredVehicles.findIndex(vehicle => String(vehicle.id) === highlightId);
+        if (index !== -1) {
+            const targetPage = Math.floor(index / pageSize) + 1;
+            if (targetPage !== currentPage) {
+                setCurrentPage(targetPage);
+            }
+        }
+    }, [highlightId, filteredVehicles, pageSize, currentPage]);
+
+    const paginatedVehicles = useMemo(() => {
+        const startIndex = (currentPage - 1) * pageSize;
+        return filteredVehicles.slice(startIndex, startIndex + pageSize);
+    }, [filteredVehicles, currentPage, pageSize]);
 
     const handleEditClick = (vehicle: Vehicle) => {
         setEditingVehicle(vehicle);
@@ -217,57 +252,78 @@ export default function ViewVehicles() {
                             <Table>
                                 <TableHeader className="bg-slate-50 dark:bg-slate-800/60">
                                     <TableRow className="hover:bg-transparent">
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 w-20">ID</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 w-24 whitespace-nowrap">Serial No.</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">License Plate</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Status</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right pr-4 w-20">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredVehicles.map((vehicle) => (
-                                        <TableRow
-                                            key={vehicle.id}
-                                            id={recordRowId(vehicle.id)}
-                                            className={recordRowClass(String(vehicle.id) === highlightId, 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors')}
-                                        >
-                                            <TableCell className="pl-4 font-mono font-bold text-slate-400">
-                                                #{vehicle.id}
-                                            </TableCell>
-                                            <TableCell className="font-bold text-slate-900 dark:text-white">
-                                                <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                                    {vehicle.vehicleNumber}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                                    Active
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-right pr-4">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-900 dark:hover:text-white">
-                                                            <MoreVertical className="w-3.5 h-3.5" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-36 rounded-xl border-slate-200 dark:border-slate-800">
-                                                        <DropdownMenuItem onClick={() => handleEditClick(vehicle)} className="gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-                                                            <Pencil className="w-3.5 h-3.5 text-blue-600" /> Edit
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleDeleteClick(vehicle)} className="gap-2 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/50">
-                                                            <Trash2 className="w-3.5 h-3.5" /> Delete
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {paginatedVehicles.map((vehicle, index) => {
+                                        const serialNumber = (currentPage - 1) * pageSize + index + 1;
+                                        return (
+                                            <TableRow
+                                                key={vehicle.id}
+                                                id={recordRowId(vehicle.id)}
+                                                className={recordRowClass(String(vehicle.id) === highlightId, 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors')}
+                                            >
+                                                <TableCell className="pl-4 font-mono font-semibold text-slate-500 dark:text-slate-400" title={`ID: #${vehicle.id}`}>
+                                                    {serialNumber}
+                                                </TableCell>
+                                                <TableCell className="font-bold text-slate-900 dark:text-white">
+                                                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                                        {vehicle.vehicleNumber}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                        Active
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-right pr-4">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                                                                <MoreVertical className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-36 rounded-xl border-slate-200 dark:border-slate-800">
+                                                            <DropdownMenuItem onClick={() => handleEditClick(vehicle)} className="gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                                                <Pencil className="w-3.5 h-3.5 text-blue-600" /> Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleDeleteClick(vehicle)} className="gap-2 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/50">
+                                                                <Trash2 className="w-3.5 h-3.5" /> Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </div>
                     )}
                 </CardContent>
+                {filteredVehicles.length > 0 && (
+                    <CardFooter className="p-0">
+                        <TablePagination
+                            className="w-full"
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            totalItems={filteredVehicles.length}
+                            pageSize={pageSize}
+                            onPageChange={setCurrentPage}
+                            onPageSizeChange={(size) => {
+                                setPageSize(size);
+                                setCurrentPage(1);
+                            }}
+                            isLoading={isLoading}
+                            pageSizeOptions={[10, 25, 50, 100]}
+                        />
+                    </CardFooter>
+                )}
             </Card>
 
             {/* Edit Modal */}
