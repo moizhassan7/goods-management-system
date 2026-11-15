@@ -131,6 +131,12 @@ const ShipmentFormSchema = z.object({
             message: 'Please enter Chota Karaya, Bara Karaya, or select Already Paid / Free of Cost.',
             path: ['total_amount'],
         });
+    } else if (chota > 0 && bara <= 0) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Bara Karaya is required when Chota Karaya is entered.',
+            path: ['total_amount'],
+        });
     }
 });
 
@@ -380,6 +386,23 @@ export default function AddShipment() {
         };
     }, [fetchDropdownData]);
 
+    // Restore last selected departure city on initial load
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const savedCityId = localStorage.getItem('last_departure_city_id');
+                if (savedCityId) {
+                    const parsed = Number(savedCityId);
+                    if (parsed > 0 && !form.getValues('departure_city_id')) {
+                        form.setValue('departure_city_id', parsed);
+                    }
+                }
+            } catch {
+                // Ignore localStorage errors
+            }
+        }
+    }, [form]);
+
     const handleEditShipment = useCallback((shipment: ShipmentData) => {
         setEditingShipmentId(shipment.register_number);
 
@@ -439,7 +462,21 @@ export default function AddShipment() {
 
     const handleCancelEdit = useCallback(() => {
         setEditingShipmentId(null);
-        form.reset(generateDefaultValues());
+        let deptCityId = 0;
+        if (typeof window !== 'undefined') {
+            try {
+                const saved = localStorage.getItem('last_departure_city_id');
+                if (saved) {
+                    deptCityId = Number(saved) || 0;
+                }
+            } catch {
+                // Ignore localStorage errors
+            }
+        }
+        form.reset({
+            ...generateDefaultValues(),
+            departure_city_id: deptCityId,
+        });
         sonnerToast.info('Editing Cancelled', {
             description: 'Form reset to new bilty registration.',
         });
@@ -696,6 +733,13 @@ export default function AddShipment() {
                 });
                 return;
             }
+            if (chota > 0 && bara <= 0) {
+                toast.error({
+                    title: "Bara Karaya Required",
+                    description: "Chota Karaya enter karne ke baad Bara Karaya enter karna lazmi hai. Please enter Bara Karaya.",
+                });
+                return;
+            }
 
             const { register_number, is_already_paid, is_free_of_cost, ...restValues } = values;
 
@@ -755,12 +799,21 @@ export default function AddShipment() {
 
             const nextBilityDate = values.bility_date || today;
             const nextCreatedDate = createdDate;
+            const nextDepartureCityId = values.departure_city_id ? Number(values.departure_city_id) : 0;
+            if (typeof window !== 'undefined' && nextDepartureCityId > 0) {
+                try {
+                    localStorage.setItem('last_departure_city_id', String(nextDepartureCityId));
+                } catch {
+                    // Ignore localStorage errors
+                }
+            }
             setEditingShipmentId(null);
 
             window.setTimeout(() => {
                 form.reset({
                     ...generateDefaultValues(),
                     bility_date: nextBilityDate,
+                    departure_city_id: nextDepartureCityId,
                     sender_id: 0,
                     receiver_id: 0,
                 });
@@ -1333,7 +1386,17 @@ export default function AddShipment() {
                                         endpoint="/api/cities"
                                         placeholder="Select departure"
                                         value={field.value}
-                                        onSelectItem={(it) => field.onChange(Number(it.id))}
+                                        onSelectItem={(it) => {
+                                            const id = Number(it.id);
+                                            field.onChange(id);
+                                            if (typeof window !== 'undefined' && id > 0) {
+                                                try {
+                                                    localStorage.setItem('last_departure_city_id', String(id));
+                                                } catch {
+                                                    // Ignore localStorage errors
+                                                }
+                                            }
+                                        }}
                                         items={data?.cities}
                                         onNewItemAdded={() => fetchDropdownData(true)}
                                         error={fieldState.error?.message}
@@ -1497,7 +1560,9 @@ export default function AddShipment() {
                             <FormField control={form.control} name="total_amount" render={({ field }) => (
                                 <FormItem id="field-total_amount">
                                     <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                        Bara Karaya (Rs.)
+                                        Bara Karaya (Rs.) {Number(totalDeliveryCharges) > 0 && (
+                                            <span className="text-red-500 font-bold ml-1">* (Required)</span>
+                                        )}
                                     </FormLabel>
                                     <FormControl>
                                         <Input

@@ -72,6 +72,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Please select departure city, agency, vehicle, sender, and receiver before saving.' }, { status: 400 });
         }
 
+        const chotaVal = Number(payload.total_delivery_charges || 0);
+        const baraVal = Number(payload.total_amount || 0);
+        if (chotaVal > 0 && baraVal <= 0) {
+            return NextResponse.json({ message: 'Bara Karaya is required when Chota Karaya is entered.' }, { status: 400 });
+        }
+
         // --- Auto-generate register_number with Max-Sequence & Retry Logic ---
         const bilityDate = new Date(payload.bility_date);
         const year = bilityDate.getFullYear();

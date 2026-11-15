@@ -180,6 +180,7 @@ export default function ViewShipments() {
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(25);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [sortBy, setSortBy] = useState<string>('date_vehicle');
     const tableTopRef = useRef<HTMLDivElement>(null);
 
     const fetchShipments = useCallback(async (
@@ -191,6 +192,7 @@ export default function ViewShipments() {
         size = 25,
         currentRegister = '',
         currentSortOrder: 'asc' | 'desc' = 'asc',
+        currentSortBy = 'date_vehicle',
     ) => {
         setIsLoading(true);
         try {
@@ -203,6 +205,7 @@ export default function ViewShipments() {
             params.append('page', String(page));
             params.append('pageSize', String(size));
             params.append('sortOrder', currentSortOrder);
+            params.append('sortBy', currentSortBy);
 
             const response = await fetchWithTimeout(`/api/shipments/view-all?${params.toString()}`);
 
@@ -278,12 +281,12 @@ export default function ViewShipments() {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [debouncedSearchTerm, startDate, endDate, vehicleId, pageSize, sortOrder]);
+    }, [debouncedSearchTerm, startDate, endDate, vehicleId, pageSize, sortOrder, sortBy]);
 
     useEffect(() => {
         if (!deepLinkReady) return;
-        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder);
-    }, [deepLinkReady, debouncedSearchTerm, fetchShipments, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder]);
+        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder, sortBy);
+    }, [deepLinkReady, debouncedSearchTerm, fetchShipments, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder, sortBy]);
 
     useEffect(() => {
         if (currentPage > totalPages) {
@@ -293,7 +296,7 @@ export default function ViewShipments() {
 
     const handleFilterLoad = () => {
         setCurrentPage(1);
-        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, 1, pageSize, linkedRegister, sortOrder);
+        fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, 1, pageSize, linkedRegister, sortOrder, sortBy);
     };
 
     const handleResetFilters = () => {
@@ -305,8 +308,9 @@ export default function ViewShipments() {
         setVehicleId('all');
         setSearchTerm('');
         setSortOrder('asc');
+        setSortBy('date_vehicle');
         setCurrentPage(1);
-        fetchShipments('', range.startDate, range.endDate, 'all', 1, pageSize, '', 'asc');
+        fetchShipments('', range.startDate, range.endDate, 'all', 1, pageSize, '', 'asc', 'date_vehicle');
     };
 
     const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
@@ -492,7 +496,7 @@ export default function ViewShipments() {
             const data = await res.json();
             if (res.ok) {
                 sonnerToast.success('Deleted', { description: 'Bilty deleted successfully.' });
-                fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder);
+                fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder, sortBy);
             } else {
                 sonnerToast.error('Error', { description: data.message || 'Failed to delete bilty.' });
             }
@@ -578,7 +582,7 @@ export default function ViewShipments() {
 
                 <div className="flex items-center gap-2">
                     <Button
-                        onClick={() => fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder)}
+                        onClick={() => fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder, sortBy)}
                         variant="outline"
                         size="sm"
                         disabled={isLoading}
@@ -820,7 +824,28 @@ export default function ViewShipments() {
                     </div>
 
                     {totalItems > 0 && (
-                        <div className="flex items-center gap-2.5 self-end sm:self-auto">
+                        <div className="flex flex-wrap items-center gap-2.5 self-end sm:self-auto">
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                <span className="text-[11px] font-medium hidden sm:inline">Group By:</span>
+                                <Select
+                                    value={sortBy}
+                                    onValueChange={(val: string) => {
+                                        setSortBy(val);
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <SelectTrigger className="h-8 w-[135px] text-xs font-semibold rounded-lg border-slate-200 dark:border-slate-700">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent align="end" className="rounded-lg">
+                                        <SelectItem value="date_vehicle">Date & Vehicle</SelectItem>
+                                        <SelectItem value="vehicle">Vehicle First</SelectItem>
+                                        <SelectItem value="bility_date">Bilty Date</SelectItem>
+                                        <SelectItem value="register_number">Register #</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
                             <div className="flex items-center gap-1.5 text-xs text-slate-500">
                                 <span className="text-[11px] font-medium hidden sm:inline">Order:</span>
                                 <Select

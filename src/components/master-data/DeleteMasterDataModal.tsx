@@ -130,10 +130,10 @@ export default function DeleteMasterDataModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isDeleting && onClose()}>
-      <DialogContent className="sm:max-w-lg rounded-2xl p-0 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl bg-white dark:bg-slate-900">
+      <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col rounded-2xl p-0 gap-0 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-900">
         {/* Header section with contextual styling */}
         <div
-          className={`px-6 pt-6 pb-4 border-b ${
+          className={`px-6 pt-6 pb-4 border-b shrink-0 ${
             isChecking
               ? 'bg-slate-50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800'
               : hasDependencies
@@ -181,7 +181,7 @@ export default function DeleteMasterDataModal({
         </div>
 
         {/* Content Body */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
           {isChecking ? (
             <div className="py-8 flex flex-col items-center justify-center text-center space-y-3">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -231,7 +231,7 @@ export default function DeleteMasterDataModal({
                   Referencing Records ({checkResult?.totalCount}):
                 </p>
 
-                <ScrollArea className="max-h-64 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-2.5">
+                <ScrollArea className="max-h-52 sm:max-h-60 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-2.5">
                   <div className="space-y-3">
                     {checkResult?.categories.map((cat, idx) => (
                       <div key={idx} className="space-y-1.5">
@@ -327,7 +327,7 @@ export default function DeleteMasterDataModal({
         </div>
 
         {/* Footer Actions */}
-        <DialogFooter className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex sm:justify-between items-center gap-2">
+        <DialogFooter className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0 flex sm:justify-between items-center gap-2 m-0 mt-0">
           {hasDependencies ? (
             <div className="w-full flex justify-end">
               <Button

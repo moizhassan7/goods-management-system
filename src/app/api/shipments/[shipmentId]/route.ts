@@ -88,6 +88,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const { shipmentId } = await params;
   try {
     const payload = await request.json();
+    const chotaVal = Number(payload.total_delivery_charges || 0);
+    const baraVal = Number(payload.total_amount || 0);
+    if (chotaVal > 0 && baraVal <= 0) {
+      return NextResponse.json({ message: 'Bara Karaya is required when Chota Karaya is entered.' }, { status: 400 });
+    }
     const bilityDate = new Date(payload.bility_date);
     const finalBillAmount = new Prisma.Decimal(payload.total_amount || 0);
     const totalDeliveryCharges = new Prisma.Decimal(payload.total_delivery_charges || 0);
