@@ -556,7 +556,7 @@ export default function AddShipmentPage() {
                 deptCityId = Number(localStorage.getItem('last_departure_city_id')) || 0;
                 agencyId = Number(localStorage.getItem('last_forwarding_agency_id')) || 0;
                 vehicleId = Number(localStorage.getItem('last_vehicle_number_id')) || 0;
-                toCityId = Number(localStorage.getItem('last_to_city_id')) || 0;
+                toCityId = Number(localStorage.getItem('last_to_city_id')) || Number(localStorage.getItem('last_destination_city_id')) || 0;
             } catch {
                 // Ignore localStorage errors
             }
