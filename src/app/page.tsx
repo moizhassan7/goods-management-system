@@ -1,21 +1,19 @@
 "use client";
-import { fetchWithTimeout } from '@/lib/api-client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { fetchWithTimeout } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-    DollarSign, Truck, Package, Users, Hourglass, CheckCircle2, ChevronRight,
-    Loader2, Factory, Car, AlertCircle, ArrowUpRight, Plus, RefreshCw,
-    TrendingUp, Shield, BarChart3, Clock, ArrowRight, CornerDownRight,
-    RotateCcw, FileText
+    Package, Users, Hourglass,
+    Loader2, Car, AlertCircle, ArrowUpRight, Plus, RefreshCw,
+    RotateCcw, Search, X
 } from 'lucide-react';
-
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
+import BiltyDetailDialog from '@/components/shipments/BiltyDetailDialog';
+import { toast } from 'sonner';
 
 interface KeyMetrics {
     totalShipments: number;
@@ -39,13 +37,17 @@ interface RecentShipment {
     register_number: string;
     bility_number: string;
     total_charges: number;
+    total_delivery_charges?: number;
+    bility_date?: string;
     departureCity: { name: string };
-    toCity?: { name: string };
+    toCity?: { name: string } | null;
+    agency?: string;
 }
 
 interface VolumeData {
     date: string;
     volume: number;
+    freight?: number;
 }
 
 interface DashboardData {
@@ -72,11 +74,25 @@ const formatCurrency = (amount: number) => {
     return `Rs. ${Number(amount || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 };
 
+const formatShortCurrency = (amount: number) => {
+    const num = Number(amount || 0);
+    if (num >= 1_000_000) {
+        return `Rs. ${(num / 1_000_000).toFixed(2)}M`;
+    }
+    if (num >= 1_000) {
+        return `Rs. ${(num / 1_000).toFixed(1)}k`;
+    }
+    return `Rs. ${num.toLocaleString('en-PK')}`;
+};
+
 export default function DashboardPage() {
     const router = useRouter();
     const [data, setData] = useState<DashboardData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeSubTab, setActiveSubTab] = useState<'SUMMARY' | 'STATISTIC' | 'LEDGER' | 'FLEET'>('SUMMARY');
+    const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
 
     const fetchDashboardData = useCallback(async (showRefreshing = false) => {
         if (showRefreshing) setIsRefreshing(true);
@@ -89,6 +105,7 @@ export default function DashboardPage() {
             setData(result);
         } catch (error) {
             console.error("Dashboard fetch error:", error);
+            toast.error('Sync Error', { description: 'Failed to retrieve latest operational telemetry.' });
         } finally {
             setIsLoading(false);
             setIsRefreshing(false);
@@ -101,12 +118,65 @@ export default function DashboardPage() {
 
     const metrics = data?.keyMetrics || initialMetrics;
 
+    const totalKaraya = (metrics.totalBaraKaraya || 0) + (metrics.totalChotaKaraya || 0);
+    const baraKarayaPercent = totalKaraya > 0 ? ((metrics.totalBaraKaraya || 0) / totalKaraya) * 100 : 54;
+    const chotaKarayaPercent = totalKaraya > 0 ? ((metrics.totalChotaKaraya || 0) / totalKaraya) * 100 : 46;
+
+    // SVG Donut geometry: r=62, circumference ≈ 389.56
+    const circumference = 389.56;
+    const chotaDash = (chotaKarayaPercent / 100) * circumference;
+    const baraDash = (baraKarayaPercent / 100) * circumference;
+
+    // Filter recent shipments
+    const filteredShipments = useMemo(() => {
+        if (!data?.recentShipments) return [];
+        const query = searchQuery.toLowerCase().trim();
+        if (!query) return data.recentShipments;
+
+        return data.recentShipments.filter(item =>
+            item.bility_number?.toLowerCase().includes(query) ||
+            item.register_number?.toLowerCase().includes(query) ||
+            item.departureCity?.name?.toLowerCase().includes(query) ||
+            item.toCity?.name?.toLowerCase().includes(query) ||
+            item.agency?.toLowerCase().includes(query)
+        );
+    }, [data?.recentShipments, searchQuery]);
+
+    const handleSubTabClick = (tab: 'SUMMARY' | 'STATISTIC' | 'LEDGER' | 'FLEET') => {
+        setActiveSubTab(tab);
+        if (tab === 'SUMMARY') {
+            document.getElementById('section-summary')?.scrollIntoView({ behavior: 'smooth' });
+        } else if (tab === 'STATISTIC') {
+            document.getElementById('section-statistic')?.scrollIntoView({ behavior: 'smooth' });
+        } else if (tab === 'LEDGER') {
+            document.getElementById('section-log')?.scrollIntoView({ behavior: 'smooth' });
+        } else if (tab === 'FLEET') {
+            router.push('/vehicles/view');
+        }
+    };
+
+    const handleAgencyFilter = (agencyName: string) => {
+        setSearchQuery(agencyName);
+        document.getElementById('section-log')?.scrollIntoView({ behavior: 'smooth' });
+        toast.info(`Filtered log by "${agencyName}"`);
+    };
+
+    // Current formatted date string
+    const todayFormatted = useMemo(() => {
+        return new Date().toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }, []);
+
     if (isLoading) {
         return (
             <div className="flex flex-col justify-center items-center min-h-[60vh]">
-                <Loader2 className="w-7 h-7 text-blue-600 animate-spin mb-2" />
-                <p className="text-xs font-semibold text-slate-500 font-mono">
-                    Loading dashboard...
+                <Loader2 className="w-8 h-8 text-charcoal dark:text-lavender animate-spin mb-3" />
+                <p className="text-xs font-semibold text-zinc-500 font-mono tracking-wider uppercase">
+                    Loading Operations Dashboard...
                 </p>
             </div>
         );
@@ -114,13 +184,13 @@ export default function DashboardPage() {
 
     if (!data) {
         return (
-            <div className="p-8 max-w-md mx-auto text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+            <div className="p-8 max-w-md mx-auto text-center bg-white dark:bg-zinc-900 rounded-2xl border border-hairline dark:border-zinc-800 shadow-sm">
                 <AlertCircle className="h-8 w-8 text-rose-500 mx-auto mb-3" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Operational Data Unavailable</h3>
-                <p className="text-xs text-slate-500 mb-4">
+                <h3 className="text-sm font-bold text-charcoal dark:text-white mb-1">Operational Data Unavailable</h3>
+                <p className="text-xs text-zinc-500 mb-4">
                     Unable to connect to the central dispatch database.
                 </p>
-                <Button onClick={() => fetchDashboardData()} size="sm" className="gap-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700">
+                <Button onClick={() => fetchDashboardData()} size="sm" className="gap-1.5 text-xs font-semibold rounded-full bg-charcoal text-white hover:bg-zinc-800 dark:bg-lavender dark:text-charcoal">
                     <RefreshCw className="w-3.5 h-3.5" />
                     Retry Sync
                 </Button>
@@ -129,245 +199,391 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="space-y-5 max-w-7xl mx-auto">
-            {/* Top Operational Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+        <div className="w-full space-y-7 pb-10">
+
+            {/* TOP HEADER BAR: Title + Underline Tabs on Left, Bordered Search & Actions on Right */}
+            <header className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
-                            Operations Overview
-                        </h2>
-                        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                            LIVE FEED
+                    <div className="flex items-baseline gap-3">
+                        <h1 className="text-2xl sm:text-[32px] font-normal tracking-tight text-charcoal dark:text-white leading-none">
+                            Dashboard
+                        </h1>
+                        <span className="text-[11px] font-medium tracking-[0.05em] uppercase text-zinc-400 font-mono">
+                            {todayFormatted}
                         </span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                        Daily consignment volume, dispatch trends, fleet readiness, and receivable totals.
-                    </p>
+
+                    {/* Minimalist Underline Sub-Navigation Tabs */}
+                    <div className="flex items-center gap-6 mt-4 border-b border-hairline dark:border-zinc-800 pb-1">
+                        <button
+                            type="button"
+                            onClick={() => handleSubTabClick('SUMMARY')}
+                            className={`pb-1.5 text-[10px] font-bold tracking-[0.08em] uppercase transition-colors ${
+                                activeSubTab === 'SUMMARY'
+                                    ? 'text-charcoal dark:text-white border-b-2 border-charcoal dark:border-lavender'
+                                    : 'text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-2 border-transparent'
+                            }`}
+                        >
+                            SUMMARY
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleSubTabClick('STATISTIC')}
+                            className={`pb-1.5 text-[10px] font-bold tracking-[0.08em] uppercase transition-colors ${
+                                activeSubTab === 'STATISTIC'
+                                    ? 'text-charcoal dark:text-white border-b-2 border-charcoal dark:border-lavender'
+                                    : 'text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-2 border-transparent'
+                            }`}
+                        >
+                            STATISTIC
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleSubTabClick('LEDGER')}
+                            className={`pb-1.5 text-[10px] font-bold tracking-[0.08em] uppercase transition-colors ${
+                                activeSubTab === 'LEDGER'
+                                    ? 'text-charcoal dark:text-white border-b-2 border-charcoal dark:border-lavender'
+                                    : 'text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-2 border-transparent'
+                            }`}
+                        >
+                            LEDGER
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleSubTabClick('FLEET')}
+                            className={`pb-1.5 text-[10px] font-bold tracking-[0.08em] uppercase transition-colors ${
+                                activeSubTab === 'FLEET'
+                                    ? 'text-charcoal dark:text-white border-b-2 border-charcoal dark:border-lavender'
+                                    : 'text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-2 border-transparent'
+                            }`}
+                        >
+                            FLEET
+                        </button>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                        variant="outline"
-                        size="sm"
+                {/* Right Controls: Search Input + Sync + Register Bilty Pill Button */}
+                <div className="flex flex-wrap items-center gap-2.5 self-stretch md:self-start">
+                    <div className="relative flex-1 md:w-[260px]">
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search bilty no, city, agency..."
+                            className="w-full pl-3.5 pr-9 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-[#E2E2E6] dark:border-zinc-700 text-xs text-charcoal dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-charcoal dark:focus:border-lavender transition-colors"
+                        />
+                        <Search className="w-4 h-4 text-zinc-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        )}
+                    </div>
+
+                    <button
+                        type="button"
                         onClick={() => fetchDashboardData(true)}
                         disabled={isRefreshing}
-                        className="text-xs font-semibold rounded-lg gap-1.5 h-8 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                        className="p-2 rounded-xl bg-white dark:bg-zinc-900 border border-[#E2E2E6] dark:border-zinc-700 text-charcoal dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-2xs"
+                        title="Sync Live Telemetry"
                     >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                        <span>{isRefreshing ? 'Syncing...' : 'Sync'}</span>
-                    </Button>
-                    <Button
-                        onClick={() => router.push('/shipments/add')}
-                        size="sm"
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg gap-1.5 h-8 shadow-xs"
-                    >
-                        <Plus className="w-3.5 h-3.5" />
-                        Register Bilty
-                    </Button>
-                </div>
-            </div>
-
-            {/* Quick Actions Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-                {[
-                    { label: 'Register Bilty', href: '/shipments/add', icon: Package, count: 'New entry' },
-                    { label: 'Bilty Directory', href: '/shipments/view', icon: Truck, count: `${metrics.totalShipments} records` },
-                    { label: 'Parties Ledger', href: '/parties/view', icon: Users, count: `${metrics.totalParties} accounts` },
-                    { label: 'Freight Carrier', href: '/vehicles/view', icon: Car, count: `${metrics.totalVehicles} units` },
-                    // { label: 'Returns Log', href: '/returns', icon: RotateCcw, count: `${metrics.totalReturns} logs` },
-                    // { label: 'Reports Audit', href: '/shipments/report', icon: FileText, count: 'Financial' },
-                ].map((act, i) => (
-                    <button
-                        key={i}
-                        onClick={() => router.push(act.href)}
-                        className="flex items-center gap-3 p-3 text-left rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500/60 hover:bg-blue-50/20 dark:hover:bg-slate-800/60 transition-colors shadow-2xs group cursor-pointer"
-                    >
-                        <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                            <act.icon className="w-4 h-4" />
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                                {act.label}
-                            </p>
-                            <p className="text-[10px] text-slate-500 font-mono truncate">
-                                {act.count}
-                            </p>
-                        </div>
+                        <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                     </button>
-                ))}
-            </div>
 
-            {/* 1. KEY METRICS ROW */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* Chota Karaya */}
-                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
-                    <div className="flex items-center justify-between text-slate-500">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">Chota Karaya</span>
-                        <DollarSign className="h-4 w-4 text-emerald-600" />
-                    </div>
-                    <div className="text-lg font-black text-slate-900 dark:text-white mt-1 tabular-nums">
-                        {formatCurrency(metrics.totalChotaKaraya ?? 0)}
-                    </div>
-                    {/* <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 inline-block">
-                        • Delivery charges
-                    </span> */}
+                    <button
+                        type="button"
+                        onClick={() => router.push('/shipments/add')}
+                        className="px-4 py-2 rounded-full bg-lavender hover:bg-lavenderhover active:scale-[0.98] text-charcoal text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+                    >
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Register Bilty</span>
+                    </button>
                 </div>
-                {/* Bara Karaya */}
-                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
-                    <div className="flex items-center justify-between text-slate-500">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">Bara Karaya</span>
-                        <DollarSign className="h-4 w-4 text-emerald-600" />
-                    </div>
-                    <div className="text-lg font-black text-slate-900 dark:text-white mt-1 tabular-nums">
-                        {formatCurrency(metrics.totalBaraKaraya ?? metrics.totalRevenue)}
-                    </div>
-                    {/* <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 inline-block">
-                        • Freight charges
-                    </span> */}
-                </div>
-                {/* Total Shipments */}
-                <div
-                    onClick={() => router.push('/shipments/view')}
-                    className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-blue-400 cursor-pointer transition-colors"
-                >
-                    <div className="flex items-center justify-between text-slate-500">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">Total Bilties</span>
-                        <Truck className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div className="text-lg font-black text-slate-900 dark:text-white mt-1 tabular-nums">
-                        {metrics.totalShipments.toLocaleString()}
-                    </div>
-                    <span className="text-[10px] text-blue-600 font-semibold mt-0.5 inline-block">
-                        View register →
-                    </span>
-                </div>
-                {/* Today's Bilties */}
-                <div
-                    onClick={() => router.push('/shipments/add')}
-                    className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-blue-400 cursor-pointer transition-colors"
-                >
-                    <div className="flex items-center justify-between text-slate-500">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">Today&apos;s Bilties</span>
-                        <Truck className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div className="text-lg font-black text-slate-900 dark:text-white mt-1 tabular-nums">
-                        {(metrics.todayShipments ?? 0).toLocaleString()}
-                    </div>
-                    <span className="text-[10px] text-blue-600 font-semibold mt-0.5 inline-block">
-                        Add shipment →
-                    </span>
-                </div>
+            </header>
 
-                {/* Total Parties
-                <div
-                    onClick={() => router.push('/parties/view')}
-                    className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-purple-400 cursor-pointer transition-colors"
-                >
-                    <div className="flex items-center justify-between text-slate-500">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">Parties</span>
-                        <Users className="h-4 w-4 text-purple-600" />
-                    </div>
-                    <div className="text-lg font-black text-slate-900 dark:text-white mt-1 tabular-nums">
-                        {metrics.totalParties}
-                    </div>
-                    <span className="text-[10px] text-slate-500 mt-0.5 inline-block">
-                        Senders & Receivers
-                    </span>
-                </div>
+            {/* TOP ROW GRID: Left 2x2 Metric Matrix (8 cols) + Right 'Top Agencies' Panel (4 cols) */}
+            <section id="section-summary" className="grid grid-cols-1 xl:grid-cols-12 gap-7 items-stretch">
 
-                {/* Fleet Vehicles 
-                <div
-                    onClick={() => router.push('/vehicles/view')}
-                    className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-teal-400 cursor-pointer transition-colors"
-                >
-                    <div className="flex items-center justify-between text-slate-500">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">Fleet</span>
-                        <Car className="h-4 w-4 text-teal-600" />
-                    </div>
-                    <div className="text-lg font-black text-slate-900 dark:text-white mt-1 tabular-nums">
-                        {metrics.totalVehicles}
-                    </div>
-                    <span className="text-[10px] text-slate-500 mt-0.5 inline-block">
-                        Active units
-                    </span>
-                </div> */}
+                {/* LEFT 2x2 METRIC MATRIX (Clean flat cards with hairline separation) */}
+                <div className="xl:col-span-8 flex flex-col space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 border border-hairline dark:border-zinc-800 bg-cardgray dark:bg-zinc-900/80 rounded-2xl overflow-hidden shadow-2xs">
+                        
+                        {/* 1. Top-Left Featured Dark Card (#202022) — BARA KARAYA */}
+                        <div className="bg-charcoal text-white p-6 sm:p-7 flex flex-col justify-between min-h-[168px] border-b sm:border-r border-zinc-800">
+                            <div>
+                                <div className="text-[10px] font-semibold tracking-[0.07em] uppercase text-zinc-300">
+                                    BARA KARAYA
+                                </div>
+                                <div className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-300">
+                                    <span className="text-lavender text-[9px]">▲</span>
+                                    <span>{baraKarayaPercent.toFixed(0)}% Primary Freight</span>
+                                </div>
+                            </div>
 
-                {/* Pending Approvals */}
-                {/* <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
-                    <div className="flex items-center justify-between text-slate-500">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">Pending</span>
-                        <Hourglass className="h-4 w-4 text-amber-600" />
-                    </div>
-                    <div className="text-lg font-black text-amber-600 dark:text-amber-400 mt-1 tabular-nums">
-                        {metrics.pendingApprovals}
-                    </div>
-                    <span className="text-[10px] text-amber-600 mt-0.5 inline-block font-medium">
-                        Deliveries pending
-                    </span>
-                </div>
-
-               
-                <div 
-                    onClick={() => router.push('/returns')}
-                    className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-rose-400 cursor-pointer transition-colors"
-                >
-                    <div className="flex items-center justify-between text-slate-500">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">Returns</span>
-                        <RotateCcw className="h-4 w-4 text-rose-600" />
-                    </div>
-                    <div className="text-lg font-black text-slate-900 dark:text-white mt-1 tabular-nums">
-                        {metrics.totalReturns}
-                    </div>
-                    <span className="text-[10px] text-slate-500 mt-0.5 inline-block">
-                        Logged returns
-                    </span>
-                </div> */}
-            </div>
-
-            {/* 2. GRAPHS AND TOP AGENCIES */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                {/* 7-Day Volume Chart (2/3 width) */}
-                <Card className="lg:col-span-2 rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900">
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 dark:border-slate-800 py-3.5 px-5">
-                        <div>
-                            <CardTitle className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                                7-Day Bilty Registration Volume
-                            </CardTitle>
-                            <CardDescription className="text-[11px] text-slate-500">
-                                Daily dispatch volume trends
-                            </CardDescription>
+                            <div className="mt-6 flex items-end justify-between gap-2">
+                                <div className="text-2xl sm:text-[30px] font-light tracking-tight tabular-nums leading-none">
+                                    {formatCurrency(metrics.totalBaraKaraya ?? metrics.totalRevenue)}
+                                </div>
+                                <button
+                                    onClick={() => router.push('/shipments/report')}
+                                    title="View Freight Audits"
+                                    className="text-zinc-300 hover:text-lavender transition-colors p-1"
+                                >
+                                    <ArrowUpRight className="w-5 h-5 stroke-[1.5]" />
+                                </button>
+                            </div>
                         </div>
-                        <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                            Volume telemetry
-                        </span>
-                    </CardHeader>
-                    <CardContent className="pt-4 px-5 pb-2">
+
+                        {/* 2. Top-Right Soft Gray Card (#F6F6F8) — CHOTA KARAYA */}
+                        <div className="bg-cardgray dark:bg-zinc-900/70 p-6 sm:p-7 flex flex-col justify-between min-h-[168px] border-b border-hairline dark:border-zinc-800">
+                            <div>
+                                <div className="text-[10px] font-semibold tracking-[0.07em] uppercase text-charcoal dark:text-zinc-300">
+                                    CHOTA KARAYA
+                                </div>
+                                <div className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                                    <span className="text-emerald-600 dark:text-emerald-400 text-[9px]">▲</span>
+                                    <span>{chotaKarayaPercent.toFixed(0)}% Delivery Surcharges</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 flex items-end justify-between gap-2">
+                                <div className="text-2xl sm:text-[30px] font-light tracking-tight text-charcoal dark:text-white tabular-nums leading-none">
+                                    {formatCurrency(metrics.totalChotaKaraya ?? 0)}
+                                </div>
+                                <button
+                                    onClick={() => router.push('/shipments/report')}
+                                    title="View Delivery Charges"
+                                    className="text-charcoal dark:text-zinc-300 hover:opacity-70 transition-opacity p-1"
+                                >
+                                    <ArrowUpRight className="w-5 h-5 stroke-[1.5]" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 3. Bottom-Left Soft Gray Card (#F6F6F8) — TOTAL BILTIES */}
+                        <div className="bg-cardgray dark:bg-zinc-900/70 p-6 sm:p-7 flex flex-col justify-between min-h-[168px] border-b sm:border-b-0 sm:border-r border-hairline dark:border-zinc-800">
+                            <div>
+                                <div className="text-[10px] font-semibold tracking-[0.07em] uppercase text-charcoal dark:text-zinc-300">
+                                    TOTAL BILTIES
+                                </div>
+                                <div className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-charcoal dark:bg-lavender"></span>
+                                    <span>{metrics.totalShipments.toLocaleString()} records logged</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 flex items-end justify-between gap-2">
+                                <div className="text-3xl sm:text-[34px] font-light tracking-tight text-charcoal dark:text-white tabular-nums leading-none">
+                                    {metrics.totalShipments.toLocaleString()}
+                                </div>
+                                <button
+                                    onClick={() => router.push('/shipments/view')}
+                                    title="View Bilty Directory"
+                                    className="text-charcoal dark:text-zinc-300 hover:opacity-70 transition-opacity p-1"
+                                >
+                                    <ArrowUpRight className="w-5 h-5 stroke-[1.5]" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 4. Bottom-Right Soft Gray Card (#F6F6F8) — TODAY'S BILTIES */}
+                        <div
+                            onClick={() => router.push('/shipments/add')}
+                            className="bg-cardgray dark:bg-zinc-900/70 hover:bg-[#EFEFF3] dark:hover:bg-zinc-800/80 cursor-pointer p-6 sm:p-7 flex flex-col justify-between min-h-[168px] transition-colors group"
+                        >
+                            <div>
+                                <div className="text-[10px] font-semibold tracking-[0.07em] uppercase text-charcoal dark:text-zinc-300">
+                                    TODAY&apos;S BILTIES
+                                </div>
+                                <div className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-lavender"></span>
+                                    <span>Today • Click to register</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 flex items-end justify-between gap-2">
+                                <div className="text-3xl sm:text-[34px] font-light tracking-tight text-charcoal dark:text-white tabular-nums leading-none">
+                                    {(metrics.todayShipments ?? 0).toLocaleString()}
+                                </div>
+                                <span className="text-charcoal dark:text-zinc-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform p-1">
+                                    <ArrowUpRight className="w-5 h-5 stroke-[1.5]" />
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Operational Secondary Metrics Strip (Preserving all logistics indicators) */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div
+                            onClick={() => router.push('/parties/view')}
+                            className="p-3 rounded-xl bg-cardgray dark:bg-zinc-900/60 border border-hairline dark:border-zinc-800 flex items-center justify-between cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+                        >
+                            <div>
+                                <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Parties</div>
+                                <div className="text-sm font-bold text-charcoal dark:text-white tabular-nums mt-0.5">{metrics.totalParties}</div>
+                            </div>
+                            <Users className="w-4 h-4 text-zinc-400" />
+                        </div>
+
+                        <div
+                            onClick={() => router.push('/vehicles/view')}
+                            className="p-3 rounded-xl bg-cardgray dark:bg-zinc-900/60 border border-hairline dark:border-zinc-800 flex items-center justify-between cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+                        >
+                            <div>
+                                <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Fleet Units</div>
+                                <div className="text-sm font-bold text-charcoal dark:text-white tabular-nums mt-0.5">{metrics.totalVehicles}</div>
+                            </div>
+                            <Car className="w-4 h-4 text-zinc-400" />
+                        </div>
+
+                        <div
+                            onClick={() => router.push('/deliveries/admin-approved-pending')}
+                            className="p-3 rounded-xl bg-cardgray dark:bg-zinc-900/60 border border-hairline dark:border-zinc-800 flex items-center justify-between cursor-pointer hover:border-amber-400/60 transition-colors"
+                        >
+                            <div>
+                                <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Pending Deliveries</div>
+                                <div className="text-sm font-bold text-amber-700 dark:text-amber-300 tabular-nums mt-0.5">{metrics.pendingApprovals}</div>
+                            </div>
+                            <Hourglass className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        </div>
+
+                        <div
+                            onClick={() => router.push('/returns')}
+                            className="p-3 rounded-xl bg-cardgray dark:bg-zinc-900/60 border border-hairline dark:border-zinc-800 flex items-center justify-between cursor-pointer hover:border-rose-400/60 transition-colors"
+                        >
+                            <div>
+                                <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Returns</div>
+                                <div className="text-sm font-bold text-charcoal dark:text-white tabular-nums mt-0.5">{metrics.totalReturns}</div>
+                            </div>
+                            <RotateCcw className="w-4 h-4 text-zinc-400" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* RIGHT COLUMN: 'Top Agencies' Panel */}
+                <div className="xl:col-span-4 flex flex-col">
+                    <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-[17px] font-normal text-charcoal dark:text-white">
+                            Top Agencies
+                        </h2>
+                        <button
+                            onClick={() => router.push('/agency/view')}
+                            className="text-[11px] font-semibold tracking-wider text-zinc-400 hover:text-charcoal dark:hover:text-white uppercase transition-colors"
+                        >
+                            View All →
+                        </button>
+                    </div>
+
+                    <div className="flex-1 bg-cardgray dark:bg-zinc-900/70 border border-hairline dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-between shadow-2xs">
+                        <div className="space-y-3.5">
+                            {data.topAgencies.length === 0 ? (
+                                <div className="py-8 text-center text-xs text-zinc-400">
+                                    No agency dispatches recorded yet.
+                                </div>
+                            ) : (
+                                data.topAgencies.map((agency, index) => {
+                                    // Generate initials
+                                    const words = agency.name.split(' ');
+                                    const initials = words.length > 1
+                                        ? `${words[0][0]}${words[1][0]}`.toUpperCase()
+                                        : agency.name.substring(0, 2).toUpperCase();
+
+                                    const isTop = index === 0;
+                                    const isSecond = index === 1;
+
+                                    return (
+                                        <div
+                                            key={agency.name}
+                                            onClick={() => handleAgencyFilter(agency.name)}
+                                            className="flex items-center gap-3 group cursor-pointer p-1 rounded-xl hover:bg-white dark:hover:bg-zinc-800/60 transition-colors"
+                                        >
+                                            <div className={`w-9 h-9 rounded-full text-[11px] font-semibold flex items-center justify-center shrink-0 ${
+                                                isTop
+                                                    ? 'bg-charcoal text-white dark:bg-white dark:text-charcoal'
+                                                    : isSecond
+                                                    ? 'bg-lavender text-charcoal font-bold'
+                                                    : 'bg-white dark:bg-zinc-800 border border-hairline dark:border-zinc-700 text-charcoal dark:text-zinc-200'
+                                            }`}>
+                                                {initials}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="text-[13px] font-medium text-charcoal dark:text-zinc-100 truncate group-hover:underline">
+                                                    {agency.name}
+                                                </div>
+                                                <div className="text-[9px] font-semibold tracking-[0.06em] uppercase text-zinc-400 mt-0.5">
+                                                    {agency.count} BILTIES • RANK #{index + 1}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        {/* Full-width Rounded Pill CTA Button in Soft Lavender (#D9CDFF) */}
+                        <button
+                            type="button"
+                            onClick={() => router.push('/shipments/add')}
+                            className="mt-5 w-full py-2.5 px-4 rounded-full bg-lavender hover:bg-lavenderhover active:scale-[0.99] text-charcoal text-xs font-semibold transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                        >
+                            <span>+ Register Bilty</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            {/* MIDDLE ROW GRID: Left 'Bilty Volume' Chart (8 cols) + Right 'Total Karaya' Donut Card (4 cols) */}
+            <section id="section-statistic" className="grid grid-cols-1 xl:grid-cols-12 gap-7 items-stretch">
+
+                {/* LEFT: 'Bilty Volume' Area/Line Chart */}
+                <div className="xl:col-span-8 flex flex-col">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <h2 className="text-[17px] font-normal text-charcoal dark:text-white">
+                            Bilty Volume
+                        </h2>
+
+                        {/* Legend Dots */}
+                        <div className="flex items-center gap-5 text-[9px] font-semibold tracking-[0.07em] uppercase text-charcoal dark:text-zinc-300">
+                            <span className="inline-flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-charcoal dark:bg-white"></span>
+                                DAILY DISPATCH
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-lavender"></span>
+                                FREIGHT TREND
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 bg-cardgray dark:bg-zinc-900/70 border border-hairline dark:border-zinc-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between relative shadow-2xs">
                         {data.volumeData.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-[240px] text-slate-400">
+                            <div className="flex flex-col items-center justify-center h-[230px] text-zinc-400">
                                 <Package className="w-6 h-6 mb-1 opacity-40" />
-                                <p className="text-xs font-medium">No shipment data recorded for the past 7 days</p>
+                                <p className="text-xs font-medium">No shipment records logged in the past 7 days</p>
                             </div>
                         ) : (
-                            <div className="h-[240px] w-full">
+                            <div className="w-full h-[230px]">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={data.volumeData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                                         <defs>
-                                            <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25} />
-                                                <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
+                                            <linearGradient id="lavenderWaveGrad" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#D9CDFF" stopOpacity={0.85} />
+                                                <stop offset="100%" stopColor="#D9CDFF" stopOpacity={0.06} />
                                             </linearGradient>
                                         </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.6} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" opacity={0.5} />
                                         <XAxis
                                             dataKey="date"
-                                            stroke="#94a3b8"
+                                            stroke="#a1a1aa"
                                             fontSize={10}
                                             tickLine={false}
                                             axisLine={false}
                                         />
                                         <YAxis
-                                            stroke="#94a3b8"
+                                            stroke="#a1a1aa"
                                             fontSize={10}
                                             tickLine={false}
                                             axisLine={false}
@@ -376,12 +592,19 @@ export default function DashboardPage() {
                                         <Tooltip
                                             content={({ active, payload, label }) => {
                                                 if (active && payload && payload.length) {
+                                                    const biltiesVal = payload[0].value;
+                                                    const freightVal = (payload[0].payload as VolumeData)?.freight;
                                                     return (
-                                                        <div className="bg-slate-900 text-white p-2.5 rounded-lg shadow-lg text-xs border border-slate-800">
-                                                            <p className="text-slate-400 font-mono text-[10px]">{label}</p>
-                                                            <p className="text-sm font-bold text-white mt-0.5">
-                                                                {payload[0].value} Bilties
+                                                        <div className="bg-charcoal text-white p-3 rounded-xl shadow-xl text-xs border border-zinc-700">
+                                                            <p className="text-zinc-400 font-mono text-[10px] uppercase">{label}</p>
+                                                            <p className="text-sm font-bold text-lavender mt-0.5">
+                                                                {biltiesVal} Bilties Dispatched
                                                             </p>
+                                                            {freightVal ? (
+                                                                <p className="text-[11px] text-zinc-300 font-mono mt-0.5">
+                                                                    {formatCurrency(freightVal)}
+                                                                </p>
+                                                            ) : null}
                                                         </div>
                                                     );
                                                 }
@@ -391,132 +614,222 @@ export default function DashboardPage() {
                                         <Area
                                             type="monotone"
                                             dataKey="volume"
-                                            stroke="#2563eb"
+                                            stroke="#202022"
                                             strokeWidth={2}
                                             fillOpacity={1}
-                                            fill="url(#volumeGradient)"
-                                            dot={{ fill: "#2563eb", r: 3 }}
-                                            activeDot={{ fill: "#1d4ed8", r: 5 }}
+                                            fill="url(#lavenderWaveGrad)"
+                                            dot={{ fill: "#202022", r: 3.5 }}
+                                            activeDot={{ fill: "#D9CDFF", stroke: "#202022", strokeWidth: 2, r: 6 }}
                                         />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
                         )}
-                    </CardContent>
-                </Card>
-
-                {/* Top Forwarding Agencies (1/3 width) */}
-                <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 flex flex-col">
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 dark:border-slate-800 py-3.5 px-5">
-                        <div>
-                            <CardTitle className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                                Top Agencies
-                            </CardTitle>
-                            <CardDescription className="text-[11px] text-slate-500">
-                                Ranked by total consignment count
-                            </CardDescription>
-                        </div>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push('/agency/view')}
-                            className="text-xs font-semibold text-blue-600 hover:text-blue-700 h-7 px-2"
-                        >
-                            View all
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="pt-3 px-5 pb-4 flex-1">
-                        {data.topAgencies.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-slate-400 py-6">
-                                <Factory className="w-6 h-6 mb-1 opacity-40" />
-                                <p className="text-xs font-medium">No agency records found</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                {data.topAgencies.map((agency, index) => (
-                                    <div
-                                        key={agency.name}
-                                        className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs"
-                                    >
-                                        <div className="flex items-center gap-2.5 min-w-0">
-                                            <span className="w-5 h-5 rounded flex items-center justify-center font-mono font-bold text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shrink-0">
-                                                {index + 1}
-                                            </span>
-                                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
-                                                {agency.name}
-                                            </span>
-                                        </div>
-                                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400 shrink-0 ml-2">
-                                            {agency.count} bilties
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* 3. RECENT SHIPMENTS ACTIVITY FEED */}
-            <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 dark:border-slate-800 py-3 px-5">
-                    <div>
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                            Recent Bilty Activity Log
-                        </CardTitle>
                     </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push('/shipments/view')}
-                        className="rounded-lg text-xs font-semibold gap-1 h-7 border-slate-200 dark:border-slate-700"
-                    >
-                        <span>Full Log</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                    </Button>
-                </CardHeader>
-                <CardContent className="p-0">
-                    {data.recentShipments.length === 0 ? (
-                        <div className="p-6 text-center text-slate-400">
-                            <p className="text-xs">No recent bilty records recorded</p>
+                </div>
+
+                {/* RIGHT: 'Total Karaya' Donut Card */}
+                <div className="xl:col-span-4 flex flex-col">
+                    <h2 className="text-[17px] font-normal text-charcoal dark:text-white mb-3">
+                        Total Karaya
+                    </h2>
+
+                    <div className="flex-1 bg-cardgray dark:bg-zinc-900/70 border border-hairline dark:border-zinc-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between relative shadow-2xs">
+                        {/* Top-right circular '+' quick-add button */}
+                        <button
+                            type="button"
+                            onClick={() => router.push('/shipments/add')}
+                            title="Add Freight Bilty"
+                            className="self-end w-7 h-7 rounded-full border border-charcoal dark:border-zinc-400 text-charcoal dark:text-zinc-200 hover:bg-charcoal hover:text-white dark:hover:bg-lavender dark:hover:text-charcoal flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                            <Plus className="w-3.5 h-3.5 stroke-[2]" />
+                        </button>
+
+                        {/* Thick Minimalist Segmented SVG Donut Ring */}
+                        <div className="relative w-[164px] h-[164px] mx-auto my-2 flex items-center justify-center">
+                            <svg viewBox="0 0 160 160" className="w-full h-full -rotate-90">
+                                {/* Subtle Light Track */}
+                                <circle cx="80" cy="80" r="62" fill="none" className="stroke-[#E3E3E7] dark:stroke-zinc-800" strokeWidth="14" />
+                                {/* Soft Lavender Segment (Chota Karaya) */}
+                                <circle
+                                    cx="80"
+                                    cy="80"
+                                    r="62"
+                                    fill="none"
+                                    stroke="#D9CDFF"
+                                    strokeWidth="14"
+                                    strokeDasharray={`${chotaDash} ${circumference}`}
+                                    strokeDashoffset="0"
+                                    className="donut-segment"
+                                />
+                                {/* Dark Charcoal Segment (Bara Karaya) */}
+                                <circle
+                                    cx="80"
+                                    cy="80"
+                                    r="62"
+                                    fill="none"
+                                    className="stroke-charcoal dark:stroke-white donut-segment"
+                                    strokeWidth="14"
+                                    strokeDasharray={`${baraDash} ${circumference}`}
+                                    strokeDashoffset={`-${chotaDash}`}
+                                />
+                            </svg>
+
+                            {/* Center Text */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                                <span className="text-[22px] font-normal tracking-tight text-charcoal dark:text-white tabular-nums leading-none">
+                                    {formatShortCurrency(totalKaraya)}
+                                </span>
+                                <span className="text-[11px] font-normal text-zinc-500 dark:text-zinc-400 mt-1.5">
+                                    Total Freight
+                                </span>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-slate-50 dark:bg-slate-800/60">
-                                    <TableRow className="hover:bg-transparent">
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-5">Bilty No.</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Route (From → To)</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right pr-5">Freight Charges</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {data.recentShipments.map((shipment) => (
-                                        <TableRow key={shipment.register_number} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors">
-                                            <TableCell className="pl-5 font-bold text-slate-900 dark:text-white">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-mono font-bold text-blue-700 dark:text-blue-400">{shipment.bility_number}</span>
-                                                    <span className="text-[10px] text-slate-400 font-mono">#{shipment.register_number}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-slate-600 dark:text-slate-300">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="font-medium">{shipment.departureCity.name}</span>
-                                                    <ArrowRight className="w-3 h-3 text-slate-400" />
-                                                    <span className="font-bold text-slate-900 dark:text-white">{shipment.toCity?.name || 'Local Destination'}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right pr-5 font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-                                                {formatCurrency(Number(shipment.total_charges))}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+
+                        {/* Bottom Breakdown with Ring Dots */}
+                        <div className="grid grid-cols-2 gap-3 pt-3 mt-1 border-t border-hairline dark:border-zinc-800">
+                            <div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full border-[2.5px] border-charcoal dark:border-white shrink-0"></span>
+                                    <span className="text-xs font-semibold text-charcoal dark:text-zinc-100 tabular-nums truncate">
+                                        {formatCurrency(metrics.totalBaraKaraya ?? metrics.totalRevenue)}
+                                    </span>
+                                </div>
+                                <div className="pl-4 text-[9px] font-semibold tracking-[0.06em] uppercase text-zinc-400 mt-0.5">
+                                    BARA KARAYA ({baraKarayaPercent.toFixed(0)}%)
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full border-[2.5px] border-lavender shrink-0"></span>
+                                    <span className="text-xs font-semibold text-charcoal dark:text-zinc-100 tabular-nums truncate">
+                                        {formatCurrency(metrics.totalChotaKaraya ?? 0)}
+                                    </span>
+                                </div>
+                                <div className="pl-4 text-[9px] font-semibold tracking-[0.06em] uppercase text-zinc-400 mt-0.5">
+                                    CHOTA KARAYA ({chotaKarayaPercent.toFixed(0)}%)
+                                </div>
+                            </div>
                         </div>
-                    )}
-                </CardContent>
-            </Card>
+                    </div>
+                </div>
+            </section>
+
+            {/* BOTTOM SECTION: 'Recent Bilty Activity Log' Minimalist Table */}
+            <section id="section-log" className="pt-1">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-[17px] font-normal text-charcoal dark:text-white">
+                            Recent Bilty Activity Log
+                        </h2>
+                        <span className="px-2.5 py-0.5 rounded-full bg-cardgray dark:bg-zinc-800 border border-hairline dark:border-zinc-700 text-[10px] font-semibold tracking-[0.05em] uppercase text-zinc-500 dark:text-zinc-400">
+                            {metrics.totalParties} Parties • {metrics.totalVehicles} Carriers
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="text-xs text-rose-600 dark:text-rose-400 hover:underline font-medium"
+                            >
+                                Clear filter
+                            </button>
+                        )}
+                        <button
+                            onClick={() => router.push('/shipments/view')}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold tracking-[0.05em] uppercase text-charcoal dark:text-lavender hover:opacity-75 transition-opacity"
+                        >
+                            <span>Full Log</span>
+                            <ArrowUpRight className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="bg-cardgray dark:bg-zinc-900/70 border border-hairline dark:border-zinc-800 rounded-2xl overflow-hidden shadow-2xs">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-hairline dark:border-zinc-800 text-[10px] font-semibold tracking-[0.07em] uppercase text-zinc-400 bg-white/50 dark:bg-zinc-900/50">
+                                    <th className="py-3.5 px-5">Bilty No. / Reference</th>
+                                    <th className="py-3.5 px-4">Route (From &rarr; To)</th>
+                                    <th className="py-3.5 px-4">Agency</th>
+                                    <th className="py-3.5 px-4">Category</th>
+                                    <th className="py-3.5 px-5 text-right">Freight Charges</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-hairline dark:divide-zinc-800 text-[13px]">
+                                {filteredShipments.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="py-8 text-center text-xs text-zinc-400">
+                                            No bilty records match your search query.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredShipments.map((shipment) => {
+                                        const chota = Number(shipment.total_delivery_charges || 0);
+                                        const bara = Number(shipment.total_charges || 0);
+                                        const categoryLabel = chota > 0 && bara > 0
+                                            ? 'Both'
+                                            : chota > 0
+                                            ? 'Chota Karaya'
+                                            : 'Bara Karaya';
+
+                                        return (
+                                            <tr
+                                                key={shipment.register_number}
+                                                onClick={() => setSelectedShipmentId(shipment.register_number)}
+                                                className="hover:bg-white dark:hover:bg-zinc-800/60 transition-colors cursor-pointer group"
+                                            >
+                                                <td className="py-3.5 px-5 whitespace-nowrap tabular-nums">
+                                                    <span className="font-semibold text-charcoal dark:text-white group-hover:text-blue-600 dark:group-hover:text-lavender transition-colors">
+                                                        {shipment.bility_number}
+                                                    </span>
+                                                    <span className="text-xs text-zinc-400 ml-1.5 font-mono">
+                                                        #{shipment.register_number}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3.5 px-4 whitespace-nowrap text-charcoal dark:text-zinc-200">
+                                                    <span>{shipment.departureCity?.name || 'Local'}</span>
+                                                    <span className="text-zinc-400 mx-1.5">&rarr;</span>
+                                                    <span className="font-medium">{shipment.toCity?.name || 'Destination'}</span>
+                                                </td>
+                                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                                    <span className="px-2.5 py-1 rounded-full bg-white dark:bg-zinc-800 border border-hairline dark:border-zinc-700 text-[11px] font-medium text-zinc-600 dark:text-zinc-300">
+                                                        {shipment.agency || 'Zikria Goods'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                                    <span className={`text-[10px] font-semibold tracking-[0.05em] uppercase ${
+                                                        categoryLabel === 'Bara Karaya'
+                                                            ? 'text-charcoal dark:text-lavender'
+                                                            : 'text-zinc-400'
+                                                    }`}>
+                                                        {categoryLabel}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3.5 px-5 whitespace-nowrap text-right font-medium text-charcoal dark:text-white tabular-nums">
+                                                    {formatCurrency(bara + chota)}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            {/* Bilty Details Dialog on Row Click */}
+            <BiltyDetailDialog
+                shipmentId={selectedShipmentId}
+                open={Boolean(selectedShipmentId)}
+                onOpenChange={(open) => {
+                    if (!open) setSelectedShipmentId(null);
+                }}
+            />
         </div>
     );
 }

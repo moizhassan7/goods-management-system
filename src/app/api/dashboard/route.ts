@@ -73,30 +73,37 @@ export async function GET(request: Request) {
         // --- 2. Top Performing Agencies (Shipment Count) ---
         const topAgencies = await prisma.agency.findMany({
             select: { name: true, _count: { select: { shipments: true } } },
-            // FIXED: Correct syntax for ordering by relation count
             orderBy: { shipments: { _count: 'desc' } },
             take: 5,
         });
 
-        // --- 3. Recent Shipments (for quick view) ---
+        // --- 3. Recent Shipments (for quick view & activity log) ---
         const recentShipments = await prisma.shipment.findMany({
             select: {
                 register_number: true,
                 bility_number: true,
                 total_charges: true,
+                total_delivery_charges: true,
+                bility_date: true,
                 departureCity: { select: { name: true } },
                 toCity: { select: { name: true } },
+                forwardingAgency: { select: { name: true } },
             },
             orderBy: { createdAt: 'desc' },
-            take: 5,
+            take: 10,
         });
         
         // Ensure decimal to number conversion for recent shipments
         const formattedRecentShipments = recentShipments.map(s => ({
-            ...s,
-            total_charges: Number(s.total_charges),
+            register_number: s.register_number,
+            bility_number: s.bility_number,
+            total_charges: Number(s.total_charges || 0),
+            total_delivery_charges: Number(s.total_delivery_charges || 0),
+            bility_date: s.bility_date ? s.bility_date.toISOString().split('T')[0] : '',
+            departureCity: s.departureCity,
+            toCity: s.toCity,
+            agency: s.forwardingAgency?.name || 'Zikria Goods',
         }));
-
 
         // --- 4. Shipment Volume by Date (Aggregated data) ---
         // This calculates daily shipment counts for the last 7 days
@@ -110,15 +117,19 @@ export async function GET(request: Request) {
             _count: {
                 register_number: true,
             },
+            _sum: {
+                total_charges: true,
+                total_delivery_charges: true,
+            },
             orderBy: { bility_date: 'asc' },
         });
 
         const volumeData = rawVolumeData.map(d => ({
-            // Format date as 'Oct 1'
+            // Format date as 'Nov 16'
             date: d.bility_date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
             volume: d._count.register_number,
+            freight: Number(d._sum?.total_charges || 0) + Number(d._sum?.total_delivery_charges || 0),
         }));
-
 
         return NextResponse.json({
             keyMetrics: {
@@ -137,8 +148,8 @@ export async function GET(request: Request) {
                 name: a.name,
                 count: a._count.shipments,
             })),
-            recentShipments: formattedRecentShipments, // Using the formatted list
-            volumeData, // Using the aggregated data
+            recentShipments: formattedRecentShipments,
+            volumeData,
         }, { status: 200 });
 
     } catch (error) {
