@@ -6,11 +6,6 @@ import { prisma } from '@/lib/prisma'; // Assumes shared Prisma client utility
 import { Prisma } from '@prisma/client';
 import { CACHE_KEYS, getOrSetCache, invalidateMasterCache, MASTER_CACHE_HEADERS } from '@/lib/cache'; 
 
-// Type definition for the expected request body
-interface VehicleRequest {
-  vehicleNumber: string;
-}
-
 /**
  * Handles POST requests to create a new Vehicle record.
  * Endpoint: /api/vehicles
@@ -21,14 +16,17 @@ export async function POST(request: Request) {
 
   try {
     // Note: The key is expected to be 'vehicleNumber' as per the client form
-    const { vehicleNumber }: VehicleRequest = await request.json(); 
+    const body = await request.json().catch(() => ({}));
+    const rawVehicleNumber = body?.vehicleNumber ?? body?.name ?? body?.vehicle_number;
     
-    // Clean and validate input
-    const cleanVehicleNumber = vehicleNumber?.trim().toUpperCase(); // Common practice to store vehicle numbers in uppercase
+    // Clean and validate input: supports pure numbers, license plates, alphanumeric strings
+    const cleanVehicleNumber = typeof rawVehicleNumber === 'number'
+      ? String(rawVehicleNumber).trim()
+      : String(rawVehicleNumber || '').trim().toUpperCase();
 
-    if (!cleanVehicleNumber || typeof cleanVehicleNumber !== 'string' || cleanVehicleNumber.length < 2) {
+    if (!cleanVehicleNumber || cleanVehicleNumber.length < 1) {
       return NextResponse.json(
-        { message: 'Vehicle number must be a valid string of at least 2 characters.' },
+        { message: 'Vehicle number must be provided.' },
         { status: 400 }
       );
     }

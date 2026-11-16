@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zikria Transport — Register New Bilty Consignment</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        canvas: '#D8D9DE',
+                        shell: '#FFFFFF',
+                        softcard: '#F6F6F8',
+                        charcoal: '#202022',
+                        darkbg: '#161618',
+                        darkcard: '#242428',
+                        lavender: '#D9CDFF',
+                        lavenderhover: '#C9B8FF',
+                        hairline: '#EAEAEF',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom scrollbar & print styling for Day Roznamcha Sheet */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @keyframes rowHighlight {
+            0% { background-color: rgba(217, 205, 255, 0.65); }
+            100% { background-color: transparent; }
+        }
+        .animate-row-flash {
+            animation: rowHighlight 2.2s ease-out forwards;
+        }
+
+        /* Clean Print Sheet Rules */
+        @media print {
+            body { background: #FFFFFF !important; padding: 0 !important; }
+            #left-sidebar, #top-action-bar, #bilty-registration-form, #toast-container, .no-print {
+                display: none !important;
+            }
+            #app-shell {
+                box-shadow: none !important;
+                border: none !important;
+                max-width: 100% !important;
+            }
+            #roznamcha-section {
+                border: 1px solid #202022 !important;
+                background: #FFFFFF !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-canvas dark:bg-[#0E0E10] text-charcoal dark:text-zinc-100 antialiased selection:bg-lavender selection:text-charcoal min-h-screen p-2 sm:p-4 lg:p-6 flex justify-center transition-colors duration-300">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 pointer-events-none"></div>
+
+    <!-- MAIN APPLICATION SHELL (Matching image_e05f86.png) -->
+    <div id="app-shell" class="w-full max-w-[1520px] bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-800 rounded-[24px] shadow-[0_24px_60px_-15px_rgba(32,32,34,0.10)] flex flex-col lg:flex-row overflow-hidden transition-colors duration-300">
+
+        <!-- 1. LEFT SIDEBAR NAVIGATION (Editorial Minimalist Style from image_e05f86.png) -->
+        <aside id="left-sidebar" class="w-full lg:w-[255px] shrink-0 bg-shell dark:bg-darkbg border-b lg:border-b-0 lg:border-r border-hairline dark:border-zinc-800 flex flex-col justify-between p-5 lg:p-6 transition-colors duration-300">
+            
+            <div>
+                <!-- Brand Header: Geometric Mark + Zikria Transport -->
+                <div class="flex items-center justify-between lg:justify-start gap-3 mb-7">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-charcoal dark:bg-lavender text-white dark:text-charcoal flex items-center justify-center shadow-xs">
+                            <!-- Minimal Geometric Transport Icon -->
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 14.5L12 6.5L17 11.5" />
+                                <path d="M9 17.5H20V11.5H15" />
+                                <circle cx="7" cy="17.5" r="2" />
+                                <circle cx="17" cy="17.5" r="2" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="font-extrabold text-[17px] tracking-tight leading-none text-charcoal dark:text-white">
+                                Zikria Transport
+                            </div>
+                            <div class="text-[11px] font-medium text-zinc-400 mt-1 flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Sargodha Dispatch Hub
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Menu Toggle -->
+                    <button onclick="document.getElementById('mobile-nav-wrap').classList.toggle('hidden')" class="lg:hidden p-2 rounded-xl bg-softcard dark:bg-darkcard text-charcoal dark:text-zinc-200">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- Navigation Menu Items -->
+                <nav id="mobile-nav-wrap" class="hidden lg:flex flex-col space-y-1.5">
+                    <button onclick="navAction('Dashboard')" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13.5px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-charcoal dark:hover:text-white hover:bg-softcard dark:hover:bg-darkcard transition-all">
+                        <i data-lucide="layout-grid" class="w-[18px] h-[18px]"></i>
+                        <span>Dashboard</span>
+                    </button>
+
+                    <!-- ACTIVE STATE: Soft Lavender (#D9CDFF) Pill Background + Bold Charcoal Text -->
+                    <button onclick="navAction('Register New Bilty')" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13.5px] font-bold bg-lavender text-charcoal shadow-2xs transition-all">
+                        <i data-lucide="file-plus-2" class="w-[18px] h-[18px] text-charcoal"></i>
+                        <span>Register New Bilty</span>
+                    </button>
+
+                    <button onclick="navAction('View/Search Bilty')" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13.5px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-charcoal dark:hover:text-white hover:bg-softcard dark:hover:bg-darkcard transition-all">
+                        <i data-lucide="search" class="w-[18px] h-[18px]"></i>
+                        <span>View/Search Bilty</span>
+                    </button>
+
+                    <button onclick="navAction('Bilty Report')" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13.5px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-charcoal dark:hover:text-white hover:bg-softcard dark:hover:bg-darkcard transition-all">
+                        <i data-lucide="bar-chart-2" class="w-[18px] h-[18px]"></i>
+                        <span>Bilty Report</span>
+                    </button>
+
+                    <button onclick="navAction('Master Data')" class="nav-item w-full flex items-center justify-between px-4 py-3 rounded-xl text-[13.5px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-charcoal dark:hover:text-white hover:bg-softcard dark:hover:bg-darkcard transition-all">
+                        <span class="flex items-center gap-3">
+                            <i data-lucide="database" class="w-[18px] h-[18px]"></i>
+                            <span>Master Data</span>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-full bg-lavender text-charcoal font-mono text-[11px] font-bold">
+                            06
+                        </span>
+                    </button>
+
+                    <button onclick="navAction('Settings')" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13.5px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-charcoal dark:hover:text-white hover:bg-softcard dark:hover:bg-darkcard transition-all">
+                        <i data-lucide="settings" class="w-[18px] h-[18px]"></i>
+                        <span>Settings</span>
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Bottom Profile Block & Working Light/Dark Mode Pill Switcher (from image_e05f86.png) -->
+            <div class="hidden lg:flex flex-col items-center pt-6 border-t border-hairline dark:border-zinc-800 mt-6">
+                <!-- User Avatar -->
+                <div class="w-12 h-12 rounded-full bg-lavender/60 border-2 border-lavender flex items-center justify-center font-extrabold text-sm text-charcoal mb-2.5 shadow-2xs">
+                    AD
+                </div>
+                <div class="text-sm font-bold text-charcoal dark:text-white">admin</div>
+                <div class="font-mono text-[10px] font-semibold tracking-wider text-zinc-400 uppercase mt-0.5 mb-5 text-center">
+                    SUPERADMIN · SARGODHA HUB
+                </div>
+
+                <!-- Segmented Sun / Moon Pill Toggle -->
+                <div class="w-full p-1 rounded-full bg-softcard dark:bg-darkcard border border-hairline dark:border-zinc-700 grid grid-cols-2 gap-1">
+                    <button id="btn-light-mode" onclick="setThemeMode('light')" title="Light Mode" class="py-2 rounded-full bg-charcoal text-white flex items-center justify-center transition-all shadow-xs">
+                        <i data-lucide="sun" class="w-4 h-4"></i>
+                    </button>
+                    <button id="btn-dark-mode" onclick="setThemeMode('dark')" title="Dark Mode" class="py-2 rounded-full text-zinc-500 hover:text-charcoal dark:text-zinc-400 dark:hover:text-white flex items-center justify-center transition-all">
+                        <i data-lucide="moon" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 2. MAIN WORKSPACE CANVAS -->
+        <main class="flex-1 flex flex-col min-w-0 p-4 sm:p-6 lg:p-8 space-y-6">
+
+            <!-- TOP EDITORIAL PAGE TITLE & MICRO-TABS HEADER -->
+            <header id="top-action-bar" class="flex flex-col xl:flex-row xl:items-start justify-between gap-5 pb-4 border-b border-hairline dark:border-zinc-800">
+                
+                <!-- Left Editorial Title + Micro-Tab Sub-Navigation -->
+                <div>
+                    <div class="flex items-center gap-2.5 mb-1">
+                        <span class="px-2.5 py-0.5 rounded-full bg-softcard dark:bg-darkcard border border-hairline dark:border-zinc-700 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+                            DISPATCH WORKSTATION
+                        </span>
+                        <span class="text-xs text-zinc-400 hidden sm:inline">• Immediate ledger & roznamcha sync</span>
+                    </div>
+
+                    <h1 class="text-2xl sm:text-[32px] font-bold tracking-tight text-charcoal dark:text-white leading-tight">
+                        Register New Bilty
+                    </h1>
+
+                    <!-- Uppercase Micro-Tab Sub-Navigation (Matching image_e05f86.png) -->
+                    <div class="flex items-center gap-5 sm:gap-7 mt-4 overflow-x-auto no-scrollbar">
+                        <button onclick="switchMicroTab(this, 'CONSIGNMENT ENTRY')" class="micro-tab pb-2 text-[11px] font-bold uppercase tracking-wider text-charcoal dark:text-white border-b-2 border-charcoal dark:border-lavender shrink-0 transition-all">
+                            CONSIGNMENT ENTRY
+                        </button>
+                        <button onclick="switchMicroTab(this, 'QUICK DISPATCH')" class="micro-tab pb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-2 border-transparent shrink-0 transition-all">
+                            QUICK DISPATCH
+                        </button>
+                        <button onclick="switchMicroTab(this, 'BULK IMPORT')" class="micro-tab pb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-2 border-transparent shrink-0 transition-all">
+                            BULK IMPORT
+                        </button>
+                        <button onclick="switchMicroTab(this, 'TEMPLATES')" class="micro-tab pb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-2 border-transparent shrink-0 transition-all">
+                            TEMPLATES
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Controls: Global Search Pill, Entry Date Pill, + Quick Add Lavender Pill, Exit -->
+                <div class="flex flex-wrap items-center gap-2.5 self-start">
+                    <!-- Search Input Pill -->
+                    <div class="relative">
+                        <input id="global-ledger-search" type="text" oninput="filterLedgerRows()" placeholder="Search bilty #, party..." class="pl-4 pr-9 py-2 rounded-full bg-shell dark:bg-darkcard border border-hairline dark:border-zinc-700 text-xs font-medium text-charcoal dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-charcoal dark:focus:border-lavender w-44 sm:w-52 transition-colors">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                    </div>
+
+                    <!-- Entry Date Picker Pill -->
+                    <div class="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-softcard dark:bg-darkcard border border-hairline dark:border-zinc-700 text-xs">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-zinc-500"></i>
+                        <span class="text-zinc-500 dark:text-zinc-400 font-medium hidden sm:inline">Entry Date:</span>
+                        <input id="header-entry-date" type="date" value="2026-11-16" onchange="syncHeaderDate(this.value)" class="bg-transparent font-mono font-semibold text-charcoal dark:text-white focus:outline-none cursor-pointer">
+                    </div>
+
+                    <!-- + Quick Add Soft Lavender Pill Button -->
+                    <button type="button" onclick="quickFillSampleBilty()" class="px-4 py-2 rounded-full bg-lavender hover:bg-lavenderhover active:scale-[0.98] text-charcoal text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs">
+                        <i data-lucide="plus" class="w-3.5 h-3.5 stroke-[2.5]"></i>
+                        <span>Quick Add</span>
+                    </button>
+
+                    <!-- Mobile Theme Switcher + Exit Button -->
+                    <button onclick="toggleThemeQuick()" class="lg:hidden p-2 rounded-full bg-softcard dark:bg-darkcard border border-hairline dark:border-zinc-700 text-charcoal dark:text-white" title="Toggle Theme">
+                        <i data-lucide="contrast" class="w-4 h-4"></i>
+                    </button>
+
+                    <button type="button" onclick="triggerToast('Session safely locked at Sargodha Dispatch Hub.')" class="px-3.5 py-2 rounded-full bg-softcard dark:bg-darkcard hover:bg-zinc-200/70 dark:hover:bg-zinc-700 border border-hairline dark:border-zinc-700 text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5 transition-colors">
+                        <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                        <span>Exit</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- 3. 5-STEP CONSIGNMENT REGISTRATION FORM (All fields from image_e0096b.png) -->
+            <form id="bilty-registration-form" onsubmit="handleBiltySubmit(event)" class="space-y-4">
+
+                <!-- STEP 1: CONSIGNMENT IDENTIFICATION & ORIGIN -->
+                <section class="bg-softcard dark:bg-darkcard rounded-[20px] p-5 sm:p-6 border border-hairline dark:border-zinc-800 transition-colors">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="w-6 h-6 rounded-full bg-charcoal dark:bg-lavender text-white dark:text-charcoal font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                            1
+                        </span>
+                        <h2 class="text-[11px] font-extrabold uppercase tracking-[0.08em] text-charcoal dark:text-zinc-200">
+                            CONSIGNMENT IDENTIFICATION &amp; ORIGIN
+                        </h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Bilty Number * -->
+                        <div>
+                            <label for="input-bilty-no" class="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">
+                                Bilty Number <span class="text-rose-500">*</span>
+                            </label>
+                            <input id="input-bilty-no" type="text" required placeholder="E.G. 10452" class="w-full px-4 py-2.5 rounded-xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 font-mono text-sm font-semibold text-charcoal dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-charcoal dark:focus:border-lavender focus:ring-2 focus:ring-lavender/50 transition-all">
+                        </div>
+
+                        <!-- Bilty Date * -->
+                        <div>
+                            <label for="input-bilty-date" class="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">
+                                Bilty Date <span class="text-rose-500">*</span>
+                            </label>
+                            <input id="input-bilty-date" type="date" required value="2026-11-16" class="w-full px-4 py-2.5 rounded-xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 font-mono text-sm font-semibold text-charcoal dark:text-white focus:outline-none focus:border-charcoal dark:focus:border-lavender focus:ring-2 focus:ring-lavender/50 transition-all">
+                        </div>
+
+                        <!-- Departure City * -->
+                        <div>
+                            <label for="input-departure" class="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">
+                                Departure City <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <select id="input-departure" required class="appearance-none w-full px-4 py-2.5 pr-10 rounded-xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 text-sm font-semibold text-charcoal dark:text-white focus:outline-none focus:border-charcoal dark:focus:border-lavender focus:ring-2 focus:ring-lavender/50 transition-all cursor-pointer">
+                                    <option value="Sargodha">Sargodha</option>
+                                    <option value="Faisalabad">Faisalabad</option>
+                                    <option value="Lahore">Lahore</option>
+                                    <option value="Peshawar">Peshawar</option>
+                                    <option value="Karachi">Karachi</option>
+                                    <option value="Rawalpindi">Rawalpindi</option>
+                                    <option value="Multan">Multan</option>
+                                </select>
+                                <i data-lucide="chevrons-up-down" class="w-4 h-4 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- STEP 2: CARRIER FLEET & FORWARDING PARTNER -->
+                <section class="bg-softcard dark:bg-darkcard rounded-[20px] p-5 sm:p-6 border border-hairline dark:border-zinc-800 transition-colors">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="w-6 h-6 rounded-full bg-charcoal dark:bg-lavender text-white dark:text-charcoal font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                            2
+                        </span>
+                        <h2 class="text-[11px] font-extrabold uppercase tracking-[0.08em] text-charcoal dark:text-zinc-200">
+                            CARRIER FLEET &amp; FORWARDING PARTNER
+                        </h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Forwarding Agency * -->
+                        <div>
+                            <label for="input-agency" class="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">
+                                Forwarding Agency <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <select id="input-agency" required class="appearance-none w-full px-4 py-2.5 pr-10 rounded-xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 text-sm font-medium text-charcoal dark:text-white focus:outline-none focus:border-charcoal dark:focus:border-lavender focus:ring-2 focus:ring-lavender/50 transition-all cursor-pointer">
+                                    <option value="" disabled selected>Select Forwarding Partner Agency</option>
+                                    <option value="New Punjab Karachi Goods">New Punjab Karachi Goods</option>
+                                    <option value="Zikria Goods">Zikria Goods</option>
+                                    <option value="Super Ittefaq Goods">Super Ittefaq Goods</option>
+                                    <option value="Al Saad Goods">Al Saad Goods</option>
+                                    <option value="Pak Goods">Pak Goods</option>
+                                    <option value="3 Star Goods">3 Star Goods</option>
+                                </select>
+                                <i data-lucide="chevrons-up-down" class="w-4 h-4 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+
+                        <!-- Vehicle Number (License Plate) * -->
+                        <div>
+                            <label for="input-vehicle" class="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">
+                                Vehicle Number (License Plate) <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input id="input-vehicle" list="vehicle-plates-list" required placeholder="Select or type Truck License Plate (e.g. LES-4512)" class="w-full px-4 py-2.5 pr-10 rounded-xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 font-mono text-sm font-semibold text-charcoal dark:text-white placeholder:font-sans placeholder:font-normal placeholder:text-zinc-400 focus:outline-none focus:border-charcoal dark:focus:border-lavender focus:ring-2 focus:ring-lavender/50 transition-all">
+                                <datalist id="vehicle-plates-list">
+                                    <option value="LES-4512">
+                                    <option value="SGD-8821">
+                                    <option value="FSD-043">
+                                    <option value="KHI-9012">
+                                    <option value="RWP-3310">
+                                </datalist>
+                                <i data-lucide="truck" class="w-4 h-4 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- STEP 3: CARGO MANIFEST & DESCRIPTION -->
+                <section class="bg-softcard dark:bg-darkcard rounded-[20px] p-5 sm:p-6 border border-hairline dark:border-zinc-800 transition-colors">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="w-6 h-6 rounded-full bg-charcoal dark:bg-lavender text-white dark:text-charcoal font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                            3
+                        </span>
+                        <h2 class="text-[11px] font-extrabold uppercase tracking-[0.08em] text-charcoal dark:text-zinc-200">
+                            CARGO MANIFEST &amp; DESCRIPTION
+                        </h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                        <!-- Quantity (Units/Boxes) * -->
+                        <div class="md:col-span-4">
+                            <label for="input-quantity" class="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">
+                                Quantity (Units/Boxes) <span class="text-rose-500">*</span>
+                            </label>
+                            <input id="input-quantity" type="number" min="1" required value="0" class="w-full px-4 py-2.5 rounded-xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 font-mono text-sm font-bold text-charcoal dark:text-white focus:outline-none focus:border-charcoal dark:focus:border-lavender focus:ring-2 focus:ring-lavender/50 transition-all">
+                        </div>
+
+                        <!-- Item Category / Goods Description * -->
+                        <div class="md:col-span-8">
+                            <label for="input-goods" class="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">
+                                Item Category / Goods Description <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input id="input-goods" list="goods-categories-list" required placeholder="Select Or Enter Goods Category" class="w-full px-4 py-2.5 pr-10 rounded-xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 text-sm font-medium text-charcoal dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-charcoal dark:focus:border-lavender focus:ring-2 focus:ring-lavender/50 transition-all">
+                                <datalist id="goods-categories-list">
+                                    <option value="Cartons / General Goods">
+                                    <option value="Textile & Garments">
+                                    <option value="Electronics & Appliances">
+                                    <option value="Agricultural Produce / Citrus">
+                                    <option value="Hardware & Machinery">
+                                    <option value="Pharmaceuticals">
+                                </datalist>
+                                <i data-lucide="package" class="w-4 h-4 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- STEP 4: PARTIES & DESTINATION -->
+                <section class="bg-softcard dark:bg-darkcard rounded-[20px] p-5 sm:p-6 border border-hairline dark:border-zinc-800 transition-colors">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="w-6 h-6 rounded-full bg-charcoal dark:bg-lavender text-white dark:text-charcoal font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                            4
+                        </span>
+                        <h2 class="text-[11px] font-extrabold uppercase tracking-[0.08em] text-charcoal dark:text-zinc-200">
+                            PARTIES &amp; DESTINATION
+                        </h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Sender Party * -->
+                        <div>
+                            <label for="input-sender" class="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">
+                                Sender Party <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input id="input-sender" list="sender-parties-list" required placeholder="Select Sender Party" class="w-full px-4 py-2.5 pr-9 rounded-xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 text-sm font-medium text-charcoal dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-charcoal dark:focus:border-lavender focus:ring-2 focus:ring-lavender/50 transition-all">
+                                <datalist id="sender-parties-list">
+                                    <option value="Qaiser Traders">
+                                    <option value="Al-Madina Enterprises">
+                                    <option value="Sargodha Citrus Corp">
+                                    <option value="Sitara Textiles">
+                                    <option value="Chenab Distributors">
+                                </datalist>
+                                <i data-lucide="chevrons-up-down" class="w-4 h-4 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+
+                        <!-- Receiver Party * -->
+                        <div>
+                            <label for="input-receiver" class="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">
+                                Receiver Party <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input id="input-receiver" list="receiver-parties-list" required placeholder="Select Receiver Party" class="w-full px-4 py-2.5 pr-9 rounded-xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 text-sm font-medium text-charcoal dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-charcoal dark:focus:border-lavender focus:ring-2 focus:ring-lavender/50 transition-all">
+                                <datalist id="receiver-parties-list">
+                                    <option value="3 Star Goods">
+                                    <option value="Karachi Central Mart">
+                                    <option value="Peshawar Wholesale Hub">
+                                    <option value="Lahore Mega Store">
+                                    <option value="Sillanwali Traders">
+                                </datalist>
+                                <i data-lucide="chevrons-up-down" class="w-4 h-4 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+
+                        <!-- Destination City * -->
+                        <div>
+                            <label for="input-destination" class="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">
+                                Destination City <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <select id="input-destination" required class="appearance-none w-full px-4 py-2.5 pr-10 rounded-xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 text-sm font-medium text-charcoal dark:text-white focus:outline-none focus:border-charcoal dark:focus:border-lavender focus:ring-2 focus:ring-lavender/50 transition-all cursor-pointer">
+                                    <option value="" disabled selected>Select Destination</option>
+                                    <option value="Karachi">Karachi</option>
+                                    <option value="Lahore">Lahore</option>
+                                    <option value="Peshawar">Peshawar</option>
+                                    <option value="Sillanwali">Sillanwali</option>
+                                    <option value="Islamabad">Islamabad</option>
+                                    <option value="Multan">Multan</option>
+                                    <option value="Quetta">Quetta</option>
+                                </select>
+                                <i data-lucide="chevrons-up-down" class="w-4 h-4 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- STEP 5: FREIGHT CHARGES & SETTLEMENT TERMS -->
+                <section class="bg-softcard dark:bg-darkcard rounded-[20px] p-5 sm:p-6 border border-hairline dark:border-zinc-800 transition-colors">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="w-6 h-6 rounded-full bg-charcoal dark:bg-lavender text-white dark:text-charcoal font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                                5
+                            </span>
+                            <h2 class="text-[11px] font-extrabold uppercase tracking-[0.08em] text-charcoal dark:text-zinc-200">
+                                FREIGHT CHARGES &amp; SETTLEMENT TERMS
+                            </h2>
+                        </div>
+
+                        <!-- Live Total Freight Badge -->
+                        <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700">
+                            <span class="text-[11px] font-semibold text-zinc-500">Total Tariff:</span>
+                            <span id="live-total-tariff" class="font-mono text-xs font-bold text-charcoal dark:text-lavender">Rs. 0.00</span>
+                            <span id="foc-active-badge" class="hidden px-2 py-0.5 rounded-full bg-lavender text-charcoal font-mono text-[10px] font-extrabold">FOC</span>
+                        </div>
+                    </div>
+
+                    <!-- Freight Inputs Row -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <!-- Chota Karaya (Rs.) -->
+                        <div>
+                            <label for="input-chota-karaya" class="flex items-baseline gap-1.5 text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">
+                                <span>Chota Karaya (Rs.)</span>
+                                <span class="text-[11px] font-medium text-zinc-400">(Delivery Surcharge)</span>
+                            </label>
+                            <input id="input-chota-karaya" type="number" min="0" step="10" value="0" oninput="updateLiveTariff()" class="w-full px-4 py-2.5 rounded-xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 font-mono text-sm font-bold text-charcoal dark:text-white focus:outline-none focus:border-charcoal dark:focus:border-lavender focus:ring-2 focus:ring-lavender/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        </div>
+
+                        <!-- Bara Karaya (Rs.) (Highlighted subtle border) -->
+                        <div>
+                            <label for="input-bara-karaya" class="flex items-baseline gap-1.5 text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">
+                                <span>Bara Karaya (Rs.)</span>
+                                <span class="text-[11px] font-medium text-zinc-400">(Primary Freight)</span>
+                            </label>
+                            <input id="input-bara-karaya" type="number" min="0" step="10" value="0" oninput="updateLiveTariff()" class="w-full px-4 py-2.5 rounded-xl bg-shell dark:bg-darkbg border-2 border-lavender dark:border-lavender/70 font-mono text-sm font-bold text-charcoal dark:text-white focus:outline-none focus:border-charcoal dark:focus:border-lavender focus:ring-2 focus:ring-lavender/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        </div>
+                    </div>
+
+                    <!-- Two Interactive Toggle Cards: Already Paid & Free of Cost (FOC) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Card A: Already Paid -->
+                        <div id="card-already-paid" onclick="toggleAlreadyPaid()" role="switch" aria-checked="false" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAlreadyPaid();}" class="cursor-pointer select-none p-4 rounded-2xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 hover:border-charcoal/40 dark:hover:border-lavender/50 flex items-center justify-between transition-all">
+                            <div class="flex items-center gap-3">
+                                <div id="icon-already-paid" class="w-8 h-8 rounded-full bg-softcard dark:bg-darkcard text-zinc-400 flex items-center justify-center transition-colors">
+                                    <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-bold text-charcoal dark:text-white">Already Paid</div>
+                                    <div class="text-[11px] text-zinc-400">Settled directly by sender</div>
+                                </div>
+                            </div>
+                            <span id="pill-already-paid" class="px-3 py-1 rounded-full bg-softcard dark:bg-darkcard text-zinc-500 font-mono text-[11px] font-bold transition-colors">
+                                OFF
+                            </span>
+                        </div>
+
+                        <!-- Card B: Free of Cost (FOC) -->
+                        <div id="card-foc" onclick="toggleFOC()" role="switch" aria-checked="false" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleFOC();}" class="cursor-pointer select-none p-4 rounded-2xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 hover:border-charcoal/40 dark:hover:border-lavender/50 flex items-center justify-between transition-all">
+                            <div class="flex items-center gap-3">
+                                <div id="icon-foc" class="w-8 h-8 rounded-full bg-softcard dark:bg-darkcard text-zinc-400 flex items-center justify-center transition-colors">
+                                    <i data-lucide="package-check" class="w-4 h-4"></i>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-bold text-charcoal dark:text-white">Free of Cost (FOC)</div>
+                                    <div class="text-[11px] text-zinc-400">Zero tariff consignment</div>
+                                </div>
+                            </div>
+                            <span id="pill-foc" class="px-3 py-1 rounded-full bg-softcard dark:bg-darkcard text-zinc-500 font-mono text-[11px] font-bold transition-colors">
+                                OFF
+                            </span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PRIMARY SUBMIT CTA ROW -->
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+                    <button type="submit" class="flex-1 py-4 px-6 rounded-2xl bg-charcoal hover:bg-zinc-800 dark:bg-lavender dark:hover:bg-lavenderhover active:scale-[0.995] text-white dark:text-charcoal font-bold text-xs sm:text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-charcoal/15">
+                        <span class="w-5 h-5 rounded-full bg-lavender dark:bg-charcoal text-charcoal dark:text-lavender flex items-center justify-center">
+                            <i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>
+                        </span>
+                        <span>SAVE &amp; REGISTER CONSIGNMENT BILTY</span>
+                    </button>
+
+                    <button type="button" onclick="resetBiltyForm(true)" class="py-4 px-5 rounded-2xl bg-softcard dark:bg-darkcard hover:bg-zinc-200/70 dark:hover:bg-zinc-700 border border-hairline dark:border-zinc-700 text-xs font-bold text-zinc-600 dark:text-zinc-300 transition-colors flex items-center justify-center gap-2 shrink-0">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                        <span>Reset Form</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- 4. DAY ROZNAMCHA LEDGER (Bottom Section from image_e0096b.png) -->
+            <section id="roznamcha-section" class="bg-softcard dark:bg-darkcard rounded-[24px] border border-hairline dark:border-zinc-800 p-5 sm:p-6 transition-colors">
+                
+                <!-- Ledger Header -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-hairline dark:border-zinc-800">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 flex items-center justify-center text-charcoal dark:text-lavender">
+                            <i data-lucide="book-open-check" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2.5">
+                                <h2 class="text-base sm:text-lg font-extrabold text-charcoal dark:text-white tracking-tight">
+                                    Day Roznamcha Ledger (<span id="roznamcha-title-date" class="font-mono">2026-11-16</span>)
+                                </h2>
+                                <span id="roznamcha-count-badge" class="px-2.5 py-0.5 rounded-full bg-lavender text-charcoal font-mono text-[11px] font-bold">
+                                    1 consignment recorded on this date
+                                </span>
+                            </div>
+                            <p class="text-xs text-zinc-400 mt-0.5">Daily dispatch sheet &amp; verified karaya register</p>
+                        </div>
+                    </div>
+
+                    <!-- Date Filter Input & Print Day Sheet Button -->
+                    <div class="flex flex-wrap items-center gap-2.5 no-print">
+                        <div class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700">
+                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-zinc-400"></i>
+                            <input id="roznamcha-date-filter" type="date" value="2026-11-16" onchange="updateRoznamchaDate(this.value)" class="bg-transparent font-mono text-xs font-bold text-charcoal dark:text-white focus:outline-none cursor-pointer">
+                        </div>
+
+                        <button type="button" onclick="printDaySheet()" class="px-4 py-2 rounded-xl bg-shell dark:bg-darkbg hover:bg-charcoal hover:text-white dark:hover:bg-lavender dark:hover:text-charcoal border border-hairline dark:border-zinc-700 text-xs font-bold text-charcoal dark:text-white transition-all flex items-center gap-2 shadow-2xs">
+                            <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                            <span>Print Day Sheet</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ledger Table -->
+                <div class="overflow-x-auto mt-2">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-hairline dark:border-zinc-800 text-[10.5px] font-extrabold uppercase tracking-wider text-zinc-400">
+                                <th class="py-3.5 pr-4">BILTY #</th>
+                                <th class="py-3.5 px-3">BILTY DATE</th>
+                                <th class="py-3.5 px-3">DEPARTURE</th>
+                                <th class="py-3.5 px-3">DESTINATION</th>
+                                <th class="py-3.5 px-3">VEHICLE</th>
+                                <th class="py-3.5 px-3">SENDER</th>
+                                <th class="py-3.5 px-3">RECEIVER</th>
+                                <th class="py-3.5 px-3 text-right">CHOTA KARAYA</th>
+                                <th class="py-3.5 px-3 text-right">BARA KARAYA</th>
+                                <th class="py-3.5 pl-3 text-center no-print">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roznamcha-tbody" class="divide-y divide-hairline dark:divide-zinc-800 text-xs">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Footer Pagination Bar -->
+                <div class="mt-5 pt-4 border-t border-hairline dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-zinc-500 dark:text-zinc-400 no-print">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span id="pagination-summary">Showing <strong class="text-charcoal dark:text-white">1</strong> to <strong class="text-charcoal dark:text-white">1</strong> of <strong class="text-charcoal dark:text-white">1</strong> entries</span>
+                        <div class="flex items-center gap-1.5">
+                            <span>Per page:</span>
+                            <select id="per-page-select" onchange="renderRoznamchaTable()" class="px-2.5 py-1 rounded-lg bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 font-mono text-xs font-bold text-charcoal dark:text-white focus:outline-none">
+                                <option value="25" selected>25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Pagination Controls -->
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" onclick="triggerToast('Already on first page')" class="px-3 py-1.5 rounded-full bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 text-xs font-semibold text-zinc-500 hover:text-charcoal dark:hover:text-white transition-colors">
+                            &laquo; Previous
+                        </button>
+                        <span class="w-8 h-8 rounded-full bg-charcoal dark:bg-lavender text-white dark:text-charcoal font-mono text-xs font-bold flex items-center justify-center">
+                            1
+                        </span>
+                        <button type="button" onclick="triggerToast('All entries shown on Page 1')" class="px-3 py-1.5 rounded-full bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 text-xs font-semibold text-zinc-500 hover:text-charcoal dark:hover:text-white transition-colors">
+                            Next &raquo;
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- JAVASCRIPT APPLICATION STATE & INTERACTIVITY -->
+    <script>
+        lucide.createIcons();
+
+        // Application State
+        const appState = {
+            alreadyPaid: false,
+            isFOC: false,
+            savedChotaBeforeFOC: 0,
+            savedBaraBeforeFOC: 0,
+            sequenceCounter: 2,
+            ledgerEntries: [
+                {
+                    id: 'row-1050',
+                    biltyNo: '1050',
+                    serialNo: '#202611-0001',
+                    dateRaw: '2026-11-16',
+                    dateDisplay: 'Nov 16, 2026',
+                    departure: 'Faisalabad',
+                    destination: 'ABC / Sargodha',
+                    vehicle: '043',
+                    sender: 'Qaiser',
+                    receiver: '3 Star Goods',
+                    agency: 'Zikria Goods',
+                    quantity: 12,
+                    goods: 'Cartons / General Goods',
+                    chotaKaraya: 5000,
+                    baraKaraya: 10000,
+                    alreadyPaid: false,
+                    isFOC: false,
+                    isNew: false
+                }
+            ]
+        };
+
+        // 1. Light / Dark Mode Switcher (Matching image_e05f86.png)
+        function setThemeMode(mode) {
+            const htmlEl = document.documentElement;
+            const btnLight = document.getElementById('btn-light-mode');
+            const btnDark = document.getElementById('btn-dark-mode');
+
+            if (mode === 'dark') {
+                htmlEl.classList.add('dark');
+                btnDark.className = 'py-2 rounded-full bg-lavender text-charcoal flex items-center justify-center transition-all shadow-xs';
+                btnLight.className = 'py-2 rounded-full text-zinc-400 hover:text-white flex items-center justify-center transition-all';
+            } else {
+                htmlEl.classList.remove('dark');
+                btnLight.className = 'py-2 rounded-full bg-charcoal text-white flex items-center justify-center transition-all shadow-xs';
+                btnDark.className = 'py-2 rounded-full text-zinc-500 hover:text-charcoal flex items-center justify-center transition-all';
+            }
+        }
+
+        function toggleThemeQuick() {
+            const isDark = document.documentElement.classList.contains('dark');
+            setThemeMode(isDark ? 'light' : 'dark');
+        }
+
+        // 2. Navigation & Micro-Tabs
+        function navAction(label) {
+            triggerToast(`Section: ${label} • Sargodha Dispatch Hub`);
+        }
+
+        function switchMicroTab(btn, name) {
+            document.querySelectorAll('.micro-tab').forEach(tab => {
+                tab.className = 'micro-tab pb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-2 border-transparent shrink-0 transition-all';
+            });
+            btn.className = 'micro-tab pb-2 text-[11px] font-bold uppercase tracking-wider text-charcoal dark:text-white border-b-2 border-charcoal dark:border-lavender shrink-0 transition-all';
+
+            if (name === 'QUICK DISPATCH') {
+                quickFillSampleBilty();
+            } else {
+                triggerToast(`Mode switched to ${name}`);
+            }
+        }
+
+        // 3. + Quick Add Sample Consignment Data (1-Click Testing)
+        function quickFillSampleBilty() {
+            const samplePool = [
+                { no: '10452', dep: 'Sargodha', agency: 'New Punjab Karachi Goods', veh: 'SGD-8821', qty: 24, goods: 'Agricultural Produce / Citrus', sender: 'Sargodha Citrus Corp', receiver: 'Karachi Central Mart', dest: 'Karachi', chota: 2500, bara: 18500 },
+                { no: '10453', dep: 'Lahore', agency: 'Super Ittefaq Goods', veh: 'LES-4512', qty: 15, goods: 'Textile & Garments', sender: 'Sitara Textiles', receiver: 'Peshawar Wholesale Hub', dest: 'Peshawar', chota: 1800, bara: 14200 },
+                { no: '10454', dep: 'Faisalabad', agency: 'Al Saad Goods', veh: 'FSD-043', qty: 40, goods: 'Cartons / General Goods', sender: 'Chenab Distributors', receiver: 'Sillanwali Traders', dest: 'Sillanwali', chota: 1200, bara: 9500 }
+            ];
+
+            const pick = samplePool[(appState.sequenceCounter - 2) % samplePool.length];
+            const nextBiltyNumber = String(parseInt(pick.no, 10) + appState.ledgerEntries.length - 1);
+
+            if (appState.isFOC) toggleFOC(); // Turn off FOC if active
+
+            document.getElementById('input-bilty-no').value = nextBiltyNumber;
+            document.getElementById('input-departure').value = pick.dep;
+            document.getElementById('input-agency').value = pick.agency;
+            document.getElementById('input-vehicle').value = pick.veh;
+            document.getElementById('input-quantity').value = pick.qty;
+            document.getElementById('input-goods').value = pick.goods;
+            document.getElementById('input-sender').value = pick.sender;
+            document.getElementById('input-receiver').value = pick.receiver;
+            document.getElementById('input-destination').value = pick.dest;
+            document.getElementById('input-chota-karaya').value = pick.chota;
+            document.getElementById('input-bara-karaya').value = pick.bara;
+
+            updateLiveTariff();
+            triggerToast(`Sample Bilty #${nextBiltyNumber} pre-filled! Click "Save & Register" to log.`);
+        }
+
+        // 4. Step 5 Interactive Toggle Cards: Already Paid & FOC
+        function toggleAlreadyPaid() {
+            appState.alreadyPaid = !appState.alreadyPaid;
+            const card = document.getElementById('card-already-paid');
+            const icon = document.getElementById('icon-already-paid');
+            const pill = document.getElementById('pill-already-paid');
+
+            card.setAttribute('aria-checked', String(appState.alreadyPaid));
+
+            if (appState.alreadyPaid) {
+                card.classList.add('border-charcoal', 'dark:border-lavender', 'bg-lavender/20');
+                icon.className = 'w-8 h-8 rounded-full bg-lavender text-charcoal flex items-center justify-center transition-colors';
+                pill.className = 'px-3 py-1 rounded-full bg-charcoal dark:bg-lavender text-white dark:text-charcoal font-mono text-[11px] font-bold transition-colors';
+                pill.textContent = 'ON';
+            } else {
+                card.classList.remove('border-charcoal', 'dark:border-lavender', 'bg-lavender/20');
+                icon.className = 'w-8 h-8 rounded-full bg-softcard dark:bg-darkcard text-zinc-400 flex items-center justify-center transition-colors';
+                pill.className = 'px-3 py-1 rounded-full bg-softcard dark:bg-darkcard text-zinc-500 font-mono text-[11px] font-bold transition-colors';
+                pill.textContent = 'OFF';
+            }
+        }
+
+        function toggleFOC() {
+            appState.isFOC = !appState.isFOC;
+            const card = document.getElementById('card-foc');
+            const icon = document.getElementById('icon-foc');
+            const pill = document.getElementById('pill-foc');
+            const chotaInput = document.getElementById('input-chota-karaya');
+            const baraInput = document.getElementById('input-bara-karaya');
+            const focBadge = document.getElementById('foc-active-badge');
+
+            card.setAttribute('aria-checked', String(appState.isFOC));
+
+            if (appState.isFOC) {
+                // Save current values & zero out
+                appState.savedChotaBeforeFOC = parseFloat(chotaInput.value) || 0;
+                appState.savedBaraBeforeFOC = parseFloat(baraInput.value) || 0;
+
+                chotaInput.value = 0;
+                baraInput.value = 0;
+                chotaInput.disabled = true;
+                baraInput.disabled = true;
+                focBadge.classList.remove('hidden');
+
+                card.classList.add('border-charcoal', 'dark:border-lavender', 'bg-lavender/25');
+                icon.className = 'w-8 h-8 rounded-full bg-lavender text-charcoal flex items-center justify-center transition-colors';
+                pill.className = 'px-3 py-1 rounded-full bg-charcoal dark:bg-lavender text-white dark:text-charcoal font-mono text-[11px] font-bold transition-colors';
+                pill.textContent = 'ON';
+                triggerToast('Free of Cost (FOC) enabled — freight tariffs set to Rs. 0.00');
+            } else {
+                chotaInput.disabled = false;
+                baraInput.disabled = false;
+                chotaInput.value = appState.savedChotaBeforeFOC;
+                baraInput.value = appState.savedBaraBeforeFOC;
+                focBadge.classList.add('hidden');
+
+                card.classList.remove('border-charcoal', 'dark:border-lavender', 'bg-lavender/25');
+                icon.className = 'w-8 h-8 rounded-full bg-softcard dark:bg-darkcard text-zinc-400 flex items-center justify-center transition-colors';
+                pill.className = 'px-3 py-1 rounded-full bg-softcard dark:bg-darkcard text-zinc-500 font-mono text-[11px] font-bold transition-colors';
+                pill.textContent = 'OFF';
+            }
+
+            updateLiveTariff();
+        }
+
+        function updateLiveTariff() {
+            const chota = parseFloat(document.getElementById('input-chota-karaya').value) || 0;
+            const bara = parseFloat(document.getElementById('input-bara-karaya').value) || 0;
+            const total = chota + bara;
+            document.getElementById('live-total-tariff').textContent = 'Rs. ' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // 5. Submit Form & Append to Day Roznamcha Ledger
+        function handleBiltySubmit(e) {
+            e.preventDefault();
+
+            const biltyNo = document.getElementById('input-bilty-no').value.trim();
+            const dateRaw = document.getElementById('input-bilty-date').value;
+            const departure = document.getElementById('input-departure').value;
+            const agency = document.getElementById('input-agency').value;
+            const vehicle = document.getElementById('input-vehicle').value.trim();
+            const quantity = parseInt(document.getElementById('input-quantity').value, 10) || 0;
+            const goods = document.getElementById('input-goods').value.trim();
+            const sender = document.getElementById('input-sender').value.trim();
+            const receiver = document.getElementById('input-receiver').value.trim();
+            const destination = document.getElementById('input-destination').value;
+            const chotaKaraya = appState.isFOC ? 0 : (parseFloat(document.getElementById('input-chota-karaya').value) || 0);
+            const baraKaraya = appState.isFOC ? 0 : (parseFloat(document.getElementById('input-bara-karaya').value) || 0);
+
+            if (!biltyNo || !agency || !vehicle || quantity < 1 || !goods || !sender || !receiver || !destination) {
+                triggerToast('Please fill all required (*) consignment fields before saving.');
+                return;
+            }
+
+            const paddedSeq = String(appState.sequenceCounter).padStart(4, '0');
+            const serialNo = `#202611-${paddedSeq}`;
+            appState.sequenceCounter += 1;
+
+            const newEntry = {
+                id: 'row-' + Date.now(),
+                biltyNo,
+                serialNo,
+                dateRaw,
+                dateDisplay: formatHumanDate(dateRaw),
+                departure,
+                destination,
+                vehicle,
+                sender,
+                receiver,
+                agency,
+                quantity,
+                goods,
+                chotaKaraya,
+                baraKaraya,
+                alreadyPaid: appState.alreadyPaid,
+                isFOC: appState.isFOC,
+                isNew: true
+            };
+
+            appState.ledgerEntries.unshift(newEntry);
+
+            // Sync Roznamcha filter date if needed so user sees the newly added row immediately
+            document.getElementById('roznamcha-date-filter').value = dateRaw;
+            document.getElementById('roznamcha-title-date').textContent = dateRaw;
+
+            renderRoznamchaTable();
+            resetBiltyForm(false);
+
+            triggerToast(`Bilty #${biltyNo} (${departure} → ${destination}) registered in Day Roznamcha!`);
+            document.getElementById('roznamcha-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function resetBiltyForm(showNotify = false) {
+            document.getElementById('bilty-registration-form').reset();
+            const currentHeaderDate = document.getElementById('header-entry-date').value || '2026-11-16';
+            document.getElementById('input-bilty-date').value = currentHeaderDate;
+            document.getElementById('input-quantity').value = 0;
+            document.getElementById('input-chota-karaya').value = 0;
+            document.getElementById('input-bara-karaya').value = 0;
+
+            if (appState.alreadyPaid) toggleAlreadyPaid();
+            if (appState.isFOC) toggleFOC();
+            updateLiveTariff();
+
+            if (showNotify) triggerToast('Form cleared for new consignment entry.');
+        }
+
+        // 6. Render Day Roznamcha Ledger Table
+        function renderRoznamchaTable() {
+            const tbody = document.getElementById('roznamcha-tbody');
+            const filterDate = document.getElementById('roznamcha-date-filter').value;
+            const searchQuery = (document.getElementById('global-ledger-search').value || '').toLowerCase().trim();
+
+            const filtered = appState.ledgerEntries.filter(item => {
+                const matchesDate = !filterDate || item.dateRaw === filterDate;
+                const matchesSearch = !searchQuery ||
+                    item.biltyNo.toLowerCase().includes(searchQuery) ||
+                    item.serialNo.toLowerCase().includes(searchQuery) ||
+                    item.departure.toLowerCase().includes(searchQuery) ||
+                    item.destination.toLowerCase().includes(searchQuery) ||
+                    item.vehicle.toLowerCase().includes(searchQuery) ||
+                    item.sender.toLowerCase().includes(searchQuery) ||
+                    item.receiver.toLowerCase().includes(searchQuery);
+                return matchesDate && matchesSearch;
+            });
+
+            // Update count badge & pagination summary
+            const countText = filtered.length === 1
+                ? '1 consignment recorded on this date'
+                : `${filtered.length} consignments recorded on this date`;
+            document.getElementById('roznamcha-count-badge').textContent = countText;
+
+            const startIdx = filtered.length === 0 ? 0 : 1;
+            document.getElementById('pagination-summary').innerHTML =
+                `Showing <strong class="text-charcoal dark:text-white">${startIdx}</strong> to <strong class="text-charcoal dark:text-white">${filtered.length}</strong> of <strong class="text-charcoal dark:text-white">${filtered.length}</strong> entries`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="py-10 text-center text-xs text-zinc-400">
+                            No consignments recorded for <span class="font-mono font-bold text-charcoal dark:text-white">${filterDate || 'selected filter'}</span>. Use the form above or click <strong>+ Quick Add</strong> to register a bilty.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(row => {
+                const chotaFmt = 'Rs. ' + row.chotaKaraya.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const baraFmt = 'Rs. ' + row.baraKaraya.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                let statusBadge = '';
+                if (row.isFOC) {
+                    statusBadge = `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-lavender text-charcoal font-mono text-[9px] font-extrabold">FOC</span>`;
+                } else if (row.alreadyPaid) {
+                    statusBadge = `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[9px] font-bold">PAID</span>`;
+                }
+
+                const rowClass = row.isNew ? 'animate-row-flash' : '';
+                if (row.isNew) row.isNew = false;
+
+                return `
+                    <tr class="${rowClass} hover:bg-shell/80 dark:hover:bg-darkbg/60 transition-colors">
+                        <td class="py-3.5 pr-4 whitespace-nowrap">
+                            <div class="inline-flex items-center px-2.5 py-1 rounded-lg bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 font-mono font-bold text-charcoal dark:text-white text-xs">
+                                ${row.biltyNo}
+                            </div>
+                            <div class="font-mono text-[10px] text-zinc-400 mt-1">${row.serialNo}${statusBadge}</div>
+                        </td>
+                        <td class="py-3.5 px-3 whitespace-nowrap font-mono text-zinc-600 dark:text-zinc-300">
+                            ${row.dateDisplay}
+                        </td>
+                        <td class="py-3.5 px-3 whitespace-nowrap font-semibold text-charcoal dark:text-white">
+                            ${row.departure}
+                        </td>
+                        <td class="py-3.5 px-3 whitespace-nowrap font-bold text-charcoal dark:text-lavender">
+                            ${row.destination}
+                        </td>
+                        <td class="py-3.5 px-3 whitespace-nowrap">
+                            <span class="px-2 py-0.5 rounded-md bg-shell dark:bg-darkbg border border-hairline dark:border-zinc-700 font-mono font-bold text-[11px] text-charcoal dark:text-zinc-200">
+                                ${row.vehicle}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-3 whitespace-nowrap text-zinc-600 dark:text-zinc-300 font-medium">
+                            ${row.sender}
+                        </td>
+                        <td class="py-3.5 px-3 whitespace-nowrap font-bold text-charcoal dark:text-white">
+                            ${row.receiver}
+                        </td>
+                        <td class="py-3.5 px-3 whitespace-nowrap text-right font-mono font-medium text-zinc-600 dark:text-zinc-300">
+                            ${chotaFmt}
+                        </td>
+                        <td class="py-3.5 px-3 whitespace-nowrap text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                            ${baraFmt}
+                        </td>
+                        <td class="py-3.5 pl-3 whitespace-nowrap text-center no-print">
+                            <div class="inline-flex items-center gap-1">
+                                <button type="button" onclick="inspectBiltyRow('${row.id}')" title="View Consignment Slip" class="p-1.5 rounded-lg hover:bg-lavender/60 text-zinc-500 hover:text-charcoal dark:hover:text-white transition-colors">
+                                    <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                </button>
+                                <button type="button" onclick="deleteBiltyRow('${row.id}')" title="Remove Entry" class="p-1.5 rounded-lg hover:bg-rose-100 text-zinc-400 hover:text-rose-600 transition-colors">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        function filterLedgerRows() {
+            renderRoznamchaTable();
+        }
+
+        function syncHeaderDate(newDate) {
+            if (!newDate) return;
+            document.getElementById('input-bilty-date').value = newDate;
+            document.getElementById('roznamcha-date-filter').value = newDate;
+            document.getElementById('roznamcha-title-date').textContent = newDate;
+            renderRoznamchaTable();
+        }
+
+        function updateRoznamchaDate(newDate) {
+            document.getElementById('roznamcha-title-date').textContent = newDate || 'All Dates';
+            renderRoznamchaTable();
+        }
+
+        function inspectBiltyRow(rowId) {
+            const item = appState.ledgerEntries.find(r => r.id === rowId);
+            if (!item) return;
+            triggerToast(`Bilty #${item.biltyNo} (${item.serialNo}): ${item.quantity}x ${item.goods} · ${item.departure} → ${item.destination} via ${item.agency}`);
+        }
+
+        function deleteBiltyRow(rowId) {
+            const idx = appState.ledgerEntries.findIndex(r => r.id === rowId);
+            if (idx === -1) return;
+            const removed = appState.ledgerEntries.splice(idx, 1)[0];
+            renderRoznamchaTable();
+            triggerToast(`Removed Bilty #${removed.biltyNo} from Day Roznamcha.`);
+        }
+
+        function printDaySheet() {
+            triggerToast('Preparing Day Roznamcha Sheet for printing...');
+            setTimeout(() => window.print(), 350);
+        }
+
+        function formatHumanDate(isoStr) {
+            if (!isoStr) return '';
+            const parts = isoStr.split('-');
+            if (parts.length !== 3) return isoStr;
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const mIdx = Math.max(0, Math.min(11, parseInt(parts[1], 10) - 1));
+            return `${months[mIdx]} ${parseInt(parts[2], 10)}, ${parts[0]}`;
+        }
+
+        // Non-blocking Toast Message Box
+        function triggerToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-full bg-charcoal dark:bg-lavender text-white dark:text-charcoal text-xs font-semibold shadow-xl border border-zinc-700 dark:border-lavender transition-all duration-300 translate-y-2 opacity-0';
+            toast.innerHTML = `
+                <span class="w-2 h-2 rounded-full bg-lavender dark:bg-charcoal shrink-0"></span>
+                <span>${message}</span>
+            `;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.remove('translate-y-2', 'opacity-0'));
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        // Initialize on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderRoznamchaTable();
+            updateLiveTariff();
+        });
+    </script>
+</body>
+</html>

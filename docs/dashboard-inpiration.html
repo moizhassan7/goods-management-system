@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zikria Goods Transport Company — Operations Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        backdrop: '#D8D9DE',
+                        surface: '#FFFFFF',
+                        cardgray: '#F6F6F8',
+                        charcoal: '#202022',
+                        lavender: '#D9CDFF',
+                        lavenderhover: '#C9B8FF',
+                        hairline: '#EFEFF2',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-feature-settings: "tnum" on, "lnum" on;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Smooth SVG stroke transition */
+        circle.donut-segment {
+            transition: stroke-dasharray 0.6s cubic-bezier(0.22, 1, 0.36, 1), stroke-dashoffset 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+    </style>
+</head>
+<body class="bg-backdrop dark:bg-[#111113] text-charcoal dark:text-zinc-100 antialiased min-h-screen p-2 sm:p-4 lg:p-6 flex items-stretch justify-center transition-colors duration-300 selection:bg-lavender selection:text-charcoal">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- MAIN WHITE APPLICATION SHELL (Inspired by image_e05f86.png) -->
+    <div class="w-full max-w-[1440px] bg-surface dark:bg-[#18181B] border border-[#ECECEF] dark:border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.06)] flex flex-col lg:flex-row overflow-hidden transition-colors duration-300">
+
+        <!-- 1. LEFT SIDEBAR (230px width, right border #EFEFF2) -->
+        <aside class="w-full lg:w-[235px] shrink-0 bg-surface dark:bg-[#18181B] border-b lg:border-b-0 lg:border-r border-hairline dark:border-zinc-800 flex flex-col justify-between p-5 lg:py-7 lg:px-5 transition-colors duration-300">
+            
+            <div>
+                <!-- Brand Logo Header (Geometric Cube/Truck Mark + 'Zikria Goods' bold wordmark) -->
+                <div class="flex items-center justify-between lg:justify-start gap-3 px-2 mb-6 lg:mb-9">
+                    <div class="flex items-center gap-2.5">
+                        <!-- Minimalist Geometric Isometric Cube/Truck Mark -->
+                        <div class="w-8 h-8 flex items-center justify-center text-charcoal dark:text-white shrink-0">
+                            <svg viewBox="0 0 32 32" class="w-7 h-7 fill-current" aria-hidden="true">
+                                <path d="M16 3L4 9.8v12.4L16 29l12-6.8V9.8L16 3zm0 3.2l8.5 4.8L16 15.8 7.5 11 16 6.2zm-9 7.4l7.5 4.2v7.6L7 21.2v-7.6zm10.5 11.8v-7.6l7.5-4.2v7.6l-7.5 4.2z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="text-[19px] font-bold tracking-tight leading-none text-charcoal dark:text-white">
+                                Zikria Goods
+                            </div>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                <span class="text-[9px] font-semibold tracking-[0.08em] uppercase text-zinc-400">
+                                    SARGODHA • ONLINE
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Quick Register Button -->
+                    <button onclick="openRegisterDrawer()" class="lg:hidden px-3 py-1.5 rounded-full bg-lavender text-charcoal text-xs font-semibold">
+                        + Bilty
+                    </button>
+                </div>
+
+                <!-- Navigation Menu List -->
+                <nav class="flex lg:flex-col gap-1 overflow-x-auto no-scrollbar pb-1 lg:pb-0" id="sidebar-nav">
+                    <button onclick="handleSidebarNav(this, 'Dashboard')" class="nav-item active-nav flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-lavender text-charcoal text-[13px] font-medium transition-all shrink-0">
+                        <span class="flex items-center gap-3">
+                            <i data-lucide="layout-grid" class="w-4 h-4 stroke-[1.8]"></i>
+                            <span>Dashboard</span>
+                        </span>
+                    </button>
+
+                    <button onclick="openRegisterDrawer()" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-cardgray dark:hover:bg-zinc-800/70 hover:text-charcoal dark:hover:text-white text-[13px] font-medium transition-all shrink-0">
+                        <span class="flex items-center gap-3">
+                            <i data-lucide="file-plus-2" class="w-4 h-4 stroke-[1.8]"></i>
+                            <span>Register Bilty</span>
+                        </span>
+                    </button>
+
+                    <button onclick="handleSidebarNav(this, 'Bilty Directory')" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-cardgray dark:hover:bg-zinc-800/70 hover:text-charcoal dark:hover:text-white text-[13px] font-medium transition-all shrink-0">
+                        <span class="flex items-center gap-3">
+                            <i data-lucide="folder-search" class="w-4 h-4 stroke-[1.8]"></i>
+                            <span>Bilty Directory</span>
+                        </span>
+                    </button>
+
+                    <button onclick="handleSidebarNav(this, 'Bilty Report')" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-cardgray dark:hover:bg-zinc-800/70 hover:text-charcoal dark:hover:text-white text-[13px] font-medium transition-all shrink-0 gap-2">
+                        <span class="flex items-center gap-3">
+                            <i data-lucide="bar-chart-2" class="w-4 h-4 stroke-[1.8]"></i>
+                            <span>Bilty Report</span>
+                        </span>
+                        <span id="nav-report-badge" class="px-2 py-0.5 rounded-full bg-lavender text-charcoal text-[10px] font-bold tabular-nums">
+                            500
+                        </span>
+                    </button>
+
+                    <button onclick="handleSidebarNav(this, 'Parties Ledger')" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-cardgray dark:hover:bg-zinc-800/70 hover:text-charcoal dark:hover:text-white text-[13px] font-medium transition-all shrink-0">
+                        <span class="flex items-center gap-3">
+                            <i data-lucide="users" class="w-4 h-4 stroke-[1.8]"></i>
+                            <span>Parties Ledger</span>
+                        </span>
+                        <span class="text-[10px] font-medium text-zinc-400 hidden lg:inline">580</span>
+                    </button>
+
+                    <button onclick="handleSidebarNav(this, 'Freight Carrier')" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-cardgray dark:hover:bg-zinc-800/70 hover:text-charcoal dark:hover:text-white text-[13px] font-medium transition-all shrink-0">
+                        <span class="flex items-center gap-3">
+                            <i data-lucide="truck" class="w-4 h-4 stroke-[1.8]"></i>
+                            <span>Freight Carrier</span>
+                        </span>
+                        <span class="text-[10px] font-medium text-zinc-400 hidden lg:inline">38</span>
+                    </button>
+
+                    <button onclick="handleSidebarNav(this, 'Master Data')" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-cardgray dark:hover:bg-zinc-800/70 hover:text-charcoal dark:hover:text-white text-[13px] font-medium transition-all shrink-0">
+                        <span class="flex items-center gap-3">
+                            <i data-lucide="settings" class="w-4 h-4 stroke-[1.8]"></i>
+                            <span>Master Data</span>
+                        </span>
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Bottom Centered Profile & Segmented Sun/Moon Theme Switcher -->
+            <div class="hidden lg:flex flex-col items-center pt-8 mt-6">
+                <!-- Circular Avatar Monogram -->
+                <div class="w-12 h-12 rounded-full bg-lavender/60 dark:bg-zinc-800 border border-lavender dark:border-zinc-700 flex items-center justify-center text-charcoal dark:text-lavender font-semibold text-sm mb-2.5 shadow-2xs">
+                    SA
+                </div>
+                <div class="text-[13px] font-semibold text-charcoal dark:text-white leading-tight">
+                    Superadmin
+                </div>
+                <div class="text-[9px] font-medium tracking-[0.07em] uppercase text-zinc-400 mt-1 mb-5">
+                    SUPERADMIN • SARGODHA
+                </div>
+
+                <!-- Segmented Sun / Moon Pill Toggle (Strictly matching image_e05f86.png) -->
+                <div class="w-full max-w-[168px] p-1 rounded-full bg-cardgray dark:bg-zinc-800/90 border border-hairline dark:border-zinc-700 grid grid-cols-2 items-center">
+                    <button id="theme-light-btn" onclick="setThemeMode('light')" title="Light Mode" class="py-1.5 rounded-full bg-charcoal text-white flex items-center justify-center transition-all shadow-xs">
+                        <i data-lucide="sun" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button id="theme-dark-btn" onclick="setThemeMode('dark')" title="Dark Mode" class="py-1.5 rounded-full text-zinc-500 dark:text-zinc-300 hover:text-charcoal dark:hover:text-white flex items-center justify-center transition-all">
+                        <i data-lucide="moon" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 2. MAIN DASHBOARD WORKSPACE -->
+        <main class="flex-1 min-w-0 p-5 sm:p-7 lg:px-10 lg:py-8 space-y-7">
+
+            <!-- TOP HEADER BAR: Title + Underline Tabs on Left, Bordered Search Input on Right -->
+            <header class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                <div>
+                    <div class="flex items-baseline gap-3">
+                        <h1 class="text-2xl sm:text-[32px] font-normal tracking-tight text-charcoal dark:text-white leading-none">
+                            Dashboard
+                        </h1>
+                        <span class="text-[11px] font-medium tracking-[0.05em] uppercase text-zinc-400">
+                            Mon, Nov 16, 2026
+                        </span>
+                    </div>
+
+                    <!-- Minimalist Underline Sub-Navigation Tabs (SUMMARY, STATISTIC, LEDGER, FLEET) -->
+                    <div class="flex items-center gap-6 mt-5 border-b border-transparent">
+                        <button onclick="switchSubTab(this, 'SUMMARY')" class="sub-tab pb-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase text-charcoal dark:text-white border-b-[1.5px] border-charcoal dark:border-lavender transition-colors">
+                            SUMMARY
+                        </button>
+                        <button onclick="switchSubTab(this, 'STATISTIC')" class="sub-tab pb-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-[1.5px] border-transparent transition-colors">
+                            STATISTIC
+                        </button>
+                        <button onclick="switchSubTab(this, 'LEDGER')" class="sub-tab pb-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-[1.5px] border-transparent transition-colors">
+                            LEDGER
+                        </button>
+                        <button onclick="switchSubTab(this, 'FLEET')" class="sub-tab pb-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-[1.5px] border-transparent transition-colors">
+                            FLEET
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Search Input Box + Mobile Theme Toggle -->
+                <div class="flex items-center gap-2.5 self-stretch md:self-start">
+                    <div class="relative flex-1 md:w-[270px]">
+                        <input id="global-search-input" type="text" oninput="filterBiltyTable()" placeholder="Search bilty no, city, agency..." class="w-full pl-3.5 pr-9 py-2.5 bg-surface dark:bg-zinc-900 border border-[#E2E2E6] dark:border-zinc-700 text-xs text-charcoal dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-charcoal dark:focus:border-lavender transition-colors">
+                        <i data-lucide="search" class="w-4 h-4 text-charcoal dark:text-zinc-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none stroke-[1.75]"></i>
+                    </div>
+                    <!-- Mobile Theme Switcher -->
+                    <button onclick="toggleThemeQuick()" class="lg:hidden p-2.5 border border-[#E2E2E6] dark:border-zinc-700 text-charcoal dark:text-zinc-200" title="Toggle Theme">
+                        <i data-lucide="sun-moon" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- TOP ROW GRID: Left 2x2 Metric Matrix (8 cols) + Right 'Top Agencies' Panel (4 cols) -->
+            <section id="section-summary" class="grid grid-cols-1 xl:grid-cols-12 gap-7 items-stretch">
+
+                <!-- LEFT 2x2 METRIC MATRIX (Clean flat cards with hairline separation matching image_e05f86.png) -->
+                <div class="xl:col-span-8 grid grid-cols-1 sm:grid-cols-2 border border-hairline dark:border-zinc-800 bg-cardgray dark:bg-zinc-900/80">
+                    
+                    <!-- 1. Top-Left Featured Dark Card (#202022) — BARA KARAYA -->
+                    <div class="bg-charcoal text-white p-6 sm:p-7 flex flex-col justify-between min-h-[168px] border-b sm:border-r border-zinc-800">
+                        <div>
+                            <div class="text-[10px] font-semibold tracking-[0.07em] uppercase text-zinc-300">
+                                BARA KARAYA
+                            </div>
+                            <div class="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-300">
+                                <span class="text-lavender text-[9px]">▲</span>
+                                <span>14% Chota+Bara</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex items-end justify-between gap-2">
+                            <div id="kpi-bara-karaya" class="text-2xl sm:text-[30px] font-light tracking-tight tabular-nums leading-none">
+                                Rs. 1,846,219
+                            </div>
+                            <button onclick="openRegisterDrawer('bara')" title="Add Bara Karaya Bilty" class="text-zinc-300 hover:text-lavender transition-colors">
+                                <i data-lucide="arrow-up-right" class="w-5 h-5 stroke-[1.5]"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 2. Top-Right Soft Gray Card (#F6F6F8) — CHOTA KARAYA -->
+                    <div class="bg-cardgray dark:bg-zinc-900/70 p-6 sm:p-7 flex flex-col justify-between min-h-[168px] border-b border-hairline dark:border-zinc-800">
+                        <div>
+                            <div class="text-[10px] font-semibold tracking-[0.07em] uppercase text-charcoal dark:text-zinc-300">
+                                CHOTA KARAYA
+                            </div>
+                            <div class="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                                <span class="text-emerald-600 dark:text-emerald-400 text-[9px]">▲</span>
+                                <span>11% active</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex items-end justify-between gap-2">
+                            <div id="kpi-chota-karaya" class="text-2xl sm:text-[30px] font-light tracking-tight text-charcoal dark:text-white tabular-nums leading-none">
+                                Rs. 1,565,575
+                            </div>
+                            <button onclick="openRegisterDrawer('chota')" title="Add Chota Karaya Bilty" class="text-charcoal dark:text-zinc-300 hover:opacity-70 transition-opacity">
+                                <i data-lucide="arrow-up-right" class="w-5 h-5 stroke-[1.5]"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3. Bottom-Left Soft Gray Card (#F6F6F8) — TOTAL BILTIES -->
+                    <div class="bg-cardgray dark:bg-zinc-900/70 p-6 sm:p-7 flex flex-col justify-between min-h-[168px] border-b sm:border-b-0 sm:border-r border-hairline dark:border-zinc-800">
+                        <div>
+                            <div class="text-[10px] font-semibold tracking-[0.07em] uppercase text-charcoal dark:text-zinc-300">
+                                TOTAL BILTIES
+                            </div>
+                            <div class="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                                <span class="w-1.5 h-1.5 rounded-full bg-charcoal dark:bg-lavender"></span>
+                                <span id="kpi-records-sub">500 records</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex items-end justify-between gap-2">
+                            <div id="kpi-total-bilties" class="text-3xl sm:text-[34px] font-light tracking-tight text-charcoal dark:text-white tabular-nums leading-none">
+                                500
+                            </div>
+                            <button onclick="document.getElementById('section-log').scrollIntoView({behavior:'smooth'})" title="View Bilty Directory" class="text-charcoal dark:text-zinc-300 hover:opacity-70 transition-opacity">
+                                <i data-lucide="arrow-up-right" class="w-5 h-5 stroke-[1.5]"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 4. Bottom-Right Soft Gray Card (#F6F6F8) — TODAY'S BILTIES -->
+                    <div onclick="openRegisterDrawer()" class="bg-cardgray dark:bg-zinc-900/70 hover:bg-[#EFEFF3] dark:hover:bg-zinc-800/80 cursor-pointer p-6 sm:p-7 flex flex-col justify-between min-h-[168px] transition-colors group">
+                        <div>
+                            <div class="text-[10px] font-semibold tracking-[0.07em] uppercase text-charcoal dark:text-zinc-300">
+                                TODAY'S BILTIES
+                            </div>
+                            <div class="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                                <span class="w-1.5 h-1.5 rounded-full bg-lavender"></span>
+                                <span>Nov 16, 2026 • Click to add</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex items-end justify-between gap-2">
+                            <div id="kpi-todays-bilties" class="text-3xl sm:text-[34px] font-light tracking-tight text-charcoal dark:text-white tabular-nums leading-none">
+                                0
+                            </div>
+                            <span class="text-charcoal dark:text-zinc-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">
+                                <i data-lucide="arrow-up-right" class="w-5 h-5 stroke-[1.5]"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: 'Top Agencies' Panel (Matching 'Investor reports' in image_e05f86.png) -->
+                <div class="xl:col-span-4 flex flex-col">
+                    <h2 class="text-[17px] font-normal text-charcoal dark:text-white mb-3">
+                        Top Agencies
+                    </h2>
+
+                    <div class="flex-1 bg-cardgray dark:bg-zinc-900/70 border border-hairline dark:border-zinc-800 p-5 flex flex-col justify-between">
+                        <div class="space-y-3.5" id="top-agencies-list">
+                            <!-- Agency 1 -->
+                            <div class="flex items-center gap-3 group cursor-pointer" onclick="filterByAgency('New Punjab Karachi Goods')">
+                                <div class="w-9 h-9 rounded-full bg-charcoal text-white text-[11px] font-semibold flex items-center justify-center shrink-0">
+                                    NP
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-[13px] font-medium text-charcoal dark:text-zinc-100 truncate group-hover:underline">
+                                        New Punjab Karachi Goods
+                                    </div>
+                                    <div class="text-[9px] font-semibold tracking-[0.06em] uppercase text-zinc-400 mt-0.5">
+                                        100 BILTIES • RANK #1
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Agency 2 -->
+                            <div class="flex items-center gap-3 group cursor-pointer" onclick="filterByAgency('Zikria Goods')">
+                                <div class="w-9 h-9 rounded-full bg-lavender text-charcoal text-[11px] font-bold flex items-center justify-center shrink-0">
+                                    ZG
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-[13px] font-medium text-charcoal dark:text-zinc-100 truncate group-hover:underline">
+                                        Zikria Goods
+                                    </div>
+                                    <div class="text-[9px] font-semibold tracking-[0.06em] uppercase text-zinc-400 mt-0.5">
+                                        <span id="zikria-agency-count">100</span> BILTIES • RANK #2
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Agency 3 -->
+                            <div class="flex items-center gap-3 group cursor-pointer" onclick="filterByAgency('Super Ittefaq Goods')">
+                                <div class="w-9 h-9 rounded-full bg-white dark:bg-zinc-800 border border-hairline dark:border-zinc-700 text-charcoal dark:text-zinc-200 text-[11px] font-semibold flex items-center justify-center shrink-0">
+                                    SI
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-[13px] font-medium text-charcoal dark:text-zinc-100 truncate group-hover:underline">
+                                        Super Ittefaq Goods
+                                    </div>
+                                    <div class="text-[9px] font-semibold tracking-[0.06em] uppercase text-zinc-400 mt-0.5">
+                                        52 BILTIES • RANK #3
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Agency 4 -->
+                            <div class="flex items-center gap-3 group cursor-pointer" onclick="filterByAgency('Al Saad Goods')">
+                                <div class="w-9 h-9 rounded-full bg-white dark:bg-zinc-800 border border-hairline dark:border-zinc-700 text-charcoal dark:text-zinc-200 text-[11px] font-semibold flex items-center justify-center shrink-0">
+                                    AS
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-[13px] font-medium text-charcoal dark:text-zinc-100 truncate group-hover:underline">
+                                        Al Saad Goods
+                                    </div>
+                                    <div class="text-[9px] font-semibold tracking-[0.06em] uppercase text-zinc-400 mt-0.5">
+                                        45 BILTIES • RANK #4
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Agency 5 -->
+                            <div class="flex items-center gap-3 group cursor-pointer" onclick="filterByAgency('Pak Goods')">
+                                <div class="w-9 h-9 rounded-full bg-white dark:bg-zinc-800 border border-hairline dark:border-zinc-700 text-charcoal dark:text-zinc-200 text-[11px] font-semibold flex items-center justify-center shrink-0">
+                                    PG
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-[13px] font-medium text-charcoal dark:text-zinc-100 truncate group-hover:underline">
+                                        Pak Goods
+                                    </div>
+                                    <div class="text-[9px] font-semibold tracking-[0.06em] uppercase text-zinc-400 mt-0.5">
+                                        43 BILTIES • RANK #5
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Full-width Rounded Pill CTA Button in Soft Lavender (#D9CDFF) -->
+                        <button onclick="openRegisterDrawer()" class="mt-5 w-full py-2.5 px-4 rounded-full bg-lavender hover:bg-lavenderhover text-charcoal text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-2xs">
+                            <span>+ Register Bilty</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MIDDLE ROW GRID: Left 'Bilty Volume' Dual-Curve Chart (8 cols) + Right 'Total Karaya' Donut Card (4 cols) -->
+            <section id="section-statistic" class="grid grid-cols-1 xl:grid-cols-12 gap-7 items-stretch">
+
+                <!-- LEFT: 'Bilty Volume' Area/Line Chart (Matching 'Cash Flow' in image_e05f86.png) -->
+                <div class="xl:col-span-8 flex flex-col">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <h2 class="text-[17px] font-normal text-charcoal dark:text-white">
+                            Bilty Volume
+                        </h2>
+
+                        <!-- Legend Dots -->
+                        <div class="flex items-center gap-5 text-[9px] font-semibold tracking-[0.07em] uppercase text-charcoal dark:text-zinc-300">
+                            <span class="inline-flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-charcoal dark:bg-white"></span>
+                                DAILY DISPATCH
+                            </span>
+                            <span class="inline-flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-lavender"></span>
+                                FREIGHT TREND
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 bg-cardgray dark:bg-zinc-900/70 border border-hairline dark:border-zinc-800 p-5 sm:p-6 flex flex-col justify-between relative">
+                        <!-- Interactive SVG Dual-Curve Chart -->
+                        <div class="w-full h-[230px] relative" id="volume-chart-wrapper">
+                            <svg id="bilty-volume-svg" viewBox="0 0 640 220" class="w-full h-full overflow-visible" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="lavenderWaveGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#D9CDFF" stop-opacity="0.85"/>
+                                        <stop offset="100%" stop-color="#D9CDFF" stop-opacity="0.06"/>
+                                    </linearGradient>
+                                </defs>
+
+                                <!-- Y-Axis Labels (0, 45, 90, 135, 180) -->
+                                <g class="fill-zinc-400 text-[10px] font-medium tabular-nums">
+                                    <text x="4" y="24">180</text>
+                                    <text x="4" y="64">135</text>
+                                    <text x="4" y="104">90</text>
+                                    <text x="4" y="144">45</text>
+                                    <text x="4" y="184">0</text>
+                                </g>
+
+                                <!-- Secondary Soft Lavender Area Wave (Freight Trend) -->
+                                <path d="M 55 155 C 100 138, 130 162, 165 148 C 205 132, 240 62, 275 68 C 315 74, 345 48, 385 52 C 425 56, 460 128, 495 136 C 535 145, 575 82, 615 75 L 615 184 L 55 184 Z"
+                                      fill="url(#lavenderWaveGrad)"/>
+
+                                <!-- Primary Crisp Black/White Smooth Line (Daily Dispatch: Nov 9: 4, Nov 10: 12, Nov 11: 152, Nov 12: 170, Nov 13: 15, Nov 14: 102) -->
+                                <!-- Y mapping: 0 -> 184, 180 -> 24 (scale = 160 / 180 = 0.8889 px per unit) -->
+                                <!-- Points:
+                                     Nov 9  (x=55):  4   -> y = 184 - 3.5  = 180.5
+                                     Nov 10 (x=167): 12  -> y = 184 - 10.7 = 173.3
+                                     Nov 11 (x=279): 152 -> y = 184 - 135.1= 48.9
+                                     Nov 12 (x=391): 170 -> y = 184 - 151.1= 32.9
+                                     Nov 13 (x=503): 15  -> y = 184 - 13.3 = 170.7
+                                     Nov 14 (x=615): 102 -> y = 184 - 90.7 = 93.3
+                                -->
+                                <path id="primary-dispatch-line"
+                                      d="M 55 180.5 C 95 178, 130 176, 167 173.3 C 208 170, 242 62, 279 48.9 C 316 36, 354 31, 391 32.9 C 432 35, 464 166, 503 170.7 C 542 175, 578 118, 615 93.3"
+                                      fill="none"
+                                      class="stroke-charcoal dark:stroke-white"
+                                      stroke-width="1.8"
+                                      stroke-linecap="round"/>
+
+                                <!-- Interactive Hover Points & Floating Peak Badge ('170' over Nov 12) -->
+                                <g id="chart-interactive-nodes">
+                                    <!-- Nov 9 -->
+                                    <circle cx="55" cy="180.5" r="4" class="fill-charcoal dark:fill-white opacity-0 hover:opacity-100 cursor-pointer transition-opacity" onmouseenter="showChartTooltip(55, 180.5, 'NOV 9', 4)" onmouseleave="resetChartTooltip()"/>
+                                    <!-- Nov 10 -->
+                                    <circle cx="167" cy="173.3" r="4" class="fill-charcoal dark:fill-white opacity-0 hover:opacity-100 cursor-pointer transition-opacity" onmouseenter="showChartTooltip(167, 173.3, 'NOV 10', 12)" onmouseleave="resetChartTooltip()"/>
+                                    <!-- Nov 11 -->
+                                    <circle cx="279" cy="48.9" r="4" class="fill-charcoal dark:fill-white opacity-0 hover:opacity-100 cursor-pointer transition-opacity" onmouseenter="showChartTooltip(279, 48.9, 'NOV 11', 152)" onmouseleave="resetChartTooltip()"/>
+                                    <!-- Nov 12 (Default Active Peak) -->
+                                    <circle id="active-node-dot" cx="391" cy="32.9" r="3.5" class="fill-charcoal dark:fill-lavender"/>
+                                    <!-- Nov 13 -->
+                                    <circle cx="503" cy="170.7" r="4" class="fill-charcoal dark:fill-white opacity-0 hover:opacity-100 cursor-pointer transition-opacity" onmouseenter="showChartTooltip(503, 170.7, 'NOV 13', 15)" onmouseleave="resetChartTooltip()"/>
+                                    <!-- Nov 14 -->
+                                    <circle cx="615" cy="93.3" r="4" class="fill-charcoal dark:fill-white opacity-0 hover:opacity-100 cursor-pointer transition-opacity" onmouseenter="showChartTooltip(615, 93.3, 'NOV 14', 102)" onmouseleave="resetChartTooltip()"/>
+                                </g>
+
+                                <!-- Floating Dark Pill Tooltip Badge ('170' over Nov 12) -->
+                                <g id="chart-pill-badge" transform="translate(391, 14)">
+                                    <rect x="-21" y="-11" width="42" height="19" rx="9.5" class="fill-charcoal dark:fill-lavender"/>
+                                    <text id="chart-pill-text" x="0" y="2" text-anchor="middle" class="fill-white dark:fill-charcoal text-[10px] font-semibold tabular-nums">170</text>
+                                </g>
+
+                                <!-- X-Axis Dates (NOV 9 .. NOV 14) -->
+                                <g class="fill-zinc-500 dark:fill-zinc-400 text-[9px] font-semibold tracking-[0.06em] uppercase">
+                                    <text x="55" y="210" text-anchor="middle">NOV 9</text>
+                                    <text x="167" y="210" text-anchor="middle">NOV 10</text>
+                                    <text x="279" y="210" text-anchor="middle">NOV 11</text>
+                                    <text x="391" y="210" text-anchor="middle">NOV 12</text>
+                                    <text x="503" y="210" text-anchor="middle">NOV 13</text>
+                                    <text x="615" y="210" text-anchor="middle">NOV 14</text>
+                                </g>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: 'Total Karaya' Donut Card (Matching 'Total Balance' in image_e05f86.png) -->
+                <div class="xl:col-span-4 flex flex-col">
+                    <h2 class="text-[17px] font-normal text-charcoal dark:text-white mb-3">
+                        Total Karaya
+                    </h2>
+
+                    <div class="flex-1 bg-cardgray dark:bg-zinc-900/70 border border-hairline dark:border-zinc-800 p-5 sm:p-6 flex flex-col justify-between relative">
+                        <!-- Top-right circular '+' quick-add button -->
+                        <button onclick="openRegisterDrawer()" title="Add Freight Bilty" class="self-end w-7 h-7 rounded-full border border-charcoal dark:border-zinc-400 text-charcoal dark:text-zinc-200 hover:bg-charcoal hover:text-white dark:hover:bg-lavender dark:hover:text-charcoal flex items-center justify-center transition-colors">
+                            <i data-lucide="plus" class="w-3.5 h-3.5 stroke-[2]"></i>
+                        </button>
+
+                        <!-- Thick Minimalist Segmented SVG Donut Ring -->
+                        <div class="relative w-[164px] h-[164px] mx-auto my-2 flex items-center justify-center">
+                            <svg viewBox="0 0 160 160" class="w-full h-full -rotate-90">
+                                <!-- Subtle Light Track -->
+                                <circle cx="80" cy="80" r="62" fill="none" class="stroke-[#E3E3E7] dark:stroke-zinc-800" stroke-width="14"/>
+                                <!-- Soft Lavender Segment (Chota Karaya 45.9%) -->
+                                <circle id="donut-chota-seg" cx="80" cy="80" r="62" fill="none" stroke="#D9CDFF" stroke-width="14" stroke-dasharray="178.8 389.56" stroke-dashoffset="0"/>
+                                <!-- Dark Charcoal Segment (Bara Karaya 54.1%) -->
+                                <circle id="donut-bara-seg" cx="80" cy="80" r="62" fill="none" class="stroke-charcoal dark:stroke-white donut-segment" stroke-width="14" stroke-dasharray="210.7 389.56" stroke-dashoffset="-178.8"/>
+                            </svg>
+
+                            <!-- Center Text -->
+                            <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                                <span id="donut-center-total" class="text-[24px] font-normal tracking-tight text-charcoal dark:text-white tabular-nums leading-none">
+                                    Rs. 3.41M
+                                </span>
+                                <span class="text-[11px] font-normal text-zinc-500 dark:text-zinc-400 mt-1.5">
+                                    Total Freight
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Breakdown with Ring Dots -->
+                        <div class="grid grid-cols-2 gap-3 pt-3 mt-1">
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full border-[2.5px] border-charcoal dark:border-white shrink-0"></span>
+                                    <span id="donut-bara-val" class="text-xs font-medium text-charcoal dark:text-zinc-100 tabular-nums truncate">
+                                        Rs. 1,846,219
+                                    </span>
+                                </div>
+                                <div class="pl-4 text-[9px] font-semibold tracking-[0.06em] uppercase text-zinc-400 mt-0.5">
+                                    BARA KARAYA
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full border-[2.5px] border-lavender shrink-0"></span>
+                                    <span id="donut-chota-val" class="text-xs font-medium text-charcoal dark:text-zinc-100 tabular-nums truncate">
+                                        Rs. 1,565,575
+                                    </span>
+                                </div>
+                                <div class="pl-4 text-[9px] font-semibold tracking-[0.06em] uppercase text-zinc-400 mt-0.5">
+                                    CHOTA KARAYA
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BOTTOM SECTION: 'Recent Bilty Activity Log' Minimalist Table -->
+            <section id="section-log" class="pt-1">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-[17px] font-normal text-charcoal dark:text-white">
+                            Recent Bilty Activity Log
+                        </h2>
+                        <span class="px-2.5 py-0.5 rounded-full bg-cardgray dark:bg-zinc-800 border border-hairline dark:border-zinc-700 text-[10px] font-semibold tracking-[0.05em] uppercase text-zinc-500 dark:text-zinc-400">
+                            580 Parties • 38 Carriers
+                        </span>
+                    </div>
+
+                    <button onclick="resetFilters()" class="inline-flex items-center gap-1 text-[11px] font-semibold tracking-[0.05em] uppercase text-charcoal dark:text-lavender hover:opacity-75 transition-opacity">
+                        <span>Full Log</span>
+                        <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+
+                <div class="bg-cardgray dark:bg-zinc-900/70 border border-hairline dark:border-zinc-800 overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-hairline dark:border-zinc-800 text-[10px] font-semibold tracking-[0.07em] uppercase text-zinc-400">
+                                <th class="py-3.5 px-5">Bilty No. / Reference</th>
+                                <th class="py-3.5 px-4">Route (From &rarr; To)</th>
+                                <th class="py-3.5 px-4">Agency</th>
+                                <th class="py-3.5 px-4">Category</th>
+                                <th class="py-3.5 px-5 text-right">Freight Charges</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bilty-log-tbody" class="divide-y divide-hairline dark:divide-zinc-800 text-[13px]">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- 3. INTERACTIVE REGISTER BILTY SLIDE-OVER DRAWER -->
+    <div id="drawer-backdrop" onclick="closeRegisterDrawer()" class="fixed inset-0 bg-charcoal/40 backdrop-blur-[1px] z-50 hidden opacity-0 transition-opacity duration-200"></div>
+    <aside id="register-drawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-surface dark:bg-[#18181B] border-l border-hairline dark:border-zinc-800 z-50 shadow-2xl transform translate-x-full transition-transform duration-300 ease-out flex flex-col">
+        
+        <!-- Drawer Header -->
+        <div class="px-6 py-5 bg-charcoal text-white flex items-center justify-between">
+            <div>
+                <div class="text-[10px] font-semibold tracking-[0.08em] uppercase text-lavender">
+                    ZIKRIA GOODS TRANSPORT
+                </div>
+                <h3 class="text-lg font-normal mt-0.5">
+                    Register New Bilty
+                </h3>
+            </div>
+            <button onclick="closeRegisterDrawer()" class="w-8 h-8 rounded-full border border-zinc-700 hover:border-lavender text-zinc-300 hover:text-lavender flex items-center justify-center transition-colors">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <!-- Drawer Form -->
+        <form onsubmit="submitNewBilty(event)" class="flex-1 overflow-y-auto p-6 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[10px] font-semibold tracking-[0.06em] uppercase text-zinc-500 dark:text-zinc-400 mb-1.5">
+                        Bilty No. *
+                    </label>
+                    <input id="input-bilty-no" type="number" required value="4407" class="w-full px-3.5 py-2.5 bg-cardgray dark:bg-zinc-900 border border-[#E2E2E6] dark:border-zinc-700 text-sm font-medium text-charcoal dark:text-white tabular-nums focus:outline-none focus:border-charcoal dark:focus:border-lavender">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-semibold tracking-[0.06em] uppercase text-zinc-500 dark:text-zinc-400 mb-1.5">
+                        Reference ID
+                    </label>
+                    <input id="input-ref-id" type="text" readonly value="#202611-0500" class="w-full px-3.5 py-2.5 bg-cardgray/60 dark:bg-zinc-900/50 border border-hairline dark:border-zinc-800 text-xs font-medium text-zinc-400 tabular-nums">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-semibold tracking-[0.06em] uppercase text-zinc-500 dark:text-zinc-400 mb-1.5">
+                    Partner Agency *
+                </label>
+                <select id="input-agency" class="w-full px-3.5 py-2.5 bg-cardgray dark:bg-zinc-900 border border-[#E2E2E6] dark:border-zinc-700 text-[13px] font-medium text-charcoal dark:text-white focus:outline-none focus:border-charcoal dark:focus:border-lavender">
+                    <option value="Zikria Goods">Zikria Goods</option>
+                    <option value="New Punjab Karachi Goods">New Punjab Karachi Goods</option>
+                    <option value="Super Ittefaq Goods">Super Ittefaq Goods</option>
+                    <option value="Al Saad Goods">Al Saad Goods</option>
+                    <option value="Pak Goods">Pak Goods</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[10px] font-semibold tracking-[0.06em] uppercase text-zinc-500 dark:text-zinc-400 mb-1.5">
+                        Origin City *
+                    </label>
+                    <select id="input-origin" class="w-full px-3.5 py-2.5 bg-cardgray dark:bg-zinc-900 border border-[#E2E2E6] dark:border-zinc-700 text-[13px] font-medium text-charcoal dark:text-white focus:outline-none focus:border-charcoal dark:focus:border-lavender">
+                        <option value="Peshawar">Peshawar</option>
+                        <option value="Lahore">Lahore</option>
+                        <option value="Karachi">Karachi</option>
+                        <option value="Rawalpindi">Rawalpindi</option>
+                        <option value="Faisalabad">Faisalabad</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-semibold tracking-[0.06em] uppercase text-zinc-500 dark:text-zinc-400 mb-1.5">
+                        Destination City *
+                    </label>
+                    <select id="input-destination" class="w-full px-3.5 py-2.5 bg-cardgray dark:bg-zinc-900 border border-[#E2E2E6] dark:border-zinc-700 text-[13px] font-medium text-charcoal dark:text-white focus:outline-none focus:border-charcoal dark:focus:border-lavender">
+                        <option value="Sargodha">Sargodha</option>
+                        <option value="Sillanwali">Sillanwali</option>
+                        <option value="Bhalwal">Bhalwal</option>
+                        <option value="Shahpur">Shahpur</option>
+                        <option value="Kot Momin">Kot Momin</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[10px] font-semibold tracking-[0.06em] uppercase text-zinc-500 dark:text-zinc-400 mb-1.5">
+                        Karaya Type *
+                    </label>
+                    <select id="input-karaya-type" class="w-full px-3.5 py-2.5 bg-cardgray dark:bg-zinc-900 border border-[#E2E2E6] dark:border-zinc-700 text-[13px] font-medium text-charcoal dark:text-white focus:outline-none focus:border-charcoal dark:focus:border-lavender">
+                        <option value="Bara Karaya">Bara Karaya</option>
+                        <option value="Chota Karaya">Chota Karaya</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-semibold tracking-[0.06em] uppercase text-zinc-500 dark:text-zinc-400 mb-1.5">
+                        Freight Amount (Rs.) *
+                    </label>
+                    <input id="input-freight" type="number" required min="100" step="10" value="6500" class="w-full px-3.5 py-2.5 bg-cardgray dark:bg-zinc-900 border border-[#E2E2E6] dark:border-zinc-700 text-sm font-medium text-charcoal dark:text-white tabular-nums focus:outline-none focus:border-charcoal dark:focus:border-lavender">
+                </div>
+            </div>
+
+            <div class="p-4 bg-lavender/35 dark:bg-zinc-800/80 border border-lavender dark:border-zinc-700 text-xs text-charcoal dark:text-zinc-200 leading-relaxed">
+                Submitting this dispatch updates <strong>Today's Bilties</strong>, recalculates the <strong>Total Karaya</strong> ring distribution, and prepends the consignment to the activity log.
+            </div>
+
+            <div class="pt-4 border-t border-hairline dark:border-zinc-800 flex items-center justify-end gap-3">
+                <button type="button" onclick="closeRegisterDrawer()" class="px-5 py-2.5 rounded-full border border-hairline dark:border-zinc-700 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-cardgray dark:hover:bg-zinc-800">
+                    Cancel
+                </button>
+                <button type="submit" class="px-6 py-2.5 rounded-full bg-lavender hover:bg-lavenderhover text-charcoal text-xs font-semibold transition-colors">
+                    Save Bilty Dispatch
+                </button>
+            </div>
+        </form>
+    </aside>
+
+    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <script>
+        lucide.createIcons();
+
+        // Dashboard State
+        const dashboardState = {
+            baraKaraya: 1846219,
+            chotaKaraya: 1565575,
+            totalBilties: 500,
+            todaysBilties: 0,
+            zikriaCount: 100,
+            logs: [
+                { biltyNo: '1887', refId: '#202611-0499', from: 'Peshawar', to: 'Sillanwali', agency: 'Zikria Goods', type: 'Chota Karaya', freight: 500 },
+                { biltyNo: '1886', refId: '#202611-0498', from: 'Peshawar', to: 'Sargodha', agency: 'New Punjab Karachi Goods', type: 'Bara Karaya', freight: 22000 },
+                { biltyNo: '4127', refId: '#202611-0497', from: 'Peshawar', to: 'Sargodha', agency: 'Super Ittefaq Goods', type: 'Chota Karaya', freight: 2980 },
+                { biltyNo: '4124', refId: '#202611-0496', from: 'Peshawar', to: 'Sargodha', agency: 'Al Saad Goods', type: 'Chota Karaya', freight: 2200 },
+                { biltyNo: '4406', refId: '#202611-0495', from: 'Peshawar', to: 'Sargodha', agency: 'Pak Goods', type: 'Bara Karaya', freight: 7700 }
+            ]
+        };
+
+        // Render Recent Bilty Activity Log
+        function renderBiltyTable(rows = dashboardState.logs) {
+            const tbody = document.getElementById('bilty-log-tbody');
+            if (rows.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-xs text-zinc-400">
+                            No bilty records match your search query.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = rows.map(row => `
+                <tr class="hover:bg-white dark:hover:bg-zinc-800/60 transition-colors">
+                    <td class="py-3.5 px-5 whitespace-nowrap tabular-nums">
+                        <span class="font-semibold text-charcoal dark:text-white">${row.biltyNo}</span>
+                        <span class="text-xs text-zinc-400 ml-1.5">${row.refId}</span>
+                    </td>
+                    <td class="py-3.5 px-4 whitespace-nowrap text-charcoal dark:text-zinc-200">
+                        <span>${row.from}</span>
+                        <span class="text-zinc-400 mx-1.5">&rarr;</span>
+                        <span class="font-medium">${row.to}</span>
+                    </td>
+                    <td class="py-3.5 px-4 whitespace-nowrap">
+                        <span class="px-2.5 py-1 rounded-full bg-white dark:bg-zinc-800 border border-hairline dark:border-zinc-700 text-[11px] font-medium text-zinc-600 dark:text-zinc-300">
+                            ${row.agency}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-4 whitespace-nowrap">
+                        <span class="text-[10px] font-semibold tracking-[0.05em] uppercase ${row.type === 'Bara Karaya' ? 'text-charcoal dark:text-lavender' : 'text-zinc-400'}">
+                            ${row.type}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-5 whitespace-nowrap text-right font-medium text-charcoal dark:text-white tabular-nums">
+                        Rs. ${row.freight.toLocaleString('en-US')}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Live Search Filter
+        function filterBiltyTable() {
+            const query = document.getElementById('global-search-input').value.toLowerCase().trim();
+            const filtered = dashboardState.logs.filter(item =>
+                item.biltyNo.toLowerCase().includes(query) ||
+                item.refId.toLowerCase().includes(query) ||
+                item.from.toLowerCase().includes(query) ||
+                item.to.toLowerCase().includes(query) ||
+                item.agency.toLowerCase().includes(query)
+            );
+            renderBiltyTable(filtered);
+        }
+
+        function filterByAgency(agencyName) {
+            const input = document.getElementById('global-search-input');
+            input.value = agencyName;
+            filterBiltyTable();
+            document.getElementById('section-log').scrollIntoView({ behavior: 'smooth' });
+            showToast(`Filtered activity log by ${agencyName}`);
+        }
+
+        function resetFilters() {
+            document.getElementById('global-search-input').value = '';
+            renderBiltyTable();
+            showToast('Showing full bilty activity log');
+        }
+
+        // Update KPIs & Segmented SVG Donut Ring
+        function updateDashboardMetrics() {
+            const totalKaraya = dashboardState.baraKaraya + dashboardState.chotaKaraya;
+            const totalInMillions = (totalKaraya / 1000000).toFixed(2);
+
+            document.getElementById('kpi-bara-karaya').textContent = 'Rs. ' + dashboardState.baraKaraya.toLocaleString('en-US');
+            document.getElementById('kpi-chota-karaya').textContent = 'Rs. ' + dashboardState.chotaKaraya.toLocaleString('en-US');
+            document.getElementById('kpi-total-bilties').textContent = dashboardState.totalBilties;
+            document.getElementById('kpi-records-sub').textContent = `${dashboardState.totalBilties} records`;
+            document.getElementById('nav-report-badge').textContent = dashboardState.totalBilties;
+            document.getElementById('kpi-todays-bilties').textContent = dashboardState.todaysBilties;
+
+            // Donut values & proportions (Circumference = 2 * PI * 62 ≈ 389.56)
+            const circumference = 389.56;
+            const chotaRatio = dashboardState.chotaKaraya / totalKaraya;
+            const baraRatio = dashboardState.baraKaraya / totalKaraya;
+
+            const chotaArc = chotaRatio * circumference;
+            const baraArc = baraRatio * circumference;
+
+            const chotaSeg = document.getElementById('donut-chota-seg');
+            const baraSeg = document.getElementById('donut-bara-seg');
+
+            chotaSeg.setAttribute('stroke-dasharray', `${chotaArc.toFixed(1)} ${circumference}`);
+            baraSeg.setAttribute('stroke-dasharray', `${baraArc.toFixed(1)} ${circumference}`);
+            baraSeg.setAttribute('stroke-dashoffset', `-${chotaArc.toFixed(1)}`);
+
+            document.getElementById('donut-center-total').textContent = `Rs. ${totalInMillions}M`;
+            document.getElementById('donut-bara-val').textContent = 'Rs. ' + dashboardState.baraKaraya.toLocaleString('en-US');
+            document.getElementById('donut-chota-val').textContent = 'Rs. ' + dashboardState.chotaKaraya.toLocaleString('en-US');
+        }
+
+        // Interactive SVG Volume Chart Tooltip
+        function showChartTooltip(x, y, label, val) {
+            const badge = document.getElementById('chart-pill-badge');
+            const text = document.getElementById('chart-pill-text');
+            const badgeY = Math.max(12, y - 18);
+            badge.setAttribute('transform', `translate(${x}, ${badgeY})`);
+            text.textContent = val;
+        }
+
+        function resetChartTooltip() {
+            const badge = document.getElementById('chart-pill-badge');
+            const text = document.getElementById('chart-pill-text');
+            badge.setAttribute('transform', 'translate(391, 14)');
+            text.textContent = '170';
+        }
+
+        // Slide-Over Drawer Controls
+        function openRegisterDrawer(preselectType = null) {
+            if (preselectType === 'bara') {
+                document.getElementById('input-karaya-type').value = 'Bara Karaya';
+            } else if (preselectType === 'chota') {
+                document.getElementById('input-karaya-type').value = 'Chota Karaya';
+            }
+
+            const backdrop = document.getElementById('drawer-backdrop');
+            const drawer = document.getElementById('register-drawer');
+            backdrop.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                backdrop.classList.remove('opacity-0');
+                drawer.classList.remove('translate-x-full');
+            });
+        }
+
+        function closeRegisterDrawer() {
+            const backdrop = document.getElementById('drawer-backdrop');
+            const drawer = document.getElementById('register-drawer');
+            backdrop.classList.add('opacity-0');
+            drawer.classList.add('translate-x-full');
+            setTimeout(() => backdrop.classList.add('hidden'), 250);
+        }
+
+        // Handle New Bilty Submission
+        function submitNewBilty(event) {
+            event.preventDefault();
+            const biltyNo = document.getElementById('input-bilty-no').value.trim();
+            const refId = document.getElementById('input-ref-id').value.trim();
+            const agency = document.getElementById('input-agency').value;
+            const from = document.getElementById('input-origin').value;
+            const to = document.getElementById('input-destination').value;
+            const type = document.getElementById('input-karaya-type').value;
+            const freight = parseInt(document.getElementById('input-freight').value, 10) || 0;
+
+            dashboardState.logs.unshift({ biltyNo, refId, from, to, agency, type, freight });
+            dashboardState.totalBilties += 1;
+            dashboardState.todaysBilties += 1;
+
+            if (type === 'Bara Karaya') {
+                dashboardState.baraKaraya += freight;
+            } else {
+                dashboardState.chotaKaraya += freight;
+            }
+
+            if (agency === 'Zikria Goods') {
+                dashboardState.zikriaCount += 1;
+                document.getElementById('zikria-agency-count').textContent = dashboardState.zikriaCount;
+            }
+
+            // Increment next Bilty No & Ref ID
+            document.getElementById('input-bilty-no').value = parseInt(biltyNo, 10) + 1;
+            document.getElementById('input-ref-id').value = `#202611-0${dashboardState.totalBilties}`;
+
+            updateDashboardMetrics();
+            renderBiltyTable();
+            closeRegisterDrawer();
+            showToast(`Bilty #${biltyNo} (${from} → ${to}) registered • Rs. ${freight.toLocaleString('en-US')}`);
+        }
+
+        // Sidebar & Sub-Tab Navigation
+        function handleSidebarNav(btn, label) {
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.className = 'nav-item flex items-center justify-between px-3.5 py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-cardgray dark:hover:bg-zinc-800/70 hover:text-charcoal dark:hover:text-white text-[13px] font-medium transition-all shrink-0 gap-2';
+            });
+            btn.className = 'nav-item active-nav flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-lavender text-charcoal text-[13px] font-medium transition-all shrink-0 gap-2';
+
+            if (label === 'Bilty Directory') {
+                document.getElementById('section-log').scrollIntoView({ behavior: 'smooth' });
+            } else if (label === 'Bilty Report') {
+                document.getElementById('section-statistic').scrollIntoView({ behavior: 'smooth' });
+            }
+            showToast(`Switched to ${label}`);
+        }
+
+        function switchSubTab(btn, tabName) {
+            document.querySelectorAll('.sub-tab').forEach(tab => {
+                tab.className = 'sub-tab pb-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-[1.5px] border-transparent transition-colors';
+            });
+            btn.className = 'sub-tab pb-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase text-charcoal dark:text-white border-b-[1.5px] border-charcoal dark:border-lavender transition-colors';
+
+            if (tabName === 'STATISTIC') {
+                document.getElementById('section-statistic').scrollIntoView({ behavior: 'smooth' });
+            } else if (tabName === 'LEDGER' || tabName === 'FLEET') {
+                document.getElementById('section-log').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // Light / Dark Mode Switcher (Segmented Pill Toggle)
+        function setThemeMode(mode) {
+            const html = document.documentElement;
+            const lightBtn = document.getElementById('theme-light-btn');
+            const darkBtn = document.getElementById('theme-dark-btn');
+
+            if (mode === 'dark') {
+                html.classList.add('dark');
+                darkBtn.className = 'py-1.5 rounded-full bg-charcoal text-lavender flex items-center justify-center transition-all shadow-xs';
+                lightBtn.className = 'py-1.5 rounded-full text-zinc-400 hover:text-white flex items-center justify-center transition-all';
+            } else {
+                html.classList.remove('dark');
+                lightBtn.className = 'py-1.5 rounded-full bg-charcoal text-white flex items-center justify-center transition-all shadow-xs';
+                darkBtn.className = 'py-1.5 rounded-full text-zinc-500 hover:text-charcoal flex items-center justify-center transition-all';
+            }
+        }
+
+        function toggleThemeQuick() {
+            const isDark = document.documentElement.classList.contains('dark');
+            setThemeMode(isDark ? 'light' : 'dark');
+        }
+
+        // Minimalist Toast Message
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'pointer-events-auto flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-charcoal text-white text-xs font-medium shadow-lg border border-zinc-700 transition-all duration-300 translate-y-2 opacity-0';
+            toast.innerHTML = `<span class="w-2 h-2 rounded-full bg-lavender shrink-0"></span><span>${message}</span>`;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => toast.classList.remove('translate-y-2', 'opacity-0'));
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2800);
+        }
+
+        // Initialize Table & Donut on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderBiltyTable();
+            updateDashboardMetrics();
+        });
+    </script>
+</body>
+</html>

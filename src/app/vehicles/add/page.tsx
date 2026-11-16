@@ -23,11 +23,11 @@ import { ArrowLeft, Loader2, Check, Truck } from 'lucide-react';
 import { clearMasterListsClientCache } from '@/lib/master-lists-client';
 
 const formSchema = z.object({
-  vehicleNumber: z.string().min(2, {
-    message: 'Vehicle number must be at least 2 characters.',
+  vehicleNumber: z.string().min(1, {
+    message: 'Vehicle number must be at least 1 character.',
   }).max(20, {
     message: 'Vehicle number cannot exceed 20 characters.',
-  }).regex(/^[A-Z0-9-]{2,20}$/, {
+  }).regex(/^[A-Za-z0-9- ]{1,20}$/, {
     message: 'Must contain only letters, numbers, and hyphens.',
   }),
 });

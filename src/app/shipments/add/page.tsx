@@ -288,10 +288,7 @@ export default function AddShipmentPage() {
     const isFreeOfCost = watch("is_free_of_cost");
     const bilityDate = watch("bility_date");
 
-    const liveTotalTariff = useMemo(() => {
-        if (isFreeOfCost) return 0;
-        return (Number(totalDeliveryCharges) || 0) + (Number(totalAmount) || 0);
-    }, [totalDeliveryCharges, totalAmount, isFreeOfCost]);
+
 
     useEffect(() => {
         const calculatedTotalExp = (Number(stationExpense) || 0) + (Number(bilityExpense) || 0) + (Number(stationLabour) || 0) + (Number(cartLabour) || 0);
@@ -812,8 +809,8 @@ export default function AddShipmentPage() {
             setShipmentsPage(1);
             fetchShipments(nextCreatedDate, 1, shipmentsPageSize);
 
-            // Scroll down smoothly to show the newly added row in Roznamcha
-            document.getElementById('roznamcha-section')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            // Keep view focused at the top workstation form ready for next bilty
+            window.scrollTo({ top: 0, behavior: 'smooth' });
 
         } catch (error: unknown) {
             console.error('Submission Error:', error);
@@ -922,10 +919,7 @@ export default function AddShipmentPage() {
                             <td style="text-align: right; font-family: monospace;">${formatCurrency(shipment.total_charges)}</td>
                         </tr>
                     </table>
-                    <div class="total">
-                        <span>Total Tariff:</span>
-                        <span style="font-family: monospace;">${formatCurrency(Number(shipment.total_charges || 0) + Number(shipment.total_delivery_charges || 0))}</span>
-                    </div>
+                   
                 </div>
             </body>
             </html>
@@ -1411,7 +1405,8 @@ export default function AddShipmentPage() {
                                     <SearchableDropdown
                                         label=""
                                         endpoint="/api/vehicles"
-                                        placeholder="Select or enter truck license plate (e.g. LES-4512)"
+                                        createPropertyName="vehicleNumber"
+                                        placeholder="Select or enter truck number / plate (e.g. 1122 or LES-4512)"
                                         value={field.value}
                                         onSelectItem={(it) => {
                                             const id = Number(it.id);
@@ -1447,8 +1442,9 @@ export default function AddShipmentPage() {
 
                             <button
                                 type="button"
+                                tabIndex={-1}
                                 onClick={() => append({ id: uuidv4(), item_id: 0, quantity: 1 })}
-                                className="text-[10px] font-bold text-charcoal dark:text-lavender hover:underline flex items-center gap-1"
+                                className="text-[10px] font-bold text-charcoal dark:text-lavender hover:underline flex items-center gap-1 focus:outline-hidden"
                             >
                                 <Plus className="w-3 h-3" />
                                 Add Extra Item Row
@@ -1487,6 +1483,7 @@ export default function AddShipmentPage() {
                                                 <SearchableDropdown
                                                     label=""
                                                     endpoint="/api/items"
+                                                    createPropertyName="description"
                                                     placeholder="Select or enter goods category"
                                                     value={field.value}
                                                     onSelectItem={(it) => field.onChange(Number(it.id))}
@@ -1502,8 +1499,9 @@ export default function AddShipmentPage() {
                                         <div className="md:col-span-1 pb-1">
                                             <button
                                                 type="button"
+                                                tabIndex={-1}
                                                 onClick={() => remove(index)}
-                                                className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 flex items-center justify-center transition-colors"
+                                                className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 flex items-center justify-center transition-colors focus:outline-hidden"
                                                 title="Remove Item Row"
                                             >
                                                 <X className="w-4 h-4" />
@@ -1615,28 +1613,13 @@ export default function AddShipmentPage() {
 
                     {/* STEP 5: FREIGHT CHARGES & SETTLEMENT TERMS */}
                     <section className="bg-softcard dark:bg-darkcard rounded-[20px] p-5 sm:p-6 border border-hairline dark:border-zinc-800 transition-colors shadow-2xs">
-                        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                            <div className="flex items-center gap-3">
-                                <span className="w-6 h-6 rounded-full bg-charcoal dark:bg-lavender text-white dark:text-charcoal font-mono text-xs font-bold flex items-center justify-center shrink-0">
-                                    5
-                                </span>
-                                <h2 className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-charcoal dark:text-zinc-200">
-                                    FREIGHT CHARGES &amp; SETTLEMENT TERMS
-                                </h2>
-                            </div>
-
-                            {/* Live Total Tariff Badge */}
-                            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-darkbg border border-hairline dark:border-zinc-700 shadow-2xs">
-                                <span className="text-[11px] font-semibold text-zinc-500">Total Tariff:</span>
-                                <span className="font-mono text-xs font-bold text-charcoal dark:text-lavender">
-                                    Rs. {liveTotalTariff.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>
-                                {isFreeOfCost && (
-                                    <span className="px-2 py-0.5 rounded-full bg-lavender text-charcoal font-mono text-[10px] font-extrabold">
-                                        FOC
-                                    </span>
-                                )}
-                            </div>
+                        <div className="flex items-center gap-3 mb-4">
+                            <span className="w-6 h-6 rounded-full bg-charcoal dark:bg-lavender text-white dark:text-charcoal font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                                5
+                            </span>
+                            <h2 className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-charcoal dark:text-zinc-200">
+                                FREIGHT CHARGES &amp; SETTLEMENT TERMS
+                            </h2>
                         </div>
 
                         {/* Freight Inputs Row */}
