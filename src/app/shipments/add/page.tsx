@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchableDropdown } from "@/components/ui/SearchableDropdown";
-import { fetchMasterLists, clearMasterListsClientCache } from '@/lib/master-lists-client';
+import { fetchMasterLists } from '@/lib/master-lists-client';
 import { toDateInputValue } from '@/lib/created-date';
 import { describeNetworkError, fetchWithTimeout, readApiErrorMessage } from '@/lib/api-client';
 import BiltyDetailDialog from '@/components/shipments/BiltyDetailDialog';
@@ -247,12 +247,6 @@ export default function AddShipmentPage() {
     // FOC backup values
     const savedChotaBeforeFOC = useRef<number>(0);
     const savedBaraBeforeFOC = useRef<number>(0);
-
-    // Modal state for quick add master data
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalType, setModalType] = useState<'city' | 'agency' | 'vehicle' | 'party' | 'item' | null>(null);
-    const [modalInput, setModalInput] = useState<any>({});
-    const [isModalSubmitting, setIsModalSubmitting] = useState(false);
 
     // Password Security Modal State for Bilty Edit
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -682,119 +676,7 @@ export default function AddShipmentPage() {
         }
     };
 
-    // Master Data Quick Add
-    const openMasterDataModal = (type: typeof modalType) => {
-        setModalType(type);
-        setModalInput({});
-        setIsModalOpen(true);
-    };
-
-    const handleAddMasterData = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!modalType || isModalSubmitting) return;
-
-        setIsModalSubmitting(true);
-        let endpoint = '';
-        let payload: any = {};
-        let successMessage = '';
-
-        try {
-            switch (modalType) {
-                case 'city':
-                    if (!modalInput.name || modalInput.name.trim().length < 2) throw new Error('City name required.');
-                    endpoint = '/api/cities';
-                    payload = { name: modalInput.name.trim() };
-                    successMessage = `City "${modalInput.name}" added.`;
-                    break;
-                case 'agency':
-                    if (!modalInput.name || modalInput.name.trim().length < 2) throw new Error('Agency name required.');
-                    endpoint = '/api/agencies';
-                    payload = { name: modalInput.name.trim() };
-                    successMessage = `Agency "${modalInput.name}" registered.`;
-                    break;
-                case 'vehicle':
-                    if (!modalInput.vehicleNumber || modalInput.vehicleNumber.trim().length < 2) throw new Error('Vehicle number required.');
-                    endpoint = '/api/vehicles';
-                    payload = { vehicleNumber: modalInput.vehicleNumber.trim().toUpperCase() };
-                    successMessage = `Vehicle "${modalInput.vehicleNumber}" added.`;
-                    break;
-                case 'item':
-                    if (!modalInput.description || modalInput.description.trim().length < 3) throw new Error('Item description required.');
-                    endpoint = '/api/items';
-                    payload = { description: modalInput.description.trim() };
-                    successMessage = `Item "${modalInput.description}" added.`;
-                    break;
-                case 'party':
-                    if (!modalInput.name || modalInput.name.trim().length < 3) throw new Error('Party name required.');
-                    endpoint = '/api/parties';
-                    payload = {
-                        name: modalInput.name.trim(),
-                        contactInfo: modalInput.contactInfo?.trim() || '',
-                        openingBalance: parseFloat(modalInput.openingBalance) || 0
-                    };
-                    successMessage = `Party "${modalInput.name}" registered.`;
-                    break;
-                default:
-                    throw new Error('Invalid master data type.');
-            }
-
-            const response = await fetchWithTimeout(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `Failed to add data.`);
-            }
-
-            const newEntry = await response.json();
-            sonnerToast.success(successMessage);
-
-            clearMasterListsClientCache();
-            await fetchDropdownData(true);
-
-            const newIdRaw = newEntry.id ?? newEntry.register_number ?? null;
-            const newIdNumber = newIdRaw != null ? Number(newIdRaw) : null;
-
-            if (newIdNumber != null) {
-                switch (modalType) {
-                    case 'party':
-                        if (!form.getValues('sender_id')) {
-                            setValue('sender_id', newIdNumber, { shouldValidate: true });
-                        } else if (!form.getValues('receiver_id')) {
-                            setValue('receiver_id', newIdNumber, { shouldValidate: true });
-                        } else {
-                            setValue('sender_id', newIdNumber, { shouldValidate: true });
-                        }
-                        break;
-                    case 'city':
-                        setValue('to_city_id', newIdNumber, { shouldValidate: true });
-                        break;
-                    case 'agency':
-                        setValue('forwarding_agency_id', newIdNumber, { shouldValidate: true });
-                        break;
-                    case 'vehicle':
-                        setValue('vehicle_number_id', newIdNumber, { shouldValidate: true });
-                        break;
-                    case 'item':
-                        setValue('goods_details.0.item_id', newIdNumber, { shouldValidate: true });
-                        break;
-                }
-            }
-
-            setIsModalOpen(false);
-            setModalInput({});
-        } catch (error: any) {
-            console.error(`Master Data Add Error (${modalType}):`, error);
-            sonnerToast.error(`Error adding data: ${error.message}`);
-        } finally {
-            setIsModalSubmitting(false);
-        }
-    };
-
-    // Save or Update Bilty
+// Save or Update Bilty
     const handleDirectSave = useCallback(async (values: ShipmentFormValues) => {
         if (isSavingRef.current) return;
         isSavingRef.current = true;
@@ -1457,18 +1339,7 @@ export default function AddShipmentPage() {
                             {/* Departure City * */}
                             <FormField control={control} name="departure_city_id" render={({ field, fieldState }) => (
                                 <div>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <label className="text-xs font-bold text-charcoal dark:text-zinc-200">
-                                            Departure City <span className="text-rose-500">*</span>
-                                        </label>
-                                        <button
-                                            type="button"
-                                            onClick={() => openMasterDataModal('city')}
-                                            className="text-[10px] text-zinc-500 hover:text-charcoal dark:hover:text-lavender font-bold flex items-center gap-0.5"
-                                        >
-                                            <Plus className="w-2.5 h-2.5" /> Add
-                                        </button>
-                                    </div>
+                                    <label className="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">Departure City <span className="text-rose-500">*</span></label>
                                     <SearchableDropdown
                                         label=""
                                         endpoint="/api/cities"
@@ -1509,18 +1380,7 @@ export default function AddShipmentPage() {
                             {/* Forwarding Agency * */}
                             <FormField control={control} name="forwarding_agency_id" render={({ field, fieldState }) => (
                                 <div>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <label className="text-xs font-bold text-charcoal dark:text-zinc-200">
-                                            Forwarding Agency <span className="text-rose-500">*</span>
-                                        </label>
-                                        <button
-                                            type="button"
-                                            onClick={() => openMasterDataModal('agency')}
-                                            className="text-[10px] text-zinc-500 hover:text-charcoal dark:hover:text-lavender font-bold flex items-center gap-0.5"
-                                        >
-                                            <Plus className="w-2.5 h-2.5" /> Add
-                                        </button>
-                                    </div>
+                                    <label className="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">Forwarding Agency <span className="text-rose-500">*</span></label>
                                     <SearchableDropdown
                                         label=""
                                         endpoint="/api/agencies"
@@ -1547,18 +1407,7 @@ export default function AddShipmentPage() {
                             {/* Vehicle Number (License Plate) * */}
                             <FormField control={control} name="vehicle_number_id" render={({ field, fieldState }) => (
                                 <div>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <label className="text-xs font-bold text-charcoal dark:text-zinc-200">
-                                            Vehicle Number (License Plate) <span className="text-rose-500">*</span>
-                                        </label>
-                                        <button
-                                            type="button"
-                                            onClick={() => openMasterDataModal('vehicle')}
-                                            className="text-[10px] text-zinc-500 hover:text-charcoal dark:hover:text-lavender font-bold flex items-center gap-0.5"
-                                        >
-                                            <Plus className="w-2.5 h-2.5" /> Add
-                                        </button>
-                                    </div>
+                                    <label className="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">Vehicle Number (License Plate) <span className="text-rose-500">*</span></label>
                                     <SearchableDropdown
                                         label=""
                                         endpoint="/api/vehicles"
@@ -1634,18 +1483,7 @@ export default function AddShipmentPage() {
                                     <div className={fields.length > 1 ? "md:col-span-7" : "md:col-span-8"}>
                                         <FormField control={control} name={`goods_details.${index}.item_id`} render={({ field, fieldState }) => (
                                             <div>
-                                                <div className="flex items-center justify-between mb-1.5">
-                                                    <label className="text-xs font-bold text-charcoal dark:text-zinc-200">
-                                                        Item Category / Goods Description <span className="text-rose-500">*</span>
-                                                    </label>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openMasterDataModal('item')}
-                                                        className="text-[10px] text-zinc-500 hover:text-charcoal dark:hover:text-lavender font-bold flex items-center gap-0.5"
-                                                    >
-                                                        <Plus className="w-2.5 h-2.5" /> Add
-                                                    </button>
-                                                </div>
+                                                <label className="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">Item Category / Goods Description <span className="text-rose-500">*</span></label>
                                                 <SearchableDropdown
                                                     label=""
                                                     endpoint="/api/items"
@@ -1692,18 +1530,7 @@ export default function AddShipmentPage() {
                             {/* Sender Party * */}
                             <FormField control={control} name="sender_id" render={({ field, fieldState }) => (
                                 <div>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <label className="text-xs font-bold text-charcoal dark:text-zinc-200">
-                                            Sender Party <span className="text-rose-500">*</span>
-                                        </label>
-                                        <button
-                                            type="button"
-                                            onClick={() => openMasterDataModal('party')}
-                                            className="text-[10px] text-zinc-500 hover:text-charcoal dark:hover:text-lavender font-bold flex items-center gap-0.5"
-                                        >
-                                            <Plus className="w-2.5 h-2.5" /> Add
-                                        </button>
-                                    </div>
+                                    <label className="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">Sender Party <span className="text-rose-500">*</span></label>
                                     <SearchableDropdown
                                         label=""
                                         endpoint="/api/parties"
@@ -1731,18 +1558,7 @@ export default function AddShipmentPage() {
                             {/* Receiver Party * */}
                             <FormField control={control} name="receiver_id" render={({ field, fieldState }) => (
                                 <div>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <label className="text-xs font-bold text-charcoal dark:text-zinc-200">
-                                            Receiver Party <span className="text-rose-500">*</span>
-                                        </label>
-                                        <button
-                                            type="button"
-                                            onClick={() => openMasterDataModal('party')}
-                                            className="text-[10px] text-zinc-500 hover:text-charcoal dark:hover:text-lavender font-bold flex items-center gap-0.5"
-                                        >
-                                            <Plus className="w-2.5 h-2.5" /> Add
-                                        </button>
-                                    </div>
+                                    <label className="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">Receiver Party <span className="text-rose-500">*</span></label>
                                     <SearchableDropdown
                                         label=""
                                         endpoint="/api/parties"
@@ -1770,18 +1586,7 @@ export default function AddShipmentPage() {
                             {/* Destination City * */}
                             <FormField control={control} name="to_city_id" render={({ field, fieldState }) => (
                                 <div>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <label className="text-xs font-bold text-charcoal dark:text-zinc-200">
-                                            Destination City <span className="text-rose-500">*</span>
-                                        </label>
-                                        <button
-                                            type="button"
-                                            onClick={() => openMasterDataModal('city')}
-                                            className="text-[10px] text-zinc-500 hover:text-charcoal dark:hover:text-lavender font-bold flex items-center gap-0.5"
-                                        >
-                                            <Plus className="w-2.5 h-2.5" /> Add
-                                        </button>
-                                    </div>
+                                    <label className="block text-xs font-bold text-charcoal dark:text-zinc-200 mb-1.5">Destination City <span className="text-rose-500">*</span></label>
                                     <SearchableDropdown
                                         label=""
                                         endpoint="/api/cities"
@@ -2327,118 +2132,7 @@ export default function AddShipmentPage() {
                 </div>
             </section>
 
-            {/* Master Data Quick Add Modal */}
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-md rounded-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-base font-bold text-charcoal dark:text-white">
-                            Quick Add {modalType ? modalType.charAt(0).toUpperCase() + modalType.slice(1) : ''}
-                        </DialogTitle>
-                        <DialogDescription className="text-xs text-zinc-500">
-                            Create a new master data entry instantly without leaving the workstation.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <form onSubmit={handleAddMasterData} className="space-y-4 pt-2">
-                        {modalType === 'city' && (
-                            <div>
-                                <Label className="text-xs font-bold mb-1.5 block">City Name *</Label>
-                                <Input
-                                    name="name"
-                                    required
-                                    placeholder="e.g. Gujranwala"
-                                    onChange={(e) => setModalInput({ ...modalInput, name: e.target.value })}
-                                    className="rounded-xl"
-                                />
-                            </div>
-                        )}
-
-                        {modalType === 'agency' && (
-                            <div>
-                                <Label className="text-xs font-bold mb-1.5 block">Agency Name *</Label>
-                                <Input
-                                    name="name"
-                                    required
-                                    placeholder="e.g. Shaheen Goods Forwarders"
-                                    onChange={(e) => setModalInput({ ...modalInput, name: e.target.value })}
-                                    className="rounded-xl"
-                                />
-                            </div>
-                        )}
-
-                        {modalType === 'vehicle' && (
-                            <div>
-                                <Label className="text-xs font-bold mb-1.5 block">Vehicle License Plate *</Label>
-                                <Input
-                                    name="vehicleNumber"
-                                    required
-                                    placeholder="e.g. LES-8821"
-                                    onChange={(e) => setModalInput({ ...modalInput, vehicleNumber: e.target.value })}
-                                    className="rounded-xl font-mono uppercase"
-                                />
-                            </div>
-                        )}
-
-                        {modalType === 'item' && (
-                            <div>
-                                <Label className="text-xs font-bold mb-1.5 block">Item Description *</Label>
-                                <Input
-                                    name="description"
-                                    required
-                                    placeholder="e.g. Cotton Bales / Raw Fabric"
-                                    onChange={(e) => setModalInput({ ...modalInput, description: e.target.value })}
-                                    className="rounded-xl"
-                                />
-                            </div>
-                        )}
-
-                        {modalType === 'party' && (
-                            <div className="space-y-3">
-                                <div>
-                                    <Label className="text-xs font-bold mb-1.5 block">Party / Business Name *</Label>
-                                    <Input
-                                        name="name"
-                                        required
-                                        placeholder="e.g. Rehman Traders"
-                                        onChange={(e) => setModalInput({ ...modalInput, name: e.target.value })}
-                                        className="rounded-xl"
-                                    />
-                                </div>
-                                <div>
-                                    <Label className="text-xs font-bold mb-1.5 block">Contact Phone / Info</Label>
-                                    <Input
-                                        name="contactInfo"
-                                        placeholder="e.g. 0300-1234567"
-                                        onChange={(e) => setModalInput({ ...modalInput, contactInfo: e.target.value })}
-                                        className="rounded-xl"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex justify-end gap-2.5 pt-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setIsModalOpen(false)}
-                                className="rounded-xl text-xs"
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="submit"
-                                disabled={isModalSubmitting}
-                                className="rounded-xl bg-charcoal text-white hover:bg-zinc-800 dark:bg-lavender dark:text-charcoal text-xs font-bold"
-                            >
-                                {isModalSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
-                                Save Entry
-                            </Button>
-                        </div>
-                    </form>
-                </DialogContent>
-            </Dialog>
-
-            {/* Password Verification Modal for Bilty Edit */}
+{/* Password Verification Modal for Bilty Edit */}
             <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
                 <DialogContent className="max-w-md rounded-2xl">
                     <DialogHeader>
