@@ -349,7 +349,7 @@ export default function AddShipmentPage() {
         };
     }, [fetchDropdownData]);
 
-    // Restore last selected route/fleet fields on initial load
+    // Restore last selected route/fleet fields on initial load & master data refresh
     useEffect(() => {
         if (typeof window !== 'undefined') {
             try {
@@ -357,7 +357,7 @@ export default function AddShipmentPage() {
                 if (savedCityId) {
                     const parsed = Number(savedCityId);
                     if (parsed > 0 && !form.getValues('departure_city_id')) {
-                        form.setValue('departure_city_id', parsed);
+                        form.setValue('departure_city_id', parsed, { shouldValidate: true });
                     }
                 }
 
@@ -365,7 +365,7 @@ export default function AddShipmentPage() {
                 if (savedAgencyId) {
                     const parsed = Number(savedAgencyId);
                     if (parsed > 0 && !form.getValues('forwarding_agency_id')) {
-                        form.setValue('forwarding_agency_id', parsed);
+                        form.setValue('forwarding_agency_id', parsed, { shouldValidate: true });
                     }
                 }
 
@@ -373,22 +373,22 @@ export default function AddShipmentPage() {
                 if (savedVehicleId) {
                     const parsed = Number(savedVehicleId);
                     if (parsed > 0 && !form.getValues('vehicle_number_id')) {
-                        form.setValue('vehicle_number_id', parsed);
+                        form.setValue('vehicle_number_id', parsed, { shouldValidate: true });
                     }
                 }
 
-                const savedToCityId = localStorage.getItem('last_to_city_id');
+                const savedToCityId = localStorage.getItem('last_to_city_id') || localStorage.getItem('last_destination_city_id');
                 if (savedToCityId) {
                     const parsed = Number(savedToCityId);
                     if (parsed > 0 && !form.getValues('to_city_id')) {
-                        form.setValue('to_city_id', parsed);
+                        form.setValue('to_city_id', parsed, { shouldValidate: true });
                     }
                 }
             } catch {
                 // Ignore localStorage errors
             }
         }
-    }, [form]);
+    }, [data, form]);
 
     const fetchShipments = useCallback(async (dateToFilter: string, page = 1, pageSize = 25) => {
         if (!dateToFilter) {
@@ -874,10 +874,21 @@ export default function AddShipmentPage() {
 
             const nextBilityDate = values.bility_date || today;
             const nextCreatedDate = createdDate;
-            const nextDepartureCityId = values.departure_city_id ? Number(values.departure_city_id) : 0;
-            const nextForwardingAgencyId = values.forwarding_agency_id ? Number(values.forwarding_agency_id) : 0;
-            const nextVehicleNumberId = values.vehicle_number_id ? Number(values.vehicle_number_id) : 0;
-            const nextToCityId = values.to_city_id ? Number(values.to_city_id) : 0;
+            const nextDepartureCityId = values.departure_city_id
+                ? Number(values.departure_city_id)
+                : (typeof window !== 'undefined' ? Number(localStorage.getItem('last_departure_city_id')) || 0 : 0);
+
+            const nextForwardingAgencyId = values.forwarding_agency_id
+                ? Number(values.forwarding_agency_id)
+                : (typeof window !== 'undefined' ? Number(localStorage.getItem('last_forwarding_agency_id')) || 0 : 0);
+
+            const nextVehicleNumberId = values.vehicle_number_id
+                ? Number(values.vehicle_number_id)
+                : (typeof window !== 'undefined' ? Number(localStorage.getItem('last_vehicle_number_id')) || 0 : 0);
+
+            const nextToCityId = values.to_city_id
+                ? Number(values.to_city_id)
+                : (typeof window !== 'undefined' ? (Number(localStorage.getItem('last_to_city_id')) || Number(localStorage.getItem('last_destination_city_id')) || 0) : 0);
 
             if (typeof window !== 'undefined') {
                 try {
@@ -892,6 +903,7 @@ export default function AddShipmentPage() {
                     }
                     if (nextToCityId > 0) {
                         localStorage.setItem('last_to_city_id', String(nextToCityId));
+                        localStorage.setItem('last_destination_city_id', String(nextToCityId));
                     }
                 } catch {
                     // Ignore localStorage errors
@@ -1781,6 +1793,7 @@ export default function AddShipmentPage() {
                                             if (typeof window !== 'undefined' && id > 0) {
                                                 try {
                                                     localStorage.setItem('last_to_city_id', String(id));
+                                                    localStorage.setItem('last_destination_city_id', String(id));
                                                 } catch {
                                                     // Ignore localStorage errors
                                                 }
