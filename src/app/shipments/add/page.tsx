@@ -955,11 +955,12 @@ export default function AddShipmentPage() {
                     const bara = Number(s.total_charges || 0);
                     totalChota += chota;
                     totalBara += bara;
-                    const fromCity = findNameById(data, 'cities', s.departure_city_id) !== '-' ? findNameById(data, 'cities', s.departure_city_id) : (s.departureCity?.name || 'Main Hub');
-                    const toCity = s.to_city_id ? (findNameById(data, 'cities', s.to_city_id) !== '-' ? findNameById(data, 'cities', s.to_city_id) : (s.toCity?.name || 'Local')) : 'Local';
-                    const vehicleNo = findNameById(data, 'vehicles', s.vehicle_number_id) !== '-' ? findNameById(data, 'vehicles', s.vehicle_number_id) : (s.vehicle?.vehicleNumber || '-');
-                    const senderName = findNameById(data, 'parties', s.sender_id) !== '-' ? findNameById(data, 'parties', s.sender_id) : (s.sender?.name || '-');
-                    const receiverName = findNameById(data, 'parties', s.receiver_id) !== '-' ? findNameById(data, 'parties', s.receiver_id) : (s.receiver?.name || '-');
+                    const sAny = s as any;
+                    const fromCity = findNameById(data, 'cities', s.departure_city_id) !== '-' ? findNameById(data, 'cities', s.departure_city_id) : (sAny.departureCity?.name || 'Main Hub');
+                    const toCity = s.to_city_id ? (findNameById(data, 'cities', s.to_city_id) !== '-' ? findNameById(data, 'cities', s.to_city_id) : (sAny.toCity?.name || 'Local')) : 'Local';
+                    const vehicleNo = findNameById(data, 'vehicles', s.vehicle_number_id) !== '-' ? findNameById(data, 'vehicles', s.vehicle_number_id) : (sAny.vehicle?.vehicleNumber || '-');
+                    const senderName = findNameById(data, 'parties', s.sender_id) !== '-' ? findNameById(data, 'parties', s.sender_id) : (sAny.sender?.name || '-');
+                    const receiverName = findNameById(data, 'parties', s.receiver_id) !== '-' ? findNameById(data, 'parties', s.receiver_id) : (sAny.receiver?.name || '-');
                     return `
                         <tr>
                             <td style="padding: 6px 8px; border: 1px solid #d4d4d8; text-align: center;">${idx + 1}</td>

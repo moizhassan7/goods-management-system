@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const vehicleId = parseInt(vehicleIdParam, 10);
+    const vehicleId = vehicleIdParam ? parseInt(vehicleIdParam, 10) : NaN;
     const date = new Date(dateParam);
 
     const startOfDay = new Date(date);
