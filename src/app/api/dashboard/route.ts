@@ -128,7 +128,7 @@ export async function GET(request: Request) {
             // Format date as 'Nov 16'
             date: d.bility_date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
             volume: d._count.register_number,
-            freight: Number(d._sum?.total_charges || 0) + Number(d._sum?.total_delivery_charges || 0),
+            freight: Number(d._sum?.total_charges || 0) || Number(d._sum?.total_delivery_charges || 0),
         }));
 
         return NextResponse.json({

@@ -218,8 +218,8 @@ export default function SingleBiltyFullViewPage() {
                         </tr>
                     </table>
                     <div class="total-line">
-                        <span>Net Total:</span>
-                        <span>${formatCurrency(Number(shipment.total_charges || 0) + Number(shipment.total_delivery_charges || 0))}</span>
+                        <span>Net Total (Bara Karaya):</span>
+                        <span>${formatCurrency(Number(shipment.total_charges || shipment.total_delivery_charges || 0))}</span>
                     </div>
                 </div>
 
@@ -683,9 +683,9 @@ export default function SingleBiltyFullViewPage() {
                             </div>
                             <Separator className="my-1" />
                             <div className="flex justify-between items-center font-bold text-sm">
-                                <span className="text-slate-900 dark:text-white">Total Gross Fare:</span>
+                                <span className="text-slate-900 dark:text-white">Total Gross Fare (Bara Karaya):</span>
                                 <span className="font-mono font-extrabold text-blue-600 dark:text-blue-400 text-base">
-                                    {formatCurrency(Number(shipment.total_charges || 0) + Number(shipment.total_delivery_charges || 0))}
+                                    {formatCurrency(Number(shipment.total_charges || shipment.total_delivery_charges || 0))}
                                 </span>
                             </div>
                             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-[11px] space-y-1">

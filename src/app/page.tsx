@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithTimeout } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import {
@@ -87,6 +89,22 @@ const formatShortCurrency = (amount: number) => {
 
 export default function DashboardPage() {
     const router = useRouter();
+    const { user } = useAuth();
+
+    // Time-based greeting with username
+    const greeting = useMemo(() => {
+        const hour = new Date().getHours();
+        let timeGreeting = 'Good day';
+        if (hour >= 5 && hour < 12) {
+            timeGreeting = 'Good morning';
+        } else if (hour >= 12 && hour < 17) {
+            timeGreeting = 'Good afternoon';
+        } else {
+            timeGreeting = 'Good evening';
+        }
+        const username = user?.username ? (user.username.charAt(0).toUpperCase() + user.username.slice(1)) : '';
+        return username ? `${timeGreeting}, ${username}` : timeGreeting;
+    }, [user?.username]);
     const [data, setData] = useState<DashboardData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -118,14 +136,19 @@ export default function DashboardPage() {
 
     const metrics = data?.keyMetrics || initialMetrics;
 
-    const totalKaraya = (metrics.totalBaraKaraya || 0) + (metrics.totalChotaKaraya || 0);
-    const baraKarayaPercent = totalKaraya > 0 ? ((metrics.totalBaraKaraya || 0) / totalKaraya) * 100 : 54;
-    const chotaKarayaPercent = totalKaraya > 0 ? ((metrics.totalChotaKaraya || 0) / totalKaraya) * 100 : 46;
+    const totalBara = Number(metrics.totalBaraKaraya ?? metrics.totalRevenue ?? 0);
+    const totalChota = Number(metrics.totalChotaKaraya ?? 0);
+    const stationExpenses = Math.max(0, totalBara - totalChota);
+
+    // Total Karaya is Bara Karaya (since Bara Karaya already includes Chota Karaya + station expenses)
+    const totalKaraya = totalBara > 0 ? totalBara : totalChota;
+    const chotaPercentOfBara = totalKaraya > 0 ? Math.min(100, (totalChota / totalKaraya) * 100) : 0;
+    const stationExpensePercent = totalKaraya > 0 ? Math.max(0, 100 - chotaPercentOfBara) : 0;
 
     // SVG Donut geometry: r=62, circumference ≈ 389.56
     const circumference = 389.56;
-    const chotaDash = (chotaKarayaPercent / 100) * circumference;
-    const baraDash = (baraKarayaPercent / 100) * circumference;
+    const chotaDash = (chotaPercentOfBara / 100) * circumference;
+    const expenseDash = (stationExpensePercent / 100) * circumference;
 
     // Filter recent shipments
     const filteredShipments = useMemo(() => {
@@ -204,10 +227,12 @@ export default function DashboardPage() {
             {/* TOP HEADER BAR: Title + Underline Tabs on Left, Bordered Search & Actions on Right */}
             <header className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div>
-                    <div className="flex items-baseline gap-3">
+                    <div className="flex flex-wrap items-baseline gap-3">
+                        
                         <h1 className="text-2xl sm:text-[32px] font-normal tracking-tight text-charcoal dark:text-white leading-none">
-                            Dashboard
+                            {greeting}
                         </h1>
+                        
                         <span className="text-[11px] font-medium tracking-[0.05em] uppercase text-zinc-400 font-mono">
                             {todayFormatted}
                         </span>
@@ -319,13 +344,13 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-300">
                                     <span className="text-lavender text-[9px]">▲</span>
-                                    <span>{baraKarayaPercent.toFixed(0)}% Primary Freight</span>
+                                    <span>Total Consolidated Freight</span>
                                 </div>
                             </div>
 
                             <div className="mt-6 flex items-end justify-between gap-2">
                                 <div className="text-2xl sm:text-[30px] font-light tracking-tight tabular-nums leading-none">
-                                    {formatCurrency(metrics.totalBaraKaraya ?? metrics.totalRevenue)}
+                                    {formatCurrency(totalBara)}
                                 </div>
                                 <button
                                     onClick={() => router.push('/shipments/report')}
@@ -345,13 +370,13 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
                                     <span className="text-emerald-600 dark:text-emerald-400 text-[9px]">▲</span>
-                                    <span>{chotaKarayaPercent.toFixed(0)}% Delivery Surcharges</span>
+                                    <span>{chotaPercentOfBara.toFixed(0)}% Base Consignment Fare</span>
                                 </div>
                             </div>
 
                             <div className="mt-6 flex items-end justify-between gap-2">
                                 <div className="text-2xl sm:text-[30px] font-light tracking-tight text-charcoal dark:text-white tabular-nums leading-none">
-                                    {formatCurrency(metrics.totalChotaKaraya ?? 0)}
+                                    {formatCurrency(totalChota)}
                                 </div>
                                 <button
                                     onClick={() => router.push('/shipments/report')}
@@ -469,12 +494,14 @@ export default function DashboardPage() {
                         <h2 className="text-[17px] font-normal text-charcoal dark:text-white">
                             Top Agencies
                         </h2>
-                        <button
-                            onClick={() => router.push('/agency/view')}
+                        <Link
+                            href="/agency/view"
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="text-[11px] font-semibold tracking-wider text-zinc-400 hover:text-charcoal dark:hover:text-white uppercase transition-colors"
                         >
                             View All →
-                        </button>
+                        </Link>
                     </div>
 
                     <div className="flex-1 bg-cardgray dark:bg-zinc-900/70 border border-hairline dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-between shadow-2xs">
@@ -650,7 +677,7 @@ export default function DashboardPage() {
                             <svg viewBox="0 0 160 160" className="w-full h-full -rotate-90">
                                 {/* Subtle Light Track */}
                                 <circle cx="80" cy="80" r="62" fill="none" className="stroke-[#E3E3E7] dark:stroke-zinc-800" strokeWidth="14" />
-                                {/* Soft Lavender Segment (Chota Karaya) */}
+                                {/* Soft Lavender Segment (Chota Karaya - Base Freight) */}
                                 <circle
                                     cx="80"
                                     cy="80"
@@ -662,17 +689,19 @@ export default function DashboardPage() {
                                     strokeDashoffset="0"
                                     className="donut-segment"
                                 />
-                                {/* Dark Charcoal Segment (Bara Karaya) */}
-                                <circle
-                                    cx="80"
-                                    cy="80"
-                                    r="62"
-                                    fill="none"
-                                    className="stroke-charcoal dark:stroke-white donut-segment"
-                                    strokeWidth="14"
-                                    strokeDasharray={`${baraDash} ${circumference}`}
-                                    strokeDashoffset={`-${chotaDash}`}
-                                />
+                                {/* Dark Charcoal Segment (Station Expenses & Charges) */}
+                                {stationExpensePercent > 0 && (
+                                    <circle
+                                        cx="80"
+                                        cy="80"
+                                        r="62"
+                                        fill="none"
+                                        className="stroke-charcoal dark:stroke-white donut-segment"
+                                        strokeWidth="14"
+                                        strokeDasharray={`${expenseDash} ${circumference}`}
+                                        strokeDashoffset={`-${chotaDash}`}
+                                    />
+                                )}
                             </svg>
 
                             {/* Center Text */}
@@ -692,11 +721,11 @@ export default function DashboardPage() {
                                 <div className="flex items-center gap-1.5">
                                     <span className="w-2.5 h-2.5 rounded-full border-[2.5px] border-charcoal dark:border-white shrink-0"></span>
                                     <span className="text-xs font-semibold text-charcoal dark:text-zinc-100 tabular-nums truncate">
-                                        {formatCurrency(metrics.totalBaraKaraya ?? metrics.totalRevenue)}
+                                        {formatCurrency(totalBara)}
                                     </span>
                                 </div>
                                 <div className="pl-4 text-[9px] font-semibold tracking-[0.06em] uppercase text-zinc-400 mt-0.5">
-                                    BARA KARAYA ({baraKarayaPercent.toFixed(0)}%)
+                                    BARA KARAYA (TOTAL)
                                 </div>
                             </div>
 
@@ -704,14 +733,20 @@ export default function DashboardPage() {
                                 <div className="flex items-center gap-1.5">
                                     <span className="w-2.5 h-2.5 rounded-full border-[2.5px] border-lavender shrink-0"></span>
                                     <span className="text-xs font-semibold text-charcoal dark:text-zinc-100 tabular-nums truncate">
-                                        {formatCurrency(metrics.totalChotaKaraya ?? 0)}
+                                        {formatCurrency(totalChota)}
                                     </span>
                                 </div>
                                 <div className="pl-4 text-[9px] font-semibold tracking-[0.06em] uppercase text-zinc-400 mt-0.5">
-                                    CHOTA KARAYA ({chotaKarayaPercent.toFixed(0)}%)
+                                    CHOTA KARAYA ({chotaPercentOfBara.toFixed(0)}% BASE)
                                 </div>
                             </div>
                         </div>
+
+                        {stationExpenses > 0 && (
+                            <div className="mt-2.5 pt-2 border-t border-hairline/60 dark:border-zinc-800/60 text-center text-[10px] text-zinc-500 dark:text-zinc-400">
+                                Station Expenses & Labour: <span className="font-semibold text-charcoal dark:text-zinc-200">{formatCurrency(stationExpenses)}</span> ({stationExpensePercent.toFixed(0)}%)
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>
@@ -810,7 +845,7 @@ export default function DashboardPage() {
                                                     </span>
                                                 </td>
                                                 <td className="py-3.5 px-5 whitespace-nowrap text-right font-medium text-charcoal dark:text-white tabular-nums">
-                                                    {formatCurrency(bara + chota)}
+                                                    {formatCurrency(bara > 0 ? bara : chota)}
                                                 </td>
                                             </tr>
                                         );

@@ -8,8 +8,14 @@ import CustomLoader from '@/components/ui/CustomLoader';
 import Sidebar from '@/components/dashboard/Sidebar';
 import { Toaster } from "@/components/ui/sonner";
 import LanguageSetter from './LanguageSetter';
-import { Button } from '@/components/ui/button';
-import { LogOut, User, Truck, Calendar } from 'lucide-react';
+import { LogOut, Truck, Calendar, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const publicPaths = ['/login', '/signup'];
 
@@ -94,17 +100,6 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     );
   }
 
-  const getRoleBadgeStyle = (role?: string) => {
-    switch (role) {
-      case 'SUPERADMIN':
-        return 'bg-lavender text-charcoal font-bold border-lavender';
-      case 'ADMIN':
-        return 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800';
-      default:
-        return 'bg-cardgray text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border-hairline dark:border-zinc-700';
-    }
-  };
-
   // --- Authenticated Dashboard Layout ---
   return (
     <>
@@ -133,7 +128,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
               </div>
             </div>
 
-            {/* Right: Date pill + User Pill & Logout */}
+            {/* Right: Date pill + User Dropdown Menu */}
             {user && (
               <div className="flex items-center gap-3">
                 {currentDateString && (
@@ -143,28 +138,47 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                   </div>
                 )}
 
-                <div className="flex items-center gap-2.5 pl-3 border-l border-hairline dark:border-zinc-800">
-                  <div className="text-right hidden sm:block">
-                    <p className="text-xs font-bold text-charcoal dark:text-zinc-200 flex items-center justify-end gap-1">
-                      <User className="h-3.5 w-3.5 text-zinc-400" />
-                      {user.username}
-                    </p>
-                    <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.2 rounded-full border ${getRoleBadgeStyle(user.role)}`}>
-                      {user.role}
-                    </span>
-                  </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-hairline dark:border-zinc-700 bg-white dark:bg-zinc-800/80 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer focus:outline-none shadow-2xs group"
+                    >
+                      <div className="w-7 h-7 rounded-full bg-charcoal dark:bg-lavender text-white dark:text-charcoal flex items-center justify-center text-xs font-bold shrink-0">
+                        {(user.username || 'U').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="text-left hidden sm:block leading-tight">
+                        <p className="text-xs font-bold text-charcoal dark:text-zinc-100">
+                          {user.username}
+                        </p>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-400">
+                          {user.role}
+                        </p>
+                      </div>
+                      <ChevronDown className="w-3.5 h-3.5 text-zinc-400 group-hover:text-charcoal dark:group-hover:text-white transition-colors" />
+                    </button>
+                  </DropdownMenuTrigger>
 
-                  <Button
-                    onClick={logout}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3 rounded-full bg-cardgray dark:bg-zinc-800 text-zinc-700 hover:text-rose-700 hover:bg-rose-50 dark:text-zinc-300 dark:hover:bg-rose-950/40 border border-hairline dark:border-zinc-700 transition-colors text-xs font-semibold cursor-pointer shadow-2xs"
-                    title="Logout"
-                  >
-                    <LogOut className="h-3.5 w-3.5 mr-1 text-zinc-400" />
-                    <span>Exit</span>
-                  </Button>
-                </div>
+                  <DropdownMenuContent align="end" className="w-48 p-1.5 rounded-2xl bg-white dark:bg-zinc-900 border border-hairline dark:border-zinc-800 shadow-xl">
+                    <div className="px-3 py-2">
+                      <p className="text-xs font-bold text-charcoal dark:text-zinc-100">
+                        {user.username}
+                      </p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mt-0.5">
+                        {user.role}
+                      </p>
+                    </div>
+                    <DropdownMenuSeparator className="my-1 border-hairline dark:border-zinc-800" />
+                    <DropdownMenuItem
+                      onClick={logout}
+                      variant="destructive"
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer text-rose-600 dark:text-rose-400 focus:text-rose-700 dark:focus:text-rose-300 focus:bg-rose-50 dark:focus:bg-rose-950/40"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
           </header>

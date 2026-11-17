@@ -22,6 +22,10 @@ import { TablePagination } from '@/components/ui/TablePagination';
 interface Agency {
     id: number;
     name: string;
+    totalBilties?: number;
+    _count?: {
+        shipments: number;
+    };
 }
 
 export default function ViewAgencies() {
@@ -52,7 +56,7 @@ export default function ViewAgencies() {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetchWithTimeout('/api/agencies');
+            const response = await fetchWithTimeout('/api/agencies?withCounts=true');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data: Agency[] = await response.json();
             setAgencies(data);
@@ -67,6 +71,15 @@ export default function ViewAgencies() {
     useEffect(() => {
         fetchAgencies();
     }, []);
+
+    const totalPartnerBilties = useMemo(() => {
+        return agencies.reduce((sum, a) => sum + (a.totalBilties ?? a._count?.shipments ?? 0), 0);
+    }, [agencies]);
+
+    const topAgencyName = useMemo(() => {
+        if (agencies.length === 0) return '';
+        return agencies[0]?.name;
+    }, [agencies]);
 
     const filteredAgencies = useMemo(() => {
         if (!searchTerm.trim()) return agencies;
@@ -210,6 +223,28 @@ export default function ViewAgencies() {
                 </div>
             </div>
 
+            {/* Quick KPI Stat Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Agencies</span>
+                    <div className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">
+                        {agencies.length}
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Partner Bilties</span>
+                    <div className="text-xl font-bold font-mono text-charcoal dark:text-lavender mt-1">
+                        {totalPartnerBilties.toLocaleString()}
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Top Agency by Volume</span>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white mt-1 truncate" title={topAgencyName}>
+                        {topAgencyName || 'None'}
+                    </div>
+                </div>
+            </div>
+
             {/* Main Table Card */}
             <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
                 <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 py-3 px-4">
@@ -248,8 +283,9 @@ export default function ViewAgencies() {
                             <Table>
                                 <TableHeader className="bg-slate-50 dark:bg-slate-800/60">
                                     <TableRow className="hover:bg-transparent">
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 w-24 whitespace-nowrap">Serial No.</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 w-20 whitespace-nowrap">Rank</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Agency Name</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-center">Total Bilties</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Status</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right pr-4 w-20">Actions</TableHead>
                                     </TableRow>
@@ -257,17 +293,41 @@ export default function ViewAgencies() {
                                 <TableBody>
                                     {paginatedAgencies.map((agency, index) => {
                                         const serialNumber = (currentPage - 1) * pageSize + index + 1;
+                                        const biltyCount = agency.totalBilties ?? agency._count?.shipments ?? 0;
+                                        const words = agency.name.split(' ');
+                                        const initials = words.length > 1
+                                            ? `${words[0][0]}${words[1][0]}`.toUpperCase()
+                                            : agency.name.substring(0, 2).toUpperCase();
+
                                         return (
                                             <TableRow
                                                 key={agency.id}
                                                 id={recordRowId(agency.id)}
                                                 className={recordRowClass(String(agency.id) === highlightId, 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors')}
                                             >
-                                                <TableCell className="pl-4 font-mono font-semibold text-slate-500 dark:text-slate-400" title={`ID: #${agency.id}`}>
-                                                    {serialNumber}
+                                                <TableCell className="pl-4 font-mono font-semibold text-slate-500 dark:text-slate-400">
+                                                    #{serialNumber}
                                                 </TableCell>
-                                                <TableCell className="font-bold text-slate-900 dark:text-white">
-                                                    {agency.name}
+                                                <TableCell>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-charcoal dark:bg-zinc-800 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                                                            {initials}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-bold text-slate-900 dark:text-white text-xs">
+                                                                {agency.name}
+                                                            </div>
+                                                            <div className="text-[10px] text-slate-400 font-mono">
+                                                                ID: #{agency.id}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono bg-lavender/30 dark:bg-lavender/20 text-charcoal dark:text-zinc-100 border border-lavender/50 dark:border-zinc-700">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-purple-600 dark:bg-lavender" />
+                                                        {biltyCount.toLocaleString()} {biltyCount === 1 ? 'Bilty' : 'Bilties'}
+                                                    </span>
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">

@@ -17,9 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Label } from '@/components/ui/label';
 import {
     Plus, Loader2, Check, Printer, Calendar,
-    CheckCircle2, ChevronDown, ChevronUp,
-    Pencil, X, RotateCcw, Lock, Eye, EyeOff,
-    Search, Trash2, BookOpenCheck, LogOut, PackageCheck
+    CheckCircle2, Pencil, X, RotateCcw, Lock, Eye, EyeOff,
+    Trash2, BookOpenCheck, LogOut, PackageCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchableDropdown } from "@/components/ui/SearchableDropdown";
@@ -230,16 +229,9 @@ export default function AddShipmentPage() {
     const [shipmentsTotal, setShipmentsTotal] = useState(0);
     const [shipmentsTotalPages, setShipmentsTotalPages] = useState(1);
     const [isFetchingRegNum, setIsFetchingRegNum] = useState(false);
-    const [showExpenses, setShowExpenses] = useState(false);
-    const [editingShipmentId, setEditingShipmentId] = useState<string | null>(null);
+        const [editingShipmentId, setEditingShipmentId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const isSavingRef = useRef(false);
-
-    // Micro-tab active state
-    const [activeMicroTab, setActiveMicroTab] = useState<'CONSIGNMENT ENTRY' | 'QUICK DISPATCH' | 'BULK IMPORT' | 'TEMPLATES'>('CONSIGNMENT ENTRY');
-
-    // Live ledger search
-    const [ledgerSearchQuery, setLedgerSearchQuery] = useState('');
 
     // Selected shipment for BiltyDetailDialog
     const [selectedViewShipmentId, setSelectedViewShipmentId] = useState<string | null>(null);
@@ -1045,27 +1037,8 @@ export default function AddShipmentPage() {
         }
     };
 
-    // Filter shipments in Roznamcha
-    const filteredRoznamchaShipments = useMemo(() => {
-        const query = ledgerSearchQuery.toLowerCase().trim();
-        if (!query) return shipments;
-
-        return shipments.filter(item => {
-            const depName = findNameById(data, 'cities', item.departure_city_id).toLowerCase();
-            const toName = item.to_city_id ? findNameById(data, 'cities', item.to_city_id).toLowerCase() : 'local';
-            const veh = findNameById(data, 'vehicles', item.vehicle_number_id).toLowerCase();
-            const sender = (item.walk_in_sender_name || findNameById(data, 'parties', item.sender_id)).toLowerCase();
-            const receiver = (item.walk_in_receiver_name || findNameById(data, 'parties', item.receiver_id)).toLowerCase();
-
-            return item.bility_number?.toLowerCase().includes(query) ||
-                item.register_number?.toLowerCase().includes(query) ||
-                depName.includes(query) ||
-                toName.includes(query) ||
-                veh.includes(query) ||
-                sender.includes(query) ||
-                receiver.includes(query);
-        });
-    }, [shipments, ledgerSearchQuery, data]);
+    // Shipments in Roznamcha
+    const filteredRoznamchaShipments = shipments;
 
     // Financial summaries for Roznamcha
     const roznamchaTotals = useMemo(() => {
@@ -1091,7 +1064,7 @@ export default function AddShipmentPage() {
             totalBilties: filteredRoznamchaShipments.length,
             paidCount,
             unpaidCount,
-            totalFreight: totalChota + totalBara,
+            totalFreight: totalBara > 0 ? totalBara : totalChota,
             totalChota,
             totalBara,
         };
@@ -1125,79 +1098,17 @@ export default function AddShipmentPage() {
                         {editingShipmentId ? `Edit Bilty #${form.getValues('bility_number') || ''}` : 'Register New Bilty'}
                     </h1>
 
-                    {/* Uppercase Micro-Tab Sub-Navigation */}
+                    {/* Active Workflow Identifier */}
                     <div className="flex items-center gap-5 sm:gap-7 mt-4 overflow-x-auto no-scrollbar">
-                        <button
-                            type="button"
-                            onClick={() => setActiveMicroTab('CONSIGNMENT ENTRY')}
-                            className={`pb-2 text-[11px] font-bold uppercase tracking-wider shrink-0 transition-all ${
-                                activeMicroTab === 'CONSIGNMENT ENTRY'
-                                    ? 'text-charcoal dark:text-white border-b-2 border-charcoal dark:border-lavender'
-                                    : 'text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-2 border-transparent'
-                            }`}
-                        >
+                        <span className="pb-2 text-[11px] font-bold uppercase tracking-wider shrink-0 text-charcoal dark:text-white border-b-2 border-charcoal dark:border-lavender">
                             CONSIGNMENT ENTRY
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setActiveMicroTab('QUICK DISPATCH');
-                                quickFillSampleBilty();
-                            }}
-                            className={`pb-2 text-[11px] font-semibold uppercase tracking-wider shrink-0 transition-all ${
-                                activeMicroTab === 'QUICK DISPATCH'
-                                    ? 'text-charcoal dark:text-white border-b-2 border-charcoal dark:border-lavender'
-                                    : 'text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-2 border-transparent'
-                            }`}
-                        >
-                            QUICK DISPATCH
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setActiveMicroTab('BULK IMPORT');
-                                router.push('/shipments/view');
-                            }}
-                            className={`pb-2 text-[11px] font-semibold uppercase tracking-wider shrink-0 transition-all ${
-                                activeMicroTab === 'BULK IMPORT'
-                                    ? 'text-charcoal dark:text-white border-b-2 border-charcoal dark:border-lavender'
-                                    : 'text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-2 border-transparent'
-                            }`}
-                        >
-                            BULK IMPORT
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setActiveMicroTab('TEMPLATES');
-                                sonnerToast.info('Templates', { description: 'Consignment templates are active based on frequent parties.' });
-                            }}
-                            className={`pb-2 text-[11px] font-semibold uppercase tracking-wider shrink-0 transition-all ${
-                                activeMicroTab === 'TEMPLATES'
-                                    ? 'text-charcoal dark:text-white border-b-2 border-charcoal dark:border-lavender'
-                                    : 'text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 border-b-2 border-transparent'
-                            }`}
-                        >
-                            TEMPLATES
-                        </button>
+                        </span>
                     </div>
                 </div>
 
-                {/* Right Controls: Search Pill, Entry Date Picker, + Quick Add Button, Exit */}
+                {/* Right Controls: Entry Date Picker, + Quick Add Button, Exit */}
                 <div className="flex flex-wrap items-center gap-2.5 self-start">
-                    {/* Search Input Pill */}
-                    <div className="relative">
-                        <input
-                            type="text"
-                            value={ledgerSearchQuery}
-                            onChange={(e) => setLedgerSearchQuery(e.target.value)}
-                            placeholder="Search bilty #, party..."
-                            className="pl-4 pr-9 py-2 rounded-full bg-white dark:bg-darkcard border border-hairline dark:border-zinc-700 text-xs font-medium text-charcoal dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-charcoal dark:focus:border-lavender w-44 sm:w-52 transition-colors shadow-2xs"
-                        />
-                        <Search className="w-3.5 h-3.5 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-
-                    {/* Entry Date Picker Pill */}
+{/* Entry Date Picker Pill */}
                     <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-softcard dark:bg-darkcard border border-hairline dark:border-zinc-700 text-xs shadow-2xs">
                         <Calendar className="w-3.5 h-3.5 text-zinc-500" />
                         <span className="text-zinc-500 dark:text-zinc-400 font-medium hidden sm:inline">Entry Date:</span>
@@ -1758,71 +1669,7 @@ export default function AddShipmentPage() {
                             </div>
                         </div>
 
-                        {/* Collapsible Additional Logistics Expenses */}
-                        <div className="mt-4 pt-3 border-t border-hairline dark:border-zinc-800">
-                            <button
-                                type="button"
-                                onClick={() => setShowExpenses(!showExpenses)}
-                                className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-charcoal dark:hover:text-white transition-colors"
-                            >
-                                {showExpenses ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                <span>Additional Station Expenses &amp; Remarks (Optional)</span>
-                            </button>
-
-                            {showExpenses && (
-                                <div className="mt-3 p-4 rounded-xl bg-white dark:bg-darkbg border border-hairline dark:border-zinc-800 space-y-3">
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                        <FormField control={control} name="station_expense" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300">Station Exp.</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" min="0" step="10" {...field} onChange={e => field.onChange(Number(e.target.value))} className="h-8 text-xs rounded-lg" />
-                                                </FormControl>
-                                            </FormItem>
-                                        )} />
-                                        <FormField control={control} name="bility_expense" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300">Bilty Exp.</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" min="0" step="10" {...field} onChange={e => field.onChange(Number(e.target.value))} className="h-8 text-xs rounded-lg" />
-                                                </FormControl>
-                                            </FormItem>
-                                        )} />
-                                        <FormField control={control} name="station_labour" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300">Station Labour</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" min="0" step="10" {...field} onChange={e => field.onChange(Number(e.target.value))} className="h-8 text-xs rounded-lg" />
-                                                </FormControl>
-                                            </FormItem>
-                                        )} />
-                                        <FormField control={control} name="cart_labour" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300">Cart Labour</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" min="0" step="10" {...field} onChange={e => field.onChange(Number(e.target.value))} className="h-8 text-xs rounded-lg" />
-                                                </FormControl>
-                                            </FormItem>
-                                        )} />
-                                    </div>
-                                    <div className="flex items-center justify-between text-xs pt-1">
-                                        <span className="font-semibold text-zinc-500">Calculated Expenses:</span>
-                                        <span className="font-mono font-bold text-charcoal dark:text-white">
-                                            {formatCurrency(form.watch('total_expenses') || 0)}
-                                        </span>
-                                    </div>
-                                    <FormField control={control} name="remarks" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300">Remarks</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Optional dispatch notes..." {...field} className="h-8 text-xs rounded-lg" />
-                                            </FormControl>
-                                        </FormItem>
-                                    )} />
-                                </div>
-                            )}
-                        </div>
-                    </section>
+</section>
 
                     {/* PRIMARY SUBMIT CTA ROW */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
@@ -1908,27 +1755,7 @@ export default function AddShipmentPage() {
                     </div>
                 </div>
 
-                {/* Day Summary Metrics Bar */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3 rounded-xl bg-white dark:bg-darkbg border border-hairline dark:border-zinc-800">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Total Bilties</span>
-                        <div className="text-base font-bold text-charcoal dark:text-white font-mono mt-0.5">{roznamchaTotals.totalBilties}</div>
-                    </div>
-                    <div className="p-3 rounded-xl bg-white dark:bg-darkbg border border-hairline dark:border-zinc-800">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Paid / FOC</span>
-                        <div className="text-base font-bold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{roznamchaTotals.paidCount}</div>
-                    </div>
-                    <div className="p-3 rounded-xl bg-white dark:bg-darkbg border border-hairline dark:border-zinc-800">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Unpaid / To-Pay</span>
-                        <div className="text-base font-bold text-amber-700 dark:text-amber-400 font-mono mt-0.5">{roznamchaTotals.unpaidCount}</div>
-                    </div>
-                    <div className="p-3 rounded-xl bg-white dark:bg-darkbg border border-hairline dark:border-zinc-800">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Total Day Freight</span>
-                        <div className="text-base font-bold text-charcoal dark:text-white font-mono mt-0.5">{formatCurrency(roznamchaTotals.totalFreight)}</div>
-                    </div>
-                </div>
-
-                {/* Ledger Table */}
+{/* Ledger Table */}
                 <div className="overflow-x-auto mt-2 bg-white dark:bg-darkbg rounded-xl border border-hairline dark:border-zinc-800">
                     <table className="w-full text-left border-collapse">
                         <thead>

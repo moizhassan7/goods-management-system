@@ -89,6 +89,33 @@ export async function GET(request: Request) { // <-- FIX: Added 'request: Reques
     }
     // --- END RBAC CHECK ---
     
+    const url = new URL(request.url);
+    const withCounts = url.searchParams.get('withCounts') === 'true';
+
+    if (withCounts) {
+      const agencies = await prisma.agency.findMany({
+        select: {
+          id: true,
+          name: true,
+          _count: {
+            select: { shipments: true }
+          }
+        },
+        orderBy: {
+          shipments: { _count: 'desc' }
+        }
+      });
+
+      const formatted = agencies.map(a => ({
+        id: a.id,
+        name: a.name,
+        totalBilties: a._count.shipments,
+        _count: a._count,
+      }));
+
+      return NextResponse.json(formatted, { status: 200 });
+    }
+
     const agencies = await getOrSetCache(CACHE_KEYS.MASTER_AGENCIES, () => prisma.agency.findMany());
     return NextResponse.json(agencies, { status: 200, headers: MASTER_CACHE_HEADERS });
   } catch (error) {
