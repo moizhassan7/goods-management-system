@@ -383,12 +383,12 @@ export default function LoginPage() {
                 : 'border-zinc-200 text-zinc-700'
             }`}
           >
-            <div className="flex items-start gap-1.5 leading-snug font-semibold">
+            {/* <div className="flex items-start gap-1.5 leading-snug font-semibold">
               <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
               <span>
                 <strong className={`font-bold ${darkMode ? 'text-white' : 'text-zinc-900'}`}>Delivery Office :</strong> Near Fatima Jinnah Road Bhatti Chowk, Opposite To Lakarmandi Railway Mall Godaam, Sargodha. <span className="font-mono font-bold whitespace-nowrap">048-3701451</span>
               </span>
-            </div>
+            </div> */}
             <div className="flex items-center justify-between text-[11px] text-zinc-400 font-mono pt-0.5 font-normal">
               <span>&copy; 2026 Zikria Goods Transport Company</span>
               <span>v4.5 ERP</span>
