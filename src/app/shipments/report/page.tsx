@@ -7,9 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; 
-import { FileText, Printer, Filter, Loader2, ArrowRight, Package, DollarSign, BarChart3 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'; 
+import { FileText, Printer, Filter, Loader2, ArrowRight, RotateCcw } from 'lucide-react';
 import { fetchMasterLists } from '@/lib/master-lists-client';
+import { TablePagination } from '@/components/ui/TablePagination';
+import { formatAppDate, formatAppDateTime } from '@/lib/utils';
 
 type City = { id: number; name: string };
 type Vehicle = { id: number; vehicleNumber: string };
@@ -17,6 +19,7 @@ type Shipment = {
   register_number: string;
   bility_number: string;
   bility_date: string;
+  created_at?: string;
   total_charges: number;
   delivery_date?: string;
   departureCity: { name: string };
@@ -43,6 +46,10 @@ export default function ShipmentsReportPage() {
   const [vehicleId, setVehicleId] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(25);
+
   useEffect(() => {
     async function loadFilters() {
       try {
@@ -58,6 +65,7 @@ export default function ShipmentsReportPage() {
 
   async function fetchReport() {
     setLoading(true);
+    setCurrentPage(1);
     try {
       const params = new URLSearchParams();
       if (startDate) params.append('startDate', startDate);
@@ -67,7 +75,7 @@ export default function ShipmentsReportPage() {
       if (vehicleId) params.append('vehicleId', String(vehicleId));
       const res = await fetchWithTimeout(`/api/shipments/report?${params.toString()}`);
       const data: Shipment[] = await res.json();
-      setShipments(data);
+      setShipments(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('Failed to fetch report', e);
       setShipments([]);
@@ -75,6 +83,16 @@ export default function ShipmentsReportPage() {
       setLoading(false);
     }
   }
+
+  const handleResetFilters = () => {
+    setStartDate('');
+    setEndDate('');
+    setDepartureCityId(0);
+    setToCityId(0);
+    setVehicleId(0);
+    setShipments([]);
+    setCurrentPage(1);
+  };
 
   const totals = useMemo(() => {
     if (!Array.isArray(shipments)) return { totalShipments: 0, totalCharges: 0, totalQuantity: 0 };
@@ -91,8 +109,28 @@ export default function ShipmentsReportPage() {
     }, { totalShipments: 0, totalCharges: 0, totalQuantity: 0 });
   }, [shipments]);
 
+  const totalPages = Math.ceil(shipments.length / pageSize) || 1;
+
+  const paginatedShipments = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return shipments.slice(start, start + pageSize);
+  }, [shipments, currentPage, pageSize]);
+
   return (
     <div className="space-y-5 max-w-6xl mx-auto pb-10">
+      {/* Print-Only Header */}
+      <div className="hidden print:block mb-4 pb-2 border-b border-slate-300">
+        <div className="flex justify-between items-center">
+          <h1 className="text-base font-bold text-slate-900">Zikria Goods Transport Company — Consignments Audit Report</h1>
+          <span className="text-xs font-mono text-slate-600">Printed: {formatAppDateTime(new Date())}</span>
+        </div>
+        {(startDate || endDate) && (
+          <p className="text-xs text-slate-600 mt-1">
+            Date Range: {startDate ? formatAppDate(startDate) : 'Start'} to {endDate ? formatAppDate(endDate) : 'End'}
+          </p>
+        )}
+      </div>
+
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
         <div className="flex items-center gap-3">
@@ -109,31 +147,59 @@ export default function ShipmentsReportPage() {
           </div>
         </div>
 
-        {shipments.length > 0 && (
-          <Button
-            onClick={() => window.print()}
-            variant="outline"
-            size="sm"
-            className="rounded-lg text-xs font-semibold gap-1.5 h-8 border-slate-200 dark:border-slate-700"
-          >
-            <Printer className="w-3.5 h-3.5 text-slate-500" />
-            Print Report Sheet
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {shipments.length > 0 && (
+            <>
+              <Button
+                onClick={handleResetFilters}
+                variant="outline"
+                size="sm"
+                className="rounded-lg text-xs font-semibold gap-1.5 h-8 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                Reset
+              </Button>
+              <Button
+                onClick={() => window.print()}
+                variant="outline"
+                size="sm"
+                className="rounded-lg text-xs font-semibold gap-1.5 h-8 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-500" />
+                Print Report Sheet
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Filter Panel */}
       <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
-        <CardHeader className="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 py-2.5 px-4">
+        <CardHeader className="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 py-2.5 px-4 flex flex-row items-center justify-between">
           <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
             <Filter className="w-3.5 h-3.5 text-blue-600" />
             Report Parameters
           </CardTitle>
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 transition-colors cursor-pointer"
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span>Reset Filters</span>
+          </button>
         </CardHeader>
         <CardContent className="p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
             <div className="space-y-1">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Start Date</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Start Date</Label>
+                {startDate && (
+                  <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400 font-bold">
+                    {formatAppDate(startDate)}
+                  </span>
+                )}
+              </div>
               <Input 
                 type="date" 
                 value={startDate} 
@@ -143,7 +209,14 @@ export default function ShipmentsReportPage() {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">End Date</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">End Date</Label>
+                {endDate && (
+                  <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400 font-bold">
+                    {formatAppDate(endDate)}
+                  </span>
+                )}
+              </div>
               <Input 
                 type="date" 
                 value={endDate} 
@@ -197,14 +270,27 @@ export default function ShipmentsReportPage() {
               </Select>
             </div>
 
-            <Button 
-              onClick={fetchReport} 
-              disabled={loading}
-              className="h-9 rounded-lg font-bold text-xs bg-blue-600 hover:bg-blue-700 shadow-xs"
-            >
-              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
-              Run Report
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button 
+                onClick={fetchReport} 
+                disabled={loading}
+                className="h-9 flex-1 rounded-lg font-bold text-xs bg-blue-600 hover:bg-blue-700 shadow-xs cursor-pointer"
+              >
+                {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+                Run Report
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetFilters}
+                disabled={loading}
+                className="h-9 px-2.5 rounded-lg text-xs font-semibold border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-1"
+                title="Reset Filters"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Reset</span>
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -231,10 +317,16 @@ export default function ShipmentsReportPage() {
 
           {/* Results Table */}
           <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
-            <CardHeader className="border-b border-slate-100 dark:border-slate-800 py-3 px-4">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 py-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                 Report Breakdown ({shipments.length} Records)
               </CardTitle>
+              {shipments.length > 0 && (
+                <CardDescription className="text-xs text-slate-500">
+                  Showing {Math.min((currentPage - 1) * pageSize + 1, shipments.length)}-{Math.min(currentPage * pageSize, shipments.length)} of {shipments.length} consignments
+                  {(startDate || endDate) && ` (${startDate ? formatAppDate(startDate) : ''} to ${endDate ? formatAppDate(endDate) : ''})`}
+                </CardDescription>
+              )}
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -242,6 +334,8 @@ export default function ShipmentsReportPage() {
                   <TableHeader className="bg-slate-50 dark:bg-slate-800/60">
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4">Bilty #</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Bilty Date</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Entry Date</TableHead>
                       <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Sender Party</TableHead>
                       <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Receiver Party</TableHead>
                       <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Transit Route</TableHead>
@@ -249,12 +343,18 @@ export default function ShipmentsReportPage() {
                       <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right pr-4">Status / Freight</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
-                    {shipments.map((shipment) => (
+                  <TableBody className="print:hidden">
+                    {paginatedShipments.map((shipment) => (
                       <TableRow key={shipment.register_number} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs">
                         <TableCell className="pl-4 font-bold text-slate-900 dark:text-white">
                           <span className="font-mono text-blue-700 dark:text-blue-400">{shipment.bility_number}</span>
                           <span className="block text-[10px] text-slate-400 font-mono">#{shipment.register_number}</span>
+                        </TableCell>
+                        <TableCell className="font-mono text-slate-600 dark:text-slate-400 text-[11px] whitespace-nowrap">
+                          {formatAppDate(shipment.bility_date)}
+                        </TableCell>
+                        <TableCell className="font-mono text-slate-500 dark:text-slate-400 text-[11px] whitespace-nowrap">
+                          {formatAppDate(shipment.created_at)}
                         </TableCell>
                         <TableCell className="font-semibold text-slate-800 dark:text-slate-200">{shipment.sender.name}</TableCell>
                         <TableCell className="font-semibold text-slate-800 dark:text-slate-200">{shipment.receiver.name}</TableCell>
@@ -284,9 +384,59 @@ export default function ShipmentsReportPage() {
                       </TableRow>
                     ))}
                   </TableBody>
+                  {/* Full list printed when user triggers print */}
+                  <TableBody className="hidden print:table-row-group">
+                    {shipments.map((shipment) => (
+                      <TableRow key={`print-${shipment.register_number}`} className="text-xs">
+                        <TableCell className="pl-4 font-bold">
+                          <span className="font-mono">{shipment.bility_number}</span>
+                          <span className="block text-[10px] text-slate-500 font-mono">#{shipment.register_number}</span>
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px] whitespace-nowrap">
+                          {formatAppDate(shipment.bility_date)}
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px] whitespace-nowrap">
+                          {formatAppDate(shipment.created_at)}
+                        </TableCell>
+                        <TableCell className="font-semibold">{shipment.sender.name}</TableCell>
+                        <TableCell className="font-semibold">{shipment.receiver.name}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <span>{shipment.departureCity.name}</span>
+                            <ArrowRight className="w-3 h-3 text-slate-400" />
+                            <span>{shipment.toCity?.name || 'Local'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono font-bold">
+                          {shipment.vehicle.vehicleNumber}
+                        </TableCell>
+                        <TableCell className="text-right pr-4 font-mono font-bold">
+                          {shipment.payment_status === 'ALREADY_PAID' ? 'PAID' : shipment.payment_status === 'FREE' ? 'FREE' : formatCurrency(shipment.total_charges)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
                 </Table>
               </div>
             </CardContent>
+            {shipments.length > 0 && (
+              <CardFooter className="p-0 border-t border-slate-100 dark:border-slate-800 print:hidden">
+                <TablePagination
+                  className="w-full border-t-0"
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={shipments.length}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setCurrentPage(1);
+                  }}
+                  isLoading={loading}
+                  pageSizeOptions={[10, 25, 50, 100]}
+                />
+              </CardFooter>
+            )}
           </Card>
         </div>
       )}

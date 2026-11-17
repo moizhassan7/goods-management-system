@@ -8,7 +8,8 @@ import CustomLoader from '@/components/ui/CustomLoader';
 import Sidebar from '@/components/dashboard/Sidebar';
 import { Toaster } from "@/components/ui/sonner";
 import LanguageSetter from './LanguageSetter';
-import { LogOut, Truck, Calendar, ChevronDown } from 'lucide-react';
+import { formatAppDate } from '@/lib/utils';
+import { LogOut, Truck, Calendar, ChevronDown, MapPin } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,12 +29,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   const [currentDateString, setCurrentDateString] = useState('');
 
   useEffect(() => {
-    setCurrentDateString(new Date().toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }));
+    setCurrentDateString(formatAppDate(new Date()));
   }, []);
 
   // --- Authentication / Routing Logic ---
@@ -114,17 +110,20 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
               <div className="w-8 h-8 rounded-xl bg-charcoal dark:bg-lavender text-white dark:text-charcoal flex items-center justify-center shrink-0 shadow-2xs">
                 <Truck className="w-4 h-4 stroke-[2]" />
               </div>
-              <div>
-                <div className="text-xs font-bold tracking-tight text-charcoal dark:text-white flex items-center gap-2">
+              <div className="min-w-0">
+                <div className="text-xs font-extrabold tracking-tight text-charcoal dark:text-white flex items-center gap-2">
                   <span>Zikria Goods Transport Company</span>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800 shrink-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Online
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400 font-mono">
-                  Sargodha Dispatch Hub
-                </p>
+                <div className="flex items-center gap-1.5 text-xs sm:text-[12.5px] font-semibold text-slate-800 dark:text-zinc-200 leading-tight mt-0.5">
+                  <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                  <span>
+                    <strong className="font-bold text-slate-900 dark:text-white">Delivery Office :</strong> Near Fatima Jinnah Road Bhatti Chowk, Opposite To Lakarmandi Railway Mall Godaam, Sargodha. <span className="font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">048-3701451</span>
+                  </span>
+                </div>
               </div>
             </div>
 

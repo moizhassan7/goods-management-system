@@ -35,6 +35,7 @@ import {
     Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatAppDate } from '@/lib/utils';
 
 export interface BiltyDetailDialogProps {
     shipment?: any | null;
@@ -458,21 +459,21 @@ export default function BiltyDetailDialog({
                                     <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
                                         <p className="text-[10px] text-slate-500 uppercase font-sans font-bold">Bilty Date</p>
                                         <p className="font-bold text-slate-900 dark:text-white mt-0.5">
-                                            {data.bility_date ? new Date(data.bility_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
+                                            {formatAppDate(data.bility_date)}
                                         </p>
                                     </div>
 
                                     <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
                                         <p className="text-[10px] text-slate-500 uppercase font-sans font-bold">System Entry Date</p>
                                         <p className="font-bold text-slate-900 dark:text-white mt-0.5">
-                                            {createdVal ? new Date(createdVal).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
+                                            {formatAppDate(createdVal)}
                                         </p>
                                     </div>
 
                                     <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
                                         <p className="text-[10px] text-slate-500 uppercase font-sans font-bold">Delivery Status / Date</p>
                                         <p className={`font-bold mt-0.5 ${isDelivered ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
-                                            {data.delivery_date ? new Date(data.delivery_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Pending Delivery'}
+                                            {data.delivery_date ? formatAppDate(data.delivery_date) : 'Pending Delivery'}
                                         </p>
                                     </div>
                                 </div>

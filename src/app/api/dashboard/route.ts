@@ -125,8 +125,8 @@ export async function GET(request: Request) {
         });
 
         const volumeData = rawVolumeData.map(d => ({
-            // Format date as 'Nov 16'
-            date: d.bility_date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            // Format date as '16 Nov'
+            date: d.bility_date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
             volume: d._count.register_number,
             freight: Number(d._sum?.total_charges || 0) || Number(d._sum?.total_delivery_charges || 0),
         }));

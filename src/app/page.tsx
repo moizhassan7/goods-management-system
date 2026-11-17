@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,7 @@ import {
 } from 'recharts';
 import BiltyDetailDialog from '@/components/shipments/BiltyDetailDialog';
 import { toast } from 'sonner';
+import { formatAppDate } from '@/lib/utils';
 
 interface KeyMetrics {
     totalShipments: number;
@@ -109,8 +110,59 @@ export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const searchContainerRef = useRef<HTMLDivElement>(null);
     const [activeSubTab, setActiveSubTab] = useState<'SUMMARY' | 'STATISTIC' | 'LEDGER' | 'FLEET'>('SUMMARY');
     const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
+
+    // Close live search dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Live instant search across entire database with debounce
+    useEffect(() => {
+        const query = searchQuery.trim();
+        if (!query) {
+            setSearchResults([]);
+            setIsSearching(false);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const res = await fetchWithTimeout(`/api/shipments/view-all?query=${encodeURIComponent(query)}&page=1&pageSize=5`);
+                if (res.ok) {
+                    const resData = await res.json();
+                    setSearchResults(resData.shipments || []);
+                    setShowDropdown(true);
+                }
+            } catch (err) {
+                console.error('Search error:', err);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 250);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    const handleSearchSubmit = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        const query = searchQuery.trim();
+        if (!query) return;
+        setShowDropdown(false);
+        router.push(`/shipments/view?search=${encodeURIComponent(query)}`);
+    };
 
     const fetchDashboardData = useCallback(async (showRefreshing = false) => {
         if (showRefreshing) setIsRefreshing(true);
@@ -165,14 +217,39 @@ export default function DashboardPage() {
         );
     }, [data?.recentShipments, searchQuery]);
 
+    const scrollToSection = (id: string, offset = 80) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        const mainEl = document.querySelector('main');
+        const isMainScrollable = mainEl && mainEl.scrollHeight > mainEl.clientHeight && window.getComputedStyle(mainEl).overflowY !== 'visible';
+
+        if (isMainScrollable) {
+            const elRect = el.getBoundingClientRect();
+            const mainRect = mainEl.getBoundingClientRect();
+            const target = mainEl.scrollTop + (elRect.top - mainRect.top) - 20;
+            mainEl.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+        } else {
+            const elRect = el.getBoundingClientRect();
+            const target = window.scrollY + elRect.top - offset;
+            window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+        }
+    };
+
     const handleSubTabClick = (tab: 'SUMMARY' | 'STATISTIC' | 'LEDGER' | 'FLEET') => {
         setActiveSubTab(tab);
         if (tab === 'SUMMARY') {
-            document.getElementById('section-summary')?.scrollIntoView({ behavior: 'smooth' });
+            const mainEl = document.querySelector('main');
+            const isMainScrollable = mainEl && mainEl.scrollHeight > mainEl.clientHeight && window.getComputedStyle(mainEl).overflowY !== 'visible';
+            if (isMainScrollable) {
+                mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         } else if (tab === 'STATISTIC') {
-            document.getElementById('section-statistic')?.scrollIntoView({ behavior: 'smooth' });
+            scrollToSection('section-statistic');
         } else if (tab === 'LEDGER') {
-            document.getElementById('section-log')?.scrollIntoView({ behavior: 'smooth' });
+            scrollToSection('section-log');
         } else if (tab === 'FLEET') {
             router.push('/vehicles/view');
         }
@@ -180,18 +257,13 @@ export default function DashboardPage() {
 
     const handleAgencyFilter = (agencyName: string) => {
         setSearchQuery(agencyName);
-        document.getElementById('section-log')?.scrollIntoView({ behavior: 'smooth' });
+        scrollToSection('section-log');
         toast.info(`Filtered log by "${agencyName}"`);
     };
 
     // Current formatted date string
     const todayFormatted = useMemo(() => {
-        return new Date().toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        });
+        return formatAppDate(new Date());
     }, []);
 
     if (isLoading) {
@@ -233,9 +305,9 @@ export default function DashboardPage() {
                             {greeting}
                         </h1>
                         
-                        <span className="text-[11px] font-medium tracking-[0.05em] uppercase text-zinc-400 font-mono">
+                        {/* <span className="text-[11px] font-medium tracking-[0.05em] uppercase text-zinc-400 font-mono">
                             {todayFormatted}
-                        </span>
+                        </span> */}
                     </div>
 
                     {/* Minimalist Underline Sub-Navigation Tabs */}
@@ -289,22 +361,116 @@ export default function DashboardPage() {
 
                 {/* Right Controls: Search Input + Sync + Register Bilty Pill Button */}
                 <div className="flex flex-wrap items-center gap-2.5 self-stretch md:self-start">
-                    <div className="relative flex-1 md:w-[260px]">
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search bilty no, city, agency..."
-                            className="w-full pl-3.5 pr-9 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-[#E2E2E6] dark:border-zinc-700 text-xs text-charcoal dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-charcoal dark:focus:border-lavender transition-colors"
-                        />
-                        <Search className="w-4 h-4 text-zinc-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-                            >
-                                <X className="w-3 h-3" />
-                            </button>
+                    <div ref={searchContainerRef} className="relative flex-1 md:w-[300px]">
+                        <form onSubmit={handleSearchSubmit} className="relative">
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    if (!showDropdown && e.target.value.trim()) {
+                                        setShowDropdown(true);
+                                    }
+                                }}
+                                onFocus={() => {
+                                    if (searchQuery.trim() && searchResults.length > 0) {
+                                        setShowDropdown(true);
+                                    }
+                                }}
+                                placeholder="Search Bilty No, City, Agency..."
+                                className="w-full pl-3.5 pr-16 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-[#E2E2E6] dark:border-zinc-700 text-xs text-charcoal dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-charcoal dark:focus:border-lavender transition-colors shadow-2xs"
+                            />
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                {isSearching ? (
+                                    <Loader2 className="w-3.5 h-3.5 text-zinc-400 animate-spin mr-0.5" />
+                                ) : searchQuery ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSearchQuery('');
+                                            setSearchResults([]);
+                                            setShowDropdown(false);
+                                        }}
+                                        className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5"
+                                        title="Clear search"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                ) : null}
+                                <button
+                                    type="submit"
+                                    className="p-1 text-zinc-400 hover:text-charcoal dark:hover:text-white transition-colors cursor-pointer"
+                                    title="Search directory (Press Enter)"
+                                >
+                                    <Search className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </form>
+
+                        {/* Live Dropdown Suggestions */}
+                        {showDropdown && searchQuery.trim().length > 0 && (
+                            <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-zinc-900 border border-hairline dark:border-zinc-800 rounded-xl shadow-xl z-50 overflow-hidden divide-y divide-hairline dark:divide-zinc-800 text-xs">
+                                <div className="px-3 py-2 bg-slate-50 dark:bg-zinc-800/50 flex items-center justify-between text-[11px] text-zinc-500 font-medium">
+                                    <span>
+                                        {isSearching
+                                            ? 'Searching...'
+                                            : searchResults.length > 0
+                                            ? `${searchResults.length} Bilties found`
+                                            : 'No instant matches'}
+                                    </span>
+                                    <span className="text-[10px] text-zinc-400 font-mono">Press Enter to search all</span>
+                                </div>
+
+                                {searchResults.length > 0 ? (
+                                    <div className="max-h-64 overflow-y-auto divide-y divide-hairline/60 dark:divide-zinc-800/60">
+                                        {searchResults.map((item) => (
+                                            <div
+                                                key={item.register_number}
+                                                onClick={() => {
+                                                    setShowDropdown(false);
+                                                    setSelectedShipmentId(item.register_number);
+                                                }}
+                                                className="p-2.5 hover:bg-slate-50 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors flex items-center justify-between gap-3 group"
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400 group-hover:underline">
+                                                            #{item.bility_number}
+                                                        </span>
+                                                        <span className="text-[10px] font-mono text-zinc-400">
+                                                            (Reg #{item.register_number})
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-[11px] text-zinc-600 dark:text-zinc-300 truncate mt-0.5">
+                                                        {item.departureCity?.name} → {item.toCity?.name || 'Local'} • {item.sender?.name}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                    <span className="font-mono font-bold text-slate-900 dark:text-white tabular-nums">
+                                                        {formatCurrency(item.total_charges || 0)}
+                                                    </span>
+                                                    <span className="block text-[10px] text-zinc-400 font-mono">
+                                                        {formatAppDate(item.bility_date)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : !isSearching ? (
+                                    <div className="p-3 text-center text-zinc-400 text-xs">
+                                        No recent bilty matched &ldquo;{searchQuery}&rdquo;.
+                                    </div>
+                                ) : null}
+
+                                <button
+                                    type="button"
+                                    onClick={handleSearchSubmit}
+                                    className="w-full p-2.5 text-center text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                    <span>Search directory for &ldquo;{searchQuery}&rdquo;</span>
+                                    <ArrowUpRight className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
                         )}
                     </div>
 
@@ -330,10 +496,10 @@ export default function DashboardPage() {
             </header>
 
             {/* TOP ROW GRID: Left 2x2 Metric Matrix (8 cols) + Right 'Top Agencies' Panel (4 cols) */}
-            <section id="section-summary" className="grid grid-cols-1 xl:grid-cols-12 gap-7 items-stretch">
+            <section id="section-summary" className="grid grid-cols-1 xl:grid-cols-12 gap-7 items-stretch scroll-mt-24">
 
                 {/* LEFT 2x2 METRIC MATRIX (Clean flat cards with hairline separation) */}
-                <div className="xl:col-span-8 flex flex-col space-y-4">
+                <div className="xl:col-span-8 flex flex-col space-y-4" id='bara-karya'>
                     <div className="grid grid-cols-1 sm:grid-cols-2 border border-hairline dark:border-zinc-800 bg-cardgray dark:bg-zinc-900/80 rounded-2xl overflow-hidden shadow-2xs">
                         
                         {/* 1. Top-Left Featured Dark Card (#202022) — BARA KARAYA */}
@@ -353,7 +519,7 @@ export default function DashboardPage() {
                                     {formatCurrency(totalBara)}
                                 </div>
                                 <button
-                                    onClick={() => router.push('/shipments/report')}
+                                    
                                     title="View Freight Audits"
                                     className="text-zinc-300 hover:text-lavender transition-colors p-1"
                                 >
@@ -379,7 +545,7 @@ export default function DashboardPage() {
                                     {formatCurrency(totalChota)}
                                 </div>
                                 <button
-                                    onClick={() => router.push('/shipments/report')}
+                                    
                                     title="View Delivery Charges"
                                     className="text-charcoal dark:text-zinc-300 hover:opacity-70 transition-opacity p-1"
                                 >
@@ -389,7 +555,7 @@ export default function DashboardPage() {
                         </div>
 
                         {/* 3. Bottom-Left Soft Gray Card (#F6F6F8) — TOTAL BILTIES */}
-                        <div className="bg-cardgray dark:bg-zinc-900/70 p-6 sm:p-7 flex flex-col justify-between min-h-[168px] border-b sm:border-b-0 sm:border-r border-hairline dark:border-zinc-800">
+                        <div className="bg-cardgray dark:bg-zinc-900/70 hover:bg-[#EFEFF3] dark:hover:bg-zinc-800/80 cursor-pointer p-6 sm:p-7 flex flex-col justify-between min-h-[168px] transition-colors group" onClick={() => router.push('/shipments/view')}>
                             <div>
                                 <div className="text-[10px] font-semibold tracking-[0.07em] uppercase text-charcoal dark:text-zinc-300">
                                     TOTAL BILTIES
@@ -416,7 +582,12 @@ export default function DashboardPage() {
 
                         {/* 4. Bottom-Right Soft Gray Card (#F6F6F8) — TODAY'S BILTIES */}
                         <div
-                            onClick={() => router.push('/shipments/add')}
+                            onClick={() => {
+                                const now = new Date();
+                                const pad = (n: number) => String(n).padStart(2, '0');
+                                const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+                                router.push(`/shipments/view?startDate=${todayStr}&endDate=${todayStr}&filter=today`);
+                            }}
                             className="bg-cardgray dark:bg-zinc-900/70 hover:bg-[#EFEFF3] dark:hover:bg-zinc-800/80 cursor-pointer p-6 sm:p-7 flex flex-col justify-between min-h-[168px] transition-colors group"
                         >
                             <div>
@@ -425,7 +596,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
                                     <span className="w-1.5 h-1.5 rounded-full bg-lavender"></span>
-                                    <span>Today • Click to register</span>
+                                    <span>Today • Click to view</span>
                                 </div>
                             </div>
 
@@ -563,7 +734,7 @@ export default function DashboardPage() {
             </section>
 
             {/* MIDDLE ROW GRID: Left 'Bilty Volume' Chart (8 cols) + Right 'Total Karaya' Donut Card (4 cols) */}
-            <section id="section-statistic" className="grid grid-cols-1 xl:grid-cols-12 gap-7 items-stretch">
+            <section id="section-statistic" className="grid grid-cols-1 xl:grid-cols-12 gap-7 items-stretch scroll-mt-24">
 
                 {/* LEFT: 'Bilty Volume' Area/Line Chart */}
                 <div className="xl:col-span-8 flex flex-col">
@@ -752,7 +923,7 @@ export default function DashboardPage() {
             </section>
 
             {/* BOTTOM SECTION: 'Recent Bilty Activity Log' Minimalist Table */}
-            <section id="section-log" className="pt-1">
+            <section id="section-log" className="pt-1 scroll-mt-24">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                     <div className="flex items-center gap-3">
                         <h2 className="text-[17px] font-normal text-charcoal dark:text-white">

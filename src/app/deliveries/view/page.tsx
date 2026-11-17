@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
 import BiltyDetailDialog from '@/components/shipments/BiltyDetailDialog';
+import { formatAppDate } from '@/lib/utils';
 
 interface DeliveryData {
     delivery_id: number;
@@ -170,7 +171,7 @@ export default function ViewDeliveries() {
                                                 </span>
                                             </TableCell>
                                             <TableCell className='font-medium'>
-                                                {new Date(delivery.delivery_date).toLocaleDateString()}
+                                                {formatAppDate(delivery.delivery_date)}
                                             </TableCell>
                                             <TableCell>
                                                 <button

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Printer, ArrowLeft } from 'lucide-react';
+import { formatAppDate, formatAppDateTime } from '@/lib/utils';
 
 interface DeliveryPrintData {
     register_number: string;
@@ -108,11 +109,11 @@ export default function DeliveryPrintingPage() {
                         </div>
                         <div>
                             <label className='font-semibold text-gray-700'>Bility Date:</label>
-                            <p>{new Date(printData.bility_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            <p>{formatAppDate(printData.bility_date)}</p>
                         </div>
                         <div>
                             <label className='font-semibold text-gray-700'>Delivery Date:</label>
-                            <p>{new Date(printData.delivery_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            <p>{formatAppDate(printData.delivery_date)}</p>
                         </div>
                     </div>
                 </div>
@@ -206,7 +207,7 @@ export default function DeliveryPrintingPage() {
                 {/* Footer */}
                 <div className='text-center border-t-2 border-black pt-6 mt-8'>
                     <p className='text-sm text-gray-600'>
-                        Printed on: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        Printed on: {formatAppDateTime(new Date())}
                     </p>
                     <p className='text-sm text-gray-600 mt-2'>© Zikria Goods Transports Company. All Rights Reserved.</p>
                 </div>

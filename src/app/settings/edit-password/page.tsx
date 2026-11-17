@@ -25,6 +25,9 @@ import {
 } from 'lucide-react';
 
 const formSchema = z.object({
+  oldPassword: z.string().min(1, {
+    message: 'Current password is required.',
+  }),
   password: z.string().min(3, {
     message: 'Password must be at least 3 characters.',
   }).max(50, {
@@ -43,12 +46,14 @@ export default function EditPasswordSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPasswordSet, setIsPasswordSet] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      oldPassword: '',
       password: '',
       confirmPassword: '',
     },
@@ -80,7 +85,10 @@ export default function EditPasswordSettingsPage() {
       const res = await fetchWithTimeout('/api/settings/edit-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: values.password }),
+        body: JSON.stringify({
+          oldPassword: values.oldPassword,
+          password: values.password,
+        }),
       });
 
       if (!res.ok) {
@@ -93,7 +101,7 @@ export default function EditPasswordSettingsPage() {
       });
 
       setIsPasswordSet(true);
-      form.reset({ password: '', confirmPassword: '' });
+      form.reset({ oldPassword: '', password: '', confirmPassword: '' });
     } catch (err) {
       console.error('Update error:', err);
       toast.error('Update Failed', {
@@ -164,7 +172,7 @@ export default function EditPasswordSettingsPage() {
                 ) : isPasswordSet ? (
                   'A custom edit password is set. It is stored hashed and is not shown.'
                 ) : (
-                  'No custom password has been saved yet. The built-in default is still active until you set one.'
+                  'No custom password has been saved yet. Default is active (1234).'
                 )}
               </p>
             </div>
@@ -178,16 +186,46 @@ export default function EditPasswordSettingsPage() {
           <div className="flex items-center gap-2">
             <Lock className="w-4 h-4 text-blue-600" />
             <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">
-              Set New Edit Password
+              Change Edit Password
             </CardTitle>
           </div>
           <CardDescription className="text-xs text-slate-500">
-            Enter a new password to secure consignment edits across the ERP.
+            Enter your current password first, then set the new security password.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="oldPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Current Password *
+                    </FormLabel>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          type={showOldPassword ? 'text' : 'password'}
+                          placeholder="Enter current edit password"
+                          className="h-10 rounded-lg text-xs pr-10 font-mono"
+                          {...field}
+                        />
+                      </FormControl>
+                      <button
+                        type="button"
+                        onClick={() => setShowOldPassword(!showOldPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                      >
+                        {showOldPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <FormMessage className="text-[11px]" />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="password"

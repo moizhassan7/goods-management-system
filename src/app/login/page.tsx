@@ -29,6 +29,7 @@ import {
   Sun,
   Moon,
   Phone,
+  MapPin,
 } from 'lucide-react';
 
 const LoginSchema = z.object({
@@ -150,13 +151,19 @@ export default function LoginPage() {
                 />
               </div>
 
-              <div className="min-w-0 space-y-1.5">
+              <div className="min-w-0 space-y-2">
                 <h3 className="text-sm sm:text-base font-bold tracking-tight text-white leading-snug">
                   Zikria Goods Transport Company
                 </h3>
+                <div className="flex items-start gap-1.5 text-xs sm:text-[13px] font-semibold text-zinc-200 leading-snug">
+                  <MapPin className="w-4 h-4 text-[#D9CDFF] shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-white font-bold">Delivery Office :</strong> Near Fatima Jinnah Road Bhatti Chowk, Opposite To Lakarmandi Railway Mall Godaam, Sargodha.
+                  </span>
+                </div>
                 <a
                   href="tel:0483701451"
-                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D9CDFF] text-[#202022] text-xs font-mono font-bold hover:bg-[#cbbaff] transition-colors"
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#D9CDFF] text-[#202022] text-xs font-mono font-bold hover:bg-[#cbbaff] transition-colors"
                 >
                   <Phone className="w-3.5 h-3.5" />
                   048-3701451
@@ -368,16 +375,24 @@ export default function LoginPage() {
             </Form>
           </div>
 
-          {/* Footer */}
+          {/* Footer with Delivery Office Address */}
           <div
-            className={`mt-8 pt-4 border-t flex items-center justify-between text-[11px] ${
+            className={`mt-6 pt-4 border-t space-y-2 text-[11px] ${
               darkMode
-                ? 'border-[#2C2C32] text-zinc-500'
-                : 'border-zinc-100 text-zinc-400'
+                ? 'border-[#2C2C32] text-zinc-400'
+                : 'border-zinc-200 text-zinc-500'
             }`}
           >
-            <span>Zikria Goods Transport Company</span>
-            <span className="font-mono">v4.5 ERP</span>
+            <div className="flex items-start gap-1.5 leading-snug">
+              <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-zinc-400" />
+              <span>
+                <strong className={darkMode ? 'text-zinc-200' : 'text-zinc-700'}>Delivery Office :</strong> Near Fatima Jinnah Road Bhatti Chowk, Opposite To Lakarmandi Railway Mall Godaam, Sargodha. <span className="font-mono font-bold whitespace-nowrap">048-3701451</span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-zinc-400 font-mono pt-0.5">
+              <span>&copy; 2026 Zikria Goods Transport Company</span>
+              <span>v4.5 ERP</span>
+            </div>
           </div>
         </div>
       </div>

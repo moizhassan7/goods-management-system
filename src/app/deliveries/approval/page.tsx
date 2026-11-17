@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle2, XCircle, AlertCircle, Loader2, Calendar } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { formatAppDate } from '@/lib/utils';
 
 // --- Data Interfaces ---
 interface Delivery {
@@ -295,7 +296,7 @@ export default function DeliveryApprovalPage() {
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-gray-600 py-4 px-6">
-                                                    {new Date(delivery.delivery_date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                                    {formatAppDate(delivery.delivery_date)}
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium text-red-600 py-4 px-6">{formatCurrency(delivery.total_expenses)}</TableCell>
                                                 <TableCell className="text-right font-medium text-green-600 py-4 px-6">{formatCurrency(delivery.total_delivery_charges)}</TableCell>
@@ -446,7 +447,7 @@ export default function DeliveryApprovalPage() {
                                 <AlertCircle className="h-16 w-16 text-yellow-500 mx-auto mb-6" />
                                 <h3 className="text-xl font-bold text-gray-700 mb-2">No Approvals Found</h3>
                                 <p className="text-gray-500">
-                                    No deliveries were approved on **{new Date(selectedDate).toLocaleDateString()}**.
+                                    No deliveries were approved on **{formatAppDate(selectedDate)}**.
                                 </p>
                             </div>
                         ) : (

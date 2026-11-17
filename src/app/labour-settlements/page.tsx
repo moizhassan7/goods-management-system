@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea'; 
 import { toast as sonnerToast } from 'sonner';
+import { formatAppDate } from '@/lib/utils';
 
 // --- Toast and Interface Definitions ---
 export interface Toast {
@@ -255,7 +256,7 @@ function RecordPaymentDialog({ assignment, onRecordPaymentConfirmed, onClose }: 
         if (!assignment.paymentHistory || assignment.paymentHistory.length === 0) return {};
         
         return assignment.paymentHistory.reduce((acc, payment) => {
-            const date = new Date(payment.payment_date).toLocaleDateString();
+            const date = formatAppDate(payment.payment_date);
             if (!acc[date]) {
                 acc[date] = [];
             }

@@ -3,6 +3,7 @@
 import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Printer, Save, FileText } from 'lucide-react';
+import { formatAppDate, formatAppDateTime } from '@/lib/utils';
 
 export interface PrintableShipmentData {
     register_number: string;
@@ -118,11 +119,7 @@ const ShipmentPrintForm = ({ data, onSave, onSaveAndPrint, onPrint }: ShipmentPr
                         <div>
                             <p className="text-xs uppercase font-semibold text-gray-500">Bility Date</p>
                             <p className="text-lg font-semibold text-gray-800">
-                                {new Date(data.bility_date).toLocaleDateString('en-US', {
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
-                                })}
+                                {formatAppDate(data.bility_date)}
                             </p>
                         </div>
                     </div>
@@ -227,13 +224,7 @@ const ShipmentPrintForm = ({ data, onSave, onSaveAndPrint, onPrint }: ShipmentPr
                     {/* Footer */}
                     <div className="border-t-2 border-gray-800 pt-4 mt-6 text-center">
                         <p className="text-xs text-gray-600 mb-2">
-                            Printed on {new Date().toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            })}
+                            Printed on {formatAppDateTime(new Date())}
                         </p>
                         <p className="text-xs text-gray-500">© Goods Management System. All Rights Reserved.</p>
                     </div>

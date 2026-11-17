@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { RotateCcw } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatAppDate } from "@/lib/utils";
 
 type ReturnItemRow = {
   id: number;
@@ -78,7 +78,7 @@ export function ReturnList({ returns, onStatusChange }: ReturnListProps) {
                   #{ret.original_shipment_id}
                 </TableCell>
                 <TableCell className="text-slate-600 dark:text-slate-400 font-mono text-[11px]">
-                  {ret.return_date ? format(new Date(ret.return_date), "MMM dd, yyyy") : '-'}
+                  {formatAppDate(ret.return_date)}
                 </TableCell>
                 <TableCell className="max-w-[140px] truncate text-slate-700 dark:text-slate-300">
                   {ret.reason || 'Not specified'}

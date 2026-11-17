@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, isAuthError, requireAuth, UserRole } from '@/lib/auth';
+import { comparePassword, hashPassword, isAuthError, requireAuth, UserRole } from '@/lib/auth';
 
 const EDIT_PASSWORD_KEY = 'EDIT_BILTY_PASSWORD';
+const DEFAULT_PASSWORD = '1234';
+
+function isBcryptHash(value: string) {
+    return value.startsWith('$2a$') || value.startsWith('$2b$') || value.startsWith('$2y$');
+}
 
 export async function GET(request: NextRequest) {
     const auth = await requireAuth(request, [UserRole.SUPERADMIN]);
@@ -32,11 +37,40 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { password } = body;
+        const { oldPassword, currentPassword, password } = body;
+        const current = (oldPassword ?? currentPassword)?.toString()?.trim();
+
+        if (!current) {
+            return NextResponse.json(
+                { error: 'Current password is required.' },
+                { status: 400 },
+            );
+        }
+
+        const setting = await prisma.systemSetting.findUnique({
+            where: { key: EDIT_PASSWORD_KEY },
+        });
+
+        const stored = setting?.value;
+        let matches = false;
+        if (!stored) {
+            matches = current === DEFAULT_PASSWORD;
+        } else {
+            matches = isBcryptHash(stored)
+                ? await comparePassword(current, stored)
+                : current === stored.trim();
+        }
+
+        if (!matches) {
+            return NextResponse.json(
+                { error: 'Incorrect current password.' },
+                { status: 401 },
+            );
+        }
 
         if (!password || typeof password !== 'string' || password.trim().length < 3) {
             return NextResponse.json(
-                { error: 'Password must be at least 3 characters.' },
+                { error: 'New password must be at least 3 characters.' },
                 { status: 400 },
             );
         }

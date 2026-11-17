@@ -13,7 +13,7 @@ import { toast as sonnerToast } from 'sonner';
 import { useParams } from 'next/navigation';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea'; // Used for description
-import { cn } from '@/lib/utils';
+import { cn, formatAppDate } from '@/lib/utils';
 import { recordRowClass, recordRowId, useScrollToRecord } from '@/lib/record-deep-link';
 
 
@@ -294,7 +294,7 @@ export default function VehicleFinancialsPage() {
                                         className={recordRowClass(highlightTx === String(transaction.id), 'hover:bg-gray-50')}
                                     >
                                         <TableCell className="py-2 px-4 border-b">
-                                            {new Date(transaction.transaction_date).toLocaleDateString()}
+                                            {formatAppDate(transaction.transaction_date)}
                                         </TableCell>
                                         <TableCell className="py-2 px-4 border-b">
                                             {transaction.description || 'N/A'}

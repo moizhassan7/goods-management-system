@@ -20,7 +20,7 @@ import {
     CheckCircle2, Pencil, X, RotateCcw, Lock, Eye, EyeOff,
     Trash2, BookOpenCheck, LogOut, PackageCheck
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatAppDate } from '@/lib/utils';
 import { SearchableDropdown } from "@/components/ui/SearchableDropdown";
 import { fetchMasterLists } from '@/lib/master-lists-client';
 import { toDateInputValue } from '@/lib/created-date';
@@ -579,9 +579,12 @@ export default function AddShipmentPage() {
                 body: JSON.stringify({ password: passwordInput.trim() }),
             });
             const data = await res.json();
-            if (res.ok && data.valid) {
+            if (res.ok && (data.success || data.valid)) {
                 setIsPasswordModalOpen(false);
                 setPasswordInput('');
+                if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('bilty_edit_auth', 'true');
+                }
                 if (targetShipmentToEdit) {
                     handleEditShipment(targetShipmentToEdit);
                 }
@@ -641,6 +644,7 @@ export default function AddShipmentPage() {
         setValue('is_already_paid', nextVal, { shouldValidate: true });
         if (nextVal) {
             setValue('is_free_of_cost', false, { shouldValidate: true });
+            sonnerToast.info('Already Paid enabled', { description: 'Settled directly by sender' });
         }
     };
 
@@ -871,7 +875,7 @@ export default function AddShipmentPage() {
                         </tr>
                         <tr>
                             <td><strong>Bilty Date:</strong></td>
-                            <td colspan="3">${new Date(shipment.bility_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                            <td colspan="3">${formatAppDate(shipment.bility_date)}</td>
                         </tr>
                     </table>
                 </div>
@@ -927,9 +931,10 @@ export default function AddShipmentPage() {
     // Print Day Sheet
     const handlePrintDaySheet = async () => {
         try {
-            const response = await fetchWithTimeout(`/api/shipments/by-vehicle-date?date=${savedBiltiesDate}`);
+            const response = await fetchWithTimeout(`/api/shipments?date=${savedBiltiesDate}&page=1&pageSize=1000`);
             if (!response.ok) throw new Error('Failed to load day consignments.');
-            const list = await response.json();
+            const payload = await response.json();
+            const list = Array.isArray(payload) ? payload : (payload.data || []);
             const dayShipments: ShipmentData[] = Array.isArray(list) ? list : [];
             if (dayShipments.length === 0) {
                 sonnerToast.error('No Data', { description: 'There are no shipments to print for the selected date.' });
@@ -941,21 +946,30 @@ export default function AddShipmentPage() {
                 let totalChota = 0;
                 let totalBara = 0;
 
-                const rowsHtml = dayShipments.map((s, idx) => {
+                const sortedDayShipments = [...dayShipments].sort((a, b) => {
+                    return String(a.register_number || '').localeCompare(String(b.register_number || ''), undefined, { numeric: true });
+                });
+
+                const rowsHtml = sortedDayShipments.map((s, idx) => {
                     const chota = Number(s.total_delivery_charges || 0);
                     const bara = Number(s.total_charges || 0);
                     totalChota += chota;
                     totalBara += bara;
+                    const fromCity = findNameById(data, 'cities', s.departure_city_id) !== '-' ? findNameById(data, 'cities', s.departure_city_id) : (s.departureCity?.name || 'Main Hub');
+                    const toCity = s.to_city_id ? (findNameById(data, 'cities', s.to_city_id) !== '-' ? findNameById(data, 'cities', s.to_city_id) : (s.toCity?.name || 'Local')) : 'Local';
+                    const vehicleNo = findNameById(data, 'vehicles', s.vehicle_number_id) !== '-' ? findNameById(data, 'vehicles', s.vehicle_number_id) : (s.vehicle?.vehicleNumber || '-');
+                    const senderName = findNameById(data, 'parties', s.sender_id) !== '-' ? findNameById(data, 'parties', s.sender_id) : (s.sender?.name || '-');
+                    const receiverName = findNameById(data, 'parties', s.receiver_id) !== '-' ? findNameById(data, 'parties', s.receiver_id) : (s.receiver?.name || '-');
                     return `
                         <tr>
                             <td style="padding: 6px 8px; border: 1px solid #d4d4d8; text-align: center;">${idx + 1}</td>
                             <td style="padding: 6px 8px; border: 1px solid #d4d4d8; font-weight: bold; font-family: monospace;">${s.bility_number}</td>
                             <td style="padding: 6px 8px; border: 1px solid #d4d4d8; font-family: monospace;">#${s.register_number}</td>
-                            <td style="padding: 6px 8px; border: 1px solid #d4d4d8;">${findNameById(data, 'cities', s.departure_city_id)}</td>
-                            <td style="padding: 6px 8px; border: 1px solid #d4d4d8;">${s.to_city_id ? findNameById(data, 'cities', s.to_city_id) : 'Local'}</td>
-                            <td style="padding: 6px 8px; border: 1px solid #d4d4d8; font-family: monospace;">${findNameById(data, 'vehicles', s.vehicle_number_id)}</td>
-                            <td style="padding: 6px 8px; border: 1px solid #d4d4d8;">${findNameById(data, 'parties', s.sender_id)}</td>
-                            <td style="padding: 6px 8px; border: 1px solid #d4d4d8; font-weight: bold;">${findNameById(data, 'parties', s.receiver_id)}</td>
+                            <td style="padding: 6px 8px; border: 1px solid #d4d4d8;">${fromCity}</td>
+                            <td style="padding: 6px 8px; border: 1px solid #d4d4d8;">${toCity}</td>
+                            <td style="padding: 6px 8px; border: 1px solid #d4d4d8; font-family: monospace;">${vehicleNo}</td>
+                            <td style="padding: 6px 8px; border: 1px solid #d4d4d8;">${senderName}</td>
+                            <td style="padding: 6px 8px; border: 1px solid #d4d4d8; font-weight: bold;">${receiverName}</td>
                             <td style="padding: 6px 8px; border: 1px solid #d4d4d8; text-align: right; font-family: monospace;">${formatCurrency(chota)}</td>
                             <td style="padding: 6px 8px; border: 1px solid #d4d4d8; text-align: right; font-family: monospace; font-weight: bold;">${formatCurrency(bara)}</td>
                         </tr>
@@ -967,7 +981,7 @@ export default function AddShipmentPage() {
                 <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>Day Roznamcha Sheet - ${savedBiltiesDate}</title>
+                    <title>Day Roznamcha Sheet - ${formatAppDate(savedBiltiesDate)}</title>
                     <style>
                         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; color: #202022; }
                         h1 { font-size: 20px; text-transform: uppercase; margin-bottom: 2px; }
@@ -979,7 +993,7 @@ export default function AddShipmentPage() {
                 </head>
                 <body>
                     <h1>Zikria Goods Transport Company — Day Roznamcha Ledger</h1>
-                    <p>Dispatch Register Sheet Date: <strong>${savedBiltiesDate}</strong> • Total Consignments: <strong>${dayShipments.length}</strong></p>
+                    <p>Dispatch Register Sheet Date: <strong>${formatAppDate(savedBiltiesDate)}</strong> • Total Consignments: <strong>${sortedDayShipments.length}</strong></p>
                     <table>
                         <thead>
                             <tr>
@@ -1129,15 +1143,22 @@ export default function AddShipmentPage() {
                         />
                     </div>
 
-                    {/* + Quick Add Soft Lavender Pill Button */}
+                
+
+                    {/* Reset Form Button */}
                     <button
                         type="button"
-                        onClick={quickFillSampleBilty}
-                        className="px-4 py-2 rounded-full bg-lavender hover:bg-lavenderhover active:scale-[0.98] text-charcoal text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                        title="1-Click Sample Consignment Fill"
+                        onClick={() => {
+                            form.reset(generateDefaultValues());
+                            setEditingShipmentId(null);
+                            fetchNextRegNum();
+                            sonnerToast.info('Form cleared for new consignment entry.');
+                        }}
+                        className="px-3.5 py-2 rounded-full bg-softcard dark:bg-darkcard hover:bg-zinc-200/70 dark:hover:bg-zinc-700 border border-hairline dark:border-zinc-700 text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                        title="Reset form fields"
                     >
-                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Quick Add</span>
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Reset Form</span>
                     </button>
 
                     {/* Exit Button */}
@@ -1672,11 +1693,11 @@ export default function AddShipmentPage() {
 </section>
 
                     {/* PRIMARY SUBMIT CTA ROW */}
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+                    <div className="pt-1">
                         <button
                             type="submit"
                             disabled={isSaving}
-                            className="flex-1 py-4 px-6 rounded-2xl bg-charcoal hover:bg-zinc-800 dark:bg-lavender dark:hover:bg-lavenderhover active:scale-[0.995] text-white dark:text-charcoal font-bold text-xs sm:text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-charcoal/15 disabled:opacity-50 cursor-pointer"
+                            className="w-full py-4 px-6 rounded-2xl bg-charcoal hover:bg-zinc-800 dark:bg-lavender dark:hover:bg-lavenderhover active:scale-[0.995] text-white dark:text-charcoal font-bold text-xs sm:text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-charcoal/15 disabled:opacity-50 cursor-pointer"
                         >
                             {isSaving ? (
                                 <Loader2 className="w-4 h-4 animate-spin text-white dark:text-charcoal" />
@@ -1686,20 +1707,6 @@ export default function AddShipmentPage() {
                                 </span>
                             )}
                             <span>{editingShipmentId ? 'UPDATE CONSIGNMENT BILTY' : 'SAVE & REGISTER CONSIGNMENT BILTY'}</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => {
-                                form.reset(generateDefaultValues());
-                                setEditingShipmentId(null);
-                                fetchNextRegNum();
-                                sonnerToast.info('Form cleared for new consignment entry.');
-                            }}
-                            className="py-4 px-5 rounded-2xl bg-softcard dark:bg-darkcard hover:bg-zinc-200/70 dark:hover:bg-zinc-700 border border-hairline dark:border-zinc-700 text-xs font-bold text-zinc-600 dark:text-zinc-300 transition-colors flex items-center justify-center gap-2 shrink-0 shadow-2xs"
-                        >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            <span>Reset Form</span>
                         </button>
                     </div>
                 </form>
@@ -1809,7 +1816,7 @@ export default function AddShipmentPage() {
                                         : findNameById(data, 'parties', row.receiver_id);
 
                                     const formattedDate = row.bility_date
-                                        ? new Date(row.bility_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                        ? formatAppDate(row.bility_date)
                                         : '';
 
                                     return (

@@ -13,9 +13,9 @@ export async function GET(request: NextRequest) {
     const vehicleIdParam = url.searchParams.get('vehicle_id');
     const dateParam = url.searchParams.get('date');
 
-    if (!vehicleIdParam || !dateParam) {
+    if (!dateParam) {
       return NextResponse.json(
-        { message: 'vehicle_id and date are required' },
+        { message: 'date is required' },
         { status: 400 }
       );
     }
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     const shipments = await prisma.shipment.findMany({
       where: {
-        vehicle_number_id: vehicleId,
+        ...(vehicleId && !isNaN(vehicleId) ? { vehicle_number_id: vehicleId } : {}),
         createdAt: {
           gte: startOfDay,
           lte: endOfDay,

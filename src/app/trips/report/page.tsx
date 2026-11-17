@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { fetchMasterLists } from '@/lib/master-lists-client';
+import { formatAppDate } from '@/lib/utils';
 
 type Vehicle = { id: number; vehicleNumber: string };
 type TripShipmentLog = {
@@ -141,7 +142,7 @@ export default function TripReportPage() {
             <div><div className='text-gray-500'>Vehicle</div><div className='font-semibold'>{tripLog.vehicle?.vehicleNumber}</div></div>
             <div><div className='text-gray-500'>Driver</div><div className='font-semibold'>{tripLog.driver_name}</div></div>
             <div><div className='text-gray-500'>City</div><div className='font-semibold'>{tripLog.city}</div></div>
-            <div><div className='text-gray-500'>Date</div><div className='font-semibold'>{new Date(tripLog.date).toLocaleDateString()}</div></div>
+            <div><div className='text-gray-500'>Date</div><div className='font-semibold'>{formatAppDate(tripLog.date)}</div></div>
             <div><div className='text-gray-500'>Arrival</div><div className='font-semibold'>{tripLog.arrival_time}</div></div>
             <div><div className='text-gray-500'>Departure</div><div className='font-semibold'>{tripLog.departure_time}</div></div>
             <div><div className='text-gray-500'>Station</div><div className='font-semibold'>{tripLog.station_name}</div></div>

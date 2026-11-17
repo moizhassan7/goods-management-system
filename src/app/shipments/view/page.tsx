@@ -35,6 +35,7 @@ import BiltyDetailDialog from '@/components/shipments/BiltyDetailDialog';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { fetchMasterLists } from '@/lib/master-lists-client';
 import { recordRowClass, recordRowId, useScrollToRecord } from '@/lib/record-deep-link';
+import { formatAppDate, formatAppDateTime } from '@/lib/utils';
 
 export interface Toast {
     id: string;
@@ -179,8 +180,8 @@ export default function ViewShipments() {
     // Pagination & Sorting State
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(25);
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-    const [sortBy, setSortBy] = useState<string>('date_vehicle');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [sortBy, setSortBy] = useState<string>('created_at');
     const tableTopRef = useRef<HTMLDivElement>(null);
 
     const fetchShipments = useCallback(async (
@@ -191,8 +192,8 @@ export default function ViewShipments() {
         page = 1,
         size = 25,
         currentRegister = '',
-        currentSortOrder: 'asc' | 'desc' = 'asc',
-        currentSortBy = 'date_vehicle',
+        currentSortOrder: 'asc' | 'desc' = 'desc',
+        currentSortBy = 'created_at',
     ) => {
         setIsLoading(true);
         try {
@@ -263,9 +264,15 @@ export default function ViewShipments() {
     }, [searchTerm]);
 
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
+        const searchStr = typeof window !== 'undefined' ? window.location.search : '';
+        const params = new URLSearchParams(searchStr);
         const register = params.get('register')?.trim() || '';
         const search = params.get('search')?.trim() || '';
+        const filter = params.get('filter')?.toLowerCase();
+        const isToday = filter === 'today' || params.get('today') === 'true';
+        const queryStartDate = params.get('startDate')?.trim();
+        const queryEndDate = params.get('endDate')?.trim();
+
         if (register || search) {
             setLinkedRegister(register);
             setLinkedSearch(search);
@@ -274,6 +281,17 @@ export default function ViewShipments() {
             setStartDate('');
             setEndDate('');
             setVehicleId('all');
+            setCurrentPage(1);
+        } else if (isToday || queryStartDate || queryEndDate) {
+            const now = new Date();
+            const pad = (n: number) => String(n).padStart(2, '0');
+            const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+            const start = isToday ? todayStr : (queryStartDate || todayStr);
+            const end = isToday ? todayStr : (queryEndDate || start);
+
+            setStartDate(start);
+            setEndDate(end);
             setCurrentPage(1);
         }
         setDeepLinkReady(true);
@@ -307,10 +325,10 @@ export default function ViewShipments() {
         setEndDate(range.endDate);
         setVehicleId('all');
         setSearchTerm('');
-        setSortOrder('asc');
-        setSortBy('date_vehicle');
+        setSortOrder('desc');
+        setSortBy('created_at');
         setCurrentPage(1);
-        fetchShipments('', range.startDate, range.endDate, 'all', 1, pageSize, '', 'asc', 'date_vehicle');
+        fetchShipments('', range.startDate, range.endDate, 'all', 1, pageSize, '', 'desc', 'created_at');
     };
 
     const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
@@ -362,7 +380,7 @@ export default function ViewShipments() {
                     </tr>
                     <tr>
                         <td><strong>Bilty Date:</strong></td>
-                        <td colspan="3">${new Date(shipmentData.bility_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                        <td colspan="3">${formatAppDate(shipmentData.bility_date)}</td>
                     </tr>
                 </table>
             </div>
@@ -420,7 +438,7 @@ export default function ViewShipments() {
             </div>
 
             <div class="footer">
-                <p>Printed on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} • Zikria Goods Transports ERP</p>
+                <p>Printed on ${formatAppDateTime(new Date())} • Zikria Goods Transports ERP</p>
             </div>
         </body>
         </html>
@@ -838,6 +856,7 @@ export default function ViewShipments() {
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent align="end" className="rounded-lg">
+                                        <SelectItem value="created_at">Entry Date</SelectItem>
                                         <SelectItem value="date_vehicle">Date & Vehicle</SelectItem>
                                         <SelectItem value="vehicle">Vehicle First</SelectItem>
                                         <SelectItem value="bility_date">Bilty Date</SelectItem>
@@ -1014,12 +1033,12 @@ export default function ViewShipments() {
 
                                                 {/* 2. Bilty Date */}
                                                 <TableCell className="font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap text-[11px]">
-                                                    {shipment.bility_date ? new Date(shipment.bility_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                                                    {formatAppDate(shipment.bility_date)}
                                                 </TableCell>
 
                                                 {/* 3. Entry Date */}
                                                 <TableCell className="font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap text-[11px]">
-                                                    {createdVal ? new Date(createdVal).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                                                    {formatAppDate(createdVal)}
                                                 </TableCell>
 
                                                 {/* 4. Departure */}

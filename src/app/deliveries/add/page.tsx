@@ -23,6 +23,7 @@ import {
 import { 
     Card, CardContent, CardDescription, CardHeader, CardTitle 
 } from '@/components/ui/card';
+import { formatAppDate, formatAppDateTime } from '@/lib/utils';
 
 export interface Toast {
     id: string;
@@ -389,11 +390,11 @@ export default function AddDelivery() {
             <div class="row">
                 <div class="field">
                     <div class="field-label">Bility Date:</div>
-                    <div class="field-value">${new Date(shipmentData.bility_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                    <div class="field-value">${formatAppDate(shipmentData.bility_date)}</div>
                 </div>
                 <div class="field">
                     <div class="field-label">Delivery Date:</div>
-                    <div class="field-value">${new Date(values.delivery_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                    <div class="field-value">${formatAppDate(values.delivery_date)}</div>
                 </div>
             </div>
         </div>
@@ -484,7 +485,7 @@ export default function AddDelivery() {
         ` : ''}
 
         <div class="footer">
-            <p>Printed on: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            <p>Printed on: ${formatAppDateTime(new Date())}</p>
             <p>© Switch2itech. All Rights Reserved.</p>
         </div>
     </div>
@@ -572,7 +573,7 @@ export default function AddDelivery() {
                                     <div>
                                         <label className='text-sm font-medium text-gray-600'>{t('delivery_detail_bility_date')}</label>
                                         <p className='text-lg font-semibold'>
-                                           {new Date(shipmentData.bility_date).toLocaleDateString()}
+                                           {formatAppDate(shipmentData.bility_date)}
                                         </p>
                                     </div>
                                     <div>

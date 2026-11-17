@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { formatAppDate } from '@/lib/utils';
 
 // Updated interface to match the new API response fields
 type LabourAssignmentReport = {
@@ -150,7 +151,7 @@ export default function LabourAssignmentsReportPage() {
                                         <TableCell>{assignment.labourPerson.name}</TableCell>
                                         <TableCell>{assignment.shipment.bility_number}</TableCell>
                                         <TableCell>{assignment.status}</TableCell>
-                                        <TableCell>{new Date(assignment.assigned_date).toLocaleDateString()}</TableCell>
+                                        <TableCell>{formatAppDate(assignment.assigned_date)}</TableCell>
                                         
                                         {/* NEW FINANCIAL COLUMNS DATA */}
                                         <TableCell className='text-right text-blue-700'>Rs. {assignment.shipment_charges.toFixed(2)}</TableCell>

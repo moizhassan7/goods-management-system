@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { formatAppDate } from '@/lib/utils';
 
 type Delivery = {
   delivery_id: number;
@@ -109,7 +110,7 @@ export default function DeliveriesReportPage() {
                   <TableCell>{delivery.shipment_id}</TableCell>
                   <TableCell>{delivery.shipment.bility_number}</TableCell>
                   <TableCell>{delivery.receiver_name}</TableCell>
-                  <TableCell>{new Date(delivery.delivery_date).toLocaleDateString()}</TableCell>
+                  <TableCell>{formatAppDate(delivery.delivery_date)}</TableCell>
                   <TableCell>Rs. {Number(delivery.total_expenses).toFixed(2)}</TableCell>
                   <TableCell>{delivery.delivery_notes || '-'}</TableCell>
                 </TableRow>

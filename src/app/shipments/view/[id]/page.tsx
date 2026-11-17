@@ -43,6 +43,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatAppDate, formatAppDateTime } from '@/lib/utils';
 
 const formatCurrency = (amount: number | string | undefined | null) => {
     return `Rs. ${Number(amount || 0).toLocaleString('en-PK', {
@@ -175,7 +176,7 @@ export default function SingleBiltyFullViewPage() {
                             <td width="50%"><strong>Register #:</strong> ${shipment.register_number}</td>
                         </tr>
                         <tr>
-                            <td><strong>Bilty Date:</strong> ${shipment.bility_date ? new Date(shipment.bility_date).toLocaleDateString() : '-'}</td>
+                            <td><strong>Bilty Date:</strong> ${formatAppDate(shipment.bility_date)}</td>
                             <td><strong>Vehicle:</strong> ${shipment.vehicle?.vehicleNumber || 'Unassigned'}</td>
                         </tr>
                         <tr>
@@ -224,7 +225,7 @@ export default function SingleBiltyFullViewPage() {
                 </div>
 
                 <div class="footer">
-                    <p>Printed on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} • Zikria Goods ERP System</p>
+                    <p>Printed on ${formatAppDateTime(new Date())} • Zikria Goods ERP System</p>
                 </div>
             </body>
             </html>
@@ -713,7 +714,7 @@ export default function SingleBiltyFullViewPage() {
                                 <div>
                                     <p className="font-sans font-bold text-slate-900 dark:text-white">Bilty Date</p>
                                     <p className="text-slate-500 text-[11px]">
-                                        {shipment.bility_date ? new Date(shipment.bility_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                                        {formatAppDate(shipment.bility_date)}
                                     </p>
                                 </div>
                             </div>
@@ -723,7 +724,7 @@ export default function SingleBiltyFullViewPage() {
                                 <div>
                                     <p className="font-sans font-bold text-slate-900 dark:text-white">System Booking Entry</p>
                                     <p className="text-slate-500 text-[11px]">
-                                        {createdVal ? new Date(createdVal).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                                        {formatAppDateTime(createdVal)}
                                     </p>
                                 </div>
                             </div>
@@ -735,7 +736,7 @@ export default function SingleBiltyFullViewPage() {
                                         {isDelivered ? 'Delivery Date' : 'Delivery Status'}
                                     </p>
                                     <p className={`text-[11px] ${isDelivered ? 'text-emerald-600 font-bold' : 'text-slate-500'}`}>
-                                        {shipment.delivery_date ? new Date(shipment.delivery_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Pending / Consignment In Transit'}
+                                        {shipment.delivery_date ? formatAppDate(shipment.delivery_date) : 'Pending / Consignment In Transit'}
                                     </p>
                                 </div>
                             </div>

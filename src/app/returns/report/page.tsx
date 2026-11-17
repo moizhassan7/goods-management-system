@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { formatAppDate } from '@/lib/utils';
 
 type ReturnShipment = {
   id: number;
@@ -119,7 +120,7 @@ export default function ReturnsReportPage() {
                 <TableRow key={ret.id}>
                   <TableCell>{ret.original_shipment_id}</TableCell>
                   <TableCell>{ret.originalShipment.bility_number}</TableCell>
-                  <TableCell>{new Date(ret.return_date).toLocaleDateString()}</TableCell>
+                  <TableCell>{formatAppDate(ret.return_date)}</TableCell>
                   <TableCell>{ret.reason}</TableCell>
                   <TableCell>{ret.status}</TableCell>
                   <TableCell>{ret.action_taken || '-'}</TableCell>

@@ -103,8 +103,8 @@ export async function GET(request: Request) {
         const { page, pageSize, skip } = parsePagination(searchParams);
 
         const sortOrderParam = searchParams.get('sortOrder')?.toLowerCase();
-        const sortOrder: Prisma.SortOrder = sortOrderParam === 'desc' ? 'desc' : 'asc';
-        const sortBy = searchParams.get('sortBy')?.toLowerCase() || 'date_vehicle';
+        const sortOrder: Prisma.SortOrder = sortOrderParam === 'asc' ? 'asc' : 'desc';
+        const sortBy = searchParams.get('sortBy')?.toLowerCase() || 'created_at';
 
         let orderBy: Prisma.ShipmentOrderByWithRelationInput[];
 
@@ -112,6 +112,7 @@ export async function GET(request: Request) {
             orderBy = [
                 { vehicle: { vehicleNumber: 'asc' } },
                 { created_day: sortOrder },
+                { createdAt: sortOrder },
                 { bility_date: sortOrder },
                 { register_number: sortOrder },
             ];
@@ -125,17 +126,19 @@ export async function GET(request: Request) {
             orderBy = [
                 { register_number: sortOrder },
             ];
-        } else if (sortBy === 'created_at') {
+        } else if (sortBy === 'date_vehicle') {
             orderBy = [
+                { created_day: sortOrder },
                 { createdAt: sortOrder },
+                { vehicle: { vehicleNumber: 'asc' } },
+                { bility_date: sortOrder },
                 { register_number: sortOrder },
             ];
         } else {
-            // Default: 'date_vehicle' - Groups by Entry Date, then Vehicle, then Bilty Date & Register #
+            // Default: 'created_at' / 'entry_date' - Order by Entry Date (most recent first by default)
             orderBy = [
                 { created_day: sortOrder },
-                { vehicle: { vehicleNumber: 'asc' } },
-                { bility_date: sortOrder },
+                { createdAt: sortOrder },
                 { register_number: sortOrder },
             ];
         }

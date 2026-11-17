@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
             });
             return NextResponse.json({
                 success: true,
+                valid: true,
                 message: 'Password verified successfully.',
             });
         }
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
             success: true,
+            valid: true,
             message: 'Password verified successfully.',
         });
     } catch (error) {

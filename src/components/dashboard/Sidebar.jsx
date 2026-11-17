@@ -21,32 +21,47 @@ const SidebarLink = ({ link, isSubItem = false, isNestedSubItem = false, isColla
 
     const isActive = pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href));
 
-    let paddingClass = 'px-3.5 py-2.5';
-    if (!isCollapsed) {
-        paddingClass = isNestedSubItem ? 'pl-9 pr-3 py-2' : isSubItem ? 'pl-7 pr-3 py-2' : 'px-3.5 py-2.5';
-    } else {
-        paddingClass = 'p-2.5 justify-center';
+    if (isCollapsed) {
+        return (
+            <Link
+                href={link.href}
+                title={link.name}
+                className={`group relative flex items-center justify-center w-10 h-10 mx-auto my-1 transition-all duration-150 rounded-xl select-none shrink-0 ${
+                    isActive
+                        ? 'bg-lavender text-charcoal font-bold shadow-2xs'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:text-charcoal dark:hover:text-white hover:bg-cardgray dark:hover:bg-zinc-800/70 font-medium'
+                }`}
+            >
+                {Icon && (
+                    <Icon
+                        className={`w-4 h-4 shrink-0 ${
+                            isActive
+                                ? 'text-charcoal stroke-[2.2]'
+                                : 'text-zinc-400 group-hover:text-charcoal dark:group-hover:text-white stroke-[1.8]'
+                        }`}
+                    />
+                )}
+            </Link>
+        );
     }
 
+    const paddingClass = isNestedSubItem ? 'pl-9 pr-3 py-2' : isSubItem ? 'pl-7 pr-3 py-2' : 'px-3.5 py-2.5';
     const textSize = isNestedSubItem ? 'text-xs font-normal' : isSubItem ? 'text-xs font-medium' : 'text-[13px]';
 
     return (
         <Link
             href={link.href}
-            title={isCollapsed ? link.name : undefined}
-            className={`group relative flex items-center justify-between transition-all duration-150 rounded-xl my-0.5 select-none ${
+            className={`group relative flex items-center justify-between transition-all duration-150 rounded-xl my-0.5 select-none w-full ${
                 isActive
                     ? 'bg-lavender text-charcoal font-bold shadow-2xs'
                     : 'text-zinc-600 dark:text-zinc-400 hover:text-charcoal dark:hover:text-white hover:bg-cardgray dark:hover:bg-zinc-800/70 font-medium'
-            } ${textSize} ${paddingClass} ${isCollapsed ? 'w-10 h-10 mx-auto' : 'w-full'}`}
+            } ${textSize} ${paddingClass}`}
         >
             <div className="flex items-center gap-3 min-w-0">
                 {Icon && (
                     <Icon
                         className={`shrink-0 ${
-                            isCollapsed
-                                ? 'w-4 h-4'
-                                : isNestedSubItem
+                            isNestedSubItem
                                 ? 'w-3.5 h-3.5'
                                 : isSubItem
                                 ? 'w-4 h-4'
@@ -55,7 +70,7 @@ const SidebarLink = ({ link, isSubItem = false, isNestedSubItem = false, isColla
                     />
                 )}
 
-                {!Icon && (isSubItem || isNestedSubItem) && !isCollapsed && (
+                {!Icon && (isSubItem || isNestedSubItem) && (
                     <span
                         className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors ${
                             isActive ? 'bg-charcoal' : 'bg-zinc-400 group-hover:bg-zinc-600 dark:group-hover:bg-zinc-200'
@@ -63,12 +78,10 @@ const SidebarLink = ({ link, isSubItem = false, isNestedSubItem = false, isColla
                     />
                 )}
 
-                {!isCollapsed && (
-                    <span className="truncate tracking-tight">{link.name}</span>
-                )}
+                <span className="truncate tracking-tight">{link.name}</span>
             </div>
 
-            {!isCollapsed && link.badge && (
+            {link.badge && (
                 <span
                     className={`ml-2 px-2 py-0.5 rounded-full font-mono text-[10px] font-bold shrink-0 ${
                         isActive
@@ -84,7 +97,7 @@ const SidebarLink = ({ link, isSubItem = false, isNestedSubItem = false, isColla
 };
 
 // Collapsible Section Component
-const SidebarCollapsibleSection = ({ section, isCollapsed }) => {
+const SidebarCollapsibleSection = ({ section, isCollapsed, setIsCollapsed }) => {
     const pathname = usePathname();
     const visibleLinks = section.links?.filter(link => link.isVisible) || [];
     const visibleSubSections = section.subSections?.filter(subSection =>
@@ -102,7 +115,14 @@ const SidebarCollapsibleSection = ({ section, isCollapsed }) => {
     const SectionIcon = section.icon;
     const ToggleIcon = isOpen ? ChevronUp : ChevronDown;
 
-    const toggleOpen = () => setIsOpen(!isOpen);
+    const toggleOpen = () => {
+        if (isCollapsed) {
+            if (setIsCollapsed) setIsCollapsed(false);
+            setIsOpen(true);
+        } else {
+            setIsOpen(!isOpen);
+        }
+    };
 
     if (!visibleLinks?.length && !visibleSubSections?.length) return null;
 
@@ -111,7 +131,7 @@ const SidebarCollapsibleSection = ({ section, isCollapsed }) => {
             <button
                 type="button"
                 onClick={toggleOpen}
-                className={`w-10 h-10 mx-auto flex items-center justify-center transition-colors rounded-xl my-1 ${
+                className={`w-10 h-10 mx-auto flex items-center justify-center transition-colors rounded-xl my-1 shrink-0 ${
                     anyChildActive
                         ? 'bg-lavender text-charcoal shadow-2xs font-bold'
                         : 'text-zinc-500 hover:text-charcoal dark:hover:text-white hover:bg-cardgray dark:hover:bg-zinc-800'
@@ -397,11 +417,13 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
 
     return (
         <aside
-            className={`${sidebarWidth} transition-all duration-200 ease-in-out bg-white dark:bg-[#18181B] text-charcoal dark:text-zinc-100 border-r border-hairline dark:border-zinc-800 flex flex-col justify-between fixed left-0 top-0 h-screen z-30 select-none shadow-[0_20px_50px_rgba(0,0,0,0.03)] p-4 sm:p-5`}
+            className={`${sidebarWidth} transition-all duration-200 ease-in-out bg-white dark:bg-[#18181B] text-charcoal dark:text-zinc-100 border-r border-hairline dark:border-zinc-800 flex flex-col justify-between fixed left-0 top-0 h-screen z-30 select-none shadow-[0_20px_50px_rgba(0,0,0,0.03)] ${
+                isCollapsed ? 'px-2 py-4' : 'p-4 sm:p-5'
+            }`}
         >
-            <div className="flex flex-col min-h-0 overflow-hidden">
+            <div className="flex flex-col min-h-0 overflow-hidden w-full">
                 {/* Brand Logo Header (Geometric Mark + 'Zikria Goods' wordmark) */}
-                <div className="flex items-center justify-between gap-2.5 pb-5 mb-3 border-b border-hairline dark:border-zinc-800">
+                <div className={`flex items-center ${isCollapsed ? 'justify-center pb-4 mb-2' : 'justify-between pb-5 mb-3'} border-b border-hairline dark:border-zinc-800`}>
                     <Link href="/" className="flex items-center gap-2.5 overflow-hidden group">
                         {/* Minimalist Isometric Cube/Truck Mark */}
                         <div className="w-8 h-8 rounded-xl bg-charcoal dark:bg-lavender text-white dark:text-charcoal flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
@@ -412,7 +434,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                         {!isCollapsed && (
                             <div className="flex flex-col min-w-0">
                                 <span className="text-[17px] font-bold tracking-tight leading-none text-charcoal dark:text-white truncate">
-                                    Zikria Goods
+                                    ZGTC
                                 </span>
                                 <div className="flex items-center gap-1.5 mt-1">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -450,7 +472,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                 )}
 
                 {/* Navigation Menu List */}
-                <nav className="space-y-1 flex-grow overflow-y-auto pr-0.5 no-scrollbar">
+                <nav className={`space-y-1 flex-grow overflow-y-auto ${isCollapsed ? 'px-0 overflow-x-hidden' : 'pr-0.5'} no-scrollbar w-full`}>
                     {filteredNavSections.map((section) => {
                         if (section.href) {
                             return (
@@ -458,14 +480,19 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                             );
                         }
                         return (
-                            <SidebarCollapsibleSection key={section.name} section={section} isCollapsed={isCollapsed} />
+                            <SidebarCollapsibleSection
+                                key={section.name}
+                                section={section}
+                                isCollapsed={isCollapsed}
+                                setIsCollapsed={setIsCollapsed}
+                            />
                         );
                     })}
                 </nav>
             </div>
 
             {/* Bottom Centered Profile & Segmented Sun/Moon Theme Switcher */}
-            <div className="pt-4 border-t border-hairline dark:border-zinc-800 flex flex-col items-center shrink-0">
+            <div className="pt-4 border-t border-hairline dark:border-zinc-800 flex flex-col items-center shrink-0 w-full">
                 {!isCollapsed ? (
                     <>
                         {/* Circular Avatar Monogram */}
@@ -508,10 +535,10 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                         </div>
                     </>
                 ) : (
-                    <div className="flex flex-col items-center gap-3">
+                    <div className="flex flex-col items-center gap-3 w-full">
                         {/* Collapsed Avatar */}
                         <div
-                            className="w-9 h-9 rounded-full bg-lavender/60 dark:bg-zinc-800 border border-lavender dark:border-zinc-700 flex items-center justify-center text-charcoal dark:text-lavender font-bold text-xs shadow-2xs"
+                            className="w-9 h-9 rounded-full bg-lavender/60 dark:bg-zinc-800 border border-lavender dark:border-zinc-700 flex items-center justify-center text-charcoal dark:text-lavender font-bold text-xs shadow-2xs shrink-0"
                             title={user?.username}
                         >
                             {userInitials}
@@ -520,10 +547,10 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                         <button
                             type="button"
                             onClick={() => setIsCollapsed(false)}
-                            className="w-8 h-8 flex items-center justify-center rounded-xl bg-cardgray dark:bg-zinc-800 text-zinc-500 hover:text-charcoal dark:hover:text-white transition-colors"
+                            className="w-9 h-9 flex items-center justify-center rounded-xl bg-cardgray dark:bg-zinc-800 text-zinc-500 hover:text-charcoal dark:hover:text-white hover:bg-lavender/40 dark:hover:bg-zinc-700 transition-colors shadow-2xs shrink-0"
                             title="Expand Sidebar"
                         >
-                            <ChevronRight className="w-4 h-4 stroke-[1.8]" />
+                            <ChevronRight className="w-4 h-4 stroke-[2]" />
                         </button>
                     </div>
                 )}
