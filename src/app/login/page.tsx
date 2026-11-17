@@ -377,19 +377,19 @@ export default function LoginPage() {
 
           {/* Footer with Delivery Office Address */}
           <div
-            className={`mt-6 pt-4 border-t space-y-2 text-[11px] ${
+            className={`mt-6 pt-4 border-t space-y-2 text-xs sm:text-[12.5px] ${
               darkMode
-                ? 'border-[#2C2C32] text-zinc-400'
-                : 'border-zinc-200 text-zinc-500'
+                ? 'border-[#2C2C32] text-zinc-300'
+                : 'border-zinc-200 text-zinc-700'
             }`}
           >
-            <div className="flex items-start gap-1.5 leading-snug">
-              <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-zinc-400" />
+            <div className="flex items-start gap-1.5 leading-snug font-semibold">
+              <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
               <span>
-                <strong className={darkMode ? 'text-zinc-200' : 'text-zinc-700'}>Delivery Office :</strong> Near Fatima Jinnah Road Bhatti Chowk, Opposite To Lakarmandi Railway Mall Godaam, Sargodha. <span className="font-mono font-bold whitespace-nowrap">048-3701451</span>
+                <strong className={`font-bold ${darkMode ? 'text-white' : 'text-zinc-900'}`}>Delivery Office :</strong> Near Fatima Jinnah Road Bhatti Chowk, Opposite To Lakarmandi Railway Mall Godaam, Sargodha. <span className="font-mono font-bold whitespace-nowrap">048-3701451</span>
               </span>
             </div>
-            <div className="flex items-center justify-between text-[10px] text-zinc-400 font-mono pt-0.5">
+            <div className="flex items-center justify-between text-[11px] text-zinc-400 font-mono pt-0.5 font-normal">
               <span>&copy; 2026 Zikria Goods Transport Company</span>
               <span>v4.5 ERP</span>
             </div>
