@@ -86,6 +86,8 @@ function buildWhere(searchParams: URLSearchParams): Prisma.ShipmentWhereInput {
         where.vehicle_number_id = parsedVehicleId;
     }
 
+    where.is_deleted = false;
+
     return where;
 }
 

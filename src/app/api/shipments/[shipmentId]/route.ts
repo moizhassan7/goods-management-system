@@ -15,12 +15,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   
   try {
     const cleanId = decodeURIComponent(shipmentId).trim();
+    const includeDeleted = request.nextUrl.searchParams.get('includeDeleted') === 'true';
+
     const shipment = await prisma.shipment.findFirst({
       where: {
         OR: [
           { register_number: cleanId },
           { bility_number: cleanId },
         ],
+        ...(includeDeleted ? {} : { is_deleted: false }),
       },
       include: {
         // Eagerly load the GoodsDetails and their corresponding ItemCatalog for the ReturnForm
@@ -183,32 +186,40 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ shipmentId: string }> }) {
-    const auth = await requireAuth(request, Permissions.MASTER_DATA_WRITE);
+    const auth = await requireAuth(request, Permissions.CORE_OPERATIONS);
     if (isAuthError(auth)) return auth;
 
   const { shipmentId } = await params;
   try {
     const cleanId = decodeURIComponent(shipmentId).trim();
 
-    await prisma.$transaction(async (tx) => {
-      // Delete associated records to satisfy foreign key constraints
-      await tx.transaction.deleteMany({ where: { shipment_id: cleanId } });
-      await tx.delivery.deleteMany({ where: { shipment_id: cleanId } });
-      await tx.vehicleTransaction.deleteMany({ where: { shipment_id: cleanId } });
-      await tx.labourAssignment.deleteMany({ where: { shipment_id: cleanId } });
-      await tx.labourPaymentHistory.deleteMany({ where: { shipment_id: cleanId } });
-      
-      // Cascade delete is usually handled by Prisma for these, but we explicitly delete to be safe
-      await tx.goodsDetails.deleteMany({ where: { shipment_id: cleanId } });
-      await tx.returnShipment.deleteMany({ where: { original_shipment_id: cleanId } });
-
-      // Delete the main shipment record
-      await tx.shipment.delete({ where: { register_number: cleanId } });
+    const existing = await prisma.shipment.findUnique({
+      where: { register_number: cleanId },
+      select: { register_number: true, bility_number: true, is_deleted: true },
     });
 
-    return NextResponse.json({ message: 'Shipment deleted successfully.' }, { status: 200 });
+    if (!existing || existing.is_deleted) {
+      return NextResponse.json({ message: 'Shipment not found.' }, { status: 404 });
+    }
+
+    // Soft delete: keep relations intact, mark as deleted with audit info
+    await prisma.shipment.update({
+      where: { register_number: cleanId },
+      data: {
+        is_deleted: true,
+        deleted_at: new Date(),
+        deleted_by_id: auth.id,
+        deleted_by_name: auth.username,
+      },
+    });
+
+    return NextResponse.json({
+      message: `Bilty ${existing.bility_number} moved to Recycle Bin successfully.`,
+      bility_number: existing.bility_number,
+      register_number: existing.register_number,
+    }, { status: 200 });
   } catch (error) {
-    console.error('Error deleting shipment:', error);
+    console.error('Error soft deleting shipment:', error);
     return NextResponse.json({ message: prismaErrorMessage(error, 'Failed to delete shipment') }, { status: 500 });
   }
 }

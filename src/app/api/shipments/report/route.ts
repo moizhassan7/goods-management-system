@@ -25,7 +25,9 @@ export async function GET(request: NextRequest) {
     const toCityIdParam = searchParams.get('toCityId');
     const vehicleIdParam = searchParams.get('vehicleId');
 
-    const where: Prisma.ShipmentWhereInput = {};
+    const where: Prisma.ShipmentWhereInput = {
+        is_deleted: false,
+    };
 
     // 1. Date Filtering (bility_date)
     const dateFilter: { gte?: Date; lte?: Date } = {};

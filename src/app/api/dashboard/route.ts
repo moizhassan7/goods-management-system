@@ -36,10 +36,11 @@ export async function GET(request: Request) {
             shipmentTotals
         ] = await prisma.$transaction([
             // Total Shipments
-            prisma.shipment.count(),
+            prisma.shipment.count({ where: { is_deleted: false } }),
             // Today's Shipments
             prisma.shipment.count({
                 where: {
+                    is_deleted: false,
                     OR: [
                         { bility_date: { gte: startOfIsoToday, lte: endOfIsoToday } },
                         { bility_date: { gte: startOfToday, lte: endOfToday } },
@@ -60,6 +61,7 @@ export async function GET(request: Request) {
             prisma.labourAssignment.count({ where: { status: LabourAssignmentStatus.COLLECTED } }),
             // Total Charges & Delivery Charges Aggregate
             prisma.shipment.aggregate({
+                where: { is_deleted: false },
                 _sum: {
                     total_charges: true,
                     total_delivery_charges: true,
@@ -79,6 +81,7 @@ export async function GET(request: Request) {
 
         // --- 3. Recent Shipments (for quick view & activity log) ---
         const recentShipments = await prisma.shipment.findMany({
+            where: { is_deleted: false },
             select: {
                 register_number: true,
                 bility_number: true,
@@ -110,6 +113,7 @@ export async function GET(request: Request) {
         const rawVolumeData = await prisma.shipment.groupBy({
             by: ['bility_date'],
             where: {
+                is_deleted: false,
                 bility_date: {
                     gte: lastWeek,
                 },

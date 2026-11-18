@@ -142,52 +142,52 @@ export default function BiltyDetailDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
                 showCloseButton={false}
-                className={`transition-all duration-200 flex flex-col p-0 gap-0 overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xl ${
+                className={`transition-all duration-200 flex flex-col p-0 gap-0 overflow-hidden bg-white dark:bg-zinc-900 border border-hairline dark:border-zinc-800 shadow-2xl ${
                     isFullscreen
                         ? '!fixed !inset-0 !w-screen !h-screen !max-w-none !rounded-none !m-0 !z-50 !border-0'
                         : 'sm:max-w-4xl max-h-[92vh] sm:rounded-2xl w-[95vw]'
                 }`}
             >
                 {/* Modal Top Header Bar */}
-                <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 backdrop-blur-xs shrink-0">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-hairline dark:border-zinc-800 bg-white dark:bg-zinc-900 backdrop-blur-xs shrink-0">
                     <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-charcoal text-white dark:bg-lavender dark:text-charcoal flex items-center justify-center font-bold text-sm shadow-2xs shrink-0">
                             <Package className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                                <DialogTitle className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white font-mono">
+                                <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-charcoal dark:text-white font-mono">
                                     Bilty #{data.bility_number || '---'}
                                 </DialogTitle>
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-cardgray dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-hairline dark:border-zinc-700">
                                     Reg #{data.register_number}
                                 </span>
                                 {isAlreadyPaid ? (
-                                    <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1 text-[11px] font-bold">
-                                        <CheckCircle2 className="w-3 h-3" /> Already Paid
+                                    <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 gap-1 text-[11px] font-bold rounded-full">
+                                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Already Paid
                                     </Badge>
                                 ) : isFree ? (
-                                    <Badge className="bg-blue-600 hover:bg-blue-700 text-white gap-1 text-[11px] font-bold">
+                                    <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40 gap-1 text-[11px] font-bold rounded-full">
                                         Free of Cost
                                     </Badge>
                                 ) : (
-                                    <Badge className="bg-amber-500 hover:bg-amber-600 text-white gap-1 text-[11px] font-bold">
-                                        <Clock className="w-3 h-3" /> Payment Pending
+                                    <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 gap-1 text-[11px] font-bold rounded-full">
+                                        <Clock className="w-3 h-3 text-amber-600" /> To Pay (Bara Karaya)
                                     </Badge>
                                 )}
 
                                 {isDelivered ? (
-                                    <Badge variant="outline" className="border-emerald-500 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 gap-1 text-[11px] font-bold">
+                                    <Badge variant="outline" className="border-emerald-500/30 text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 gap-1 text-[11px] font-bold rounded-full">
                                         <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Delivered
                                     </Badge>
                                 ) : (
-                                    <Badge variant="outline" className="border-blue-500 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 gap-1 text-[11px] font-bold">
-                                        <Truck className="w-3 h-3 text-blue-600" /> In Transit
+                                    <Badge variant="outline" className="border-hairline text-zinc-600 dark:text-zinc-300 bg-cardgray dark:bg-zinc-800/60 gap-1 text-[11px] font-bold rounded-full">
+                                        <Truck className="w-3 h-3 text-zinc-500" /> In Transit
                                     </Badge>
                                 )}
                             </div>
-                            <DialogDescription className="text-xs text-slate-500 truncate mt-0.5">
-                                Complete freight consignment overview and financial breakdown
+                            <DialogDescription className="text-xs text-zinc-500 truncate mt-0.5">
+                                Consignment overview and verified Karaya breakdown
                             </DialogDescription>
                         </div>
                     </div>
@@ -199,7 +199,7 @@ export default function BiltyDetailDialog({
                             variant="outline"
                             size="sm"
                             onClick={handleCopyDetails}
-                            className="hidden sm:inline-flex h-8 px-2.5 text-xs font-semibold gap-1.5 border-slate-200 dark:border-slate-700"
+                            className="hidden sm:inline-flex h-8 px-3 text-xs font-semibold gap-1.5 rounded-full border-hairline dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                             title="Copy Bilty Summary"
                         >
                             {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
@@ -211,10 +211,10 @@ export default function BiltyDetailDialog({
                             variant="outline"
                             size="sm"
                             onClick={handleOpenFullPage}
-                            className="h-8 px-2.5 text-xs font-semibold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-950/50"
+                            className="h-8 px-3 text-xs font-semibold gap-1.5 rounded-full text-charcoal dark:text-zinc-200 border-hairline dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                             title="Open in Dedicated Full Page"
                         >
-                            <ExternalLink className="w-3.5 h-3.5" />
+                            <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
                             <span className="hidden sm:inline">Full Page</span>
                         </Button>
 
@@ -223,7 +223,7 @@ export default function BiltyDetailDialog({
                             variant="ghost"
                             size="icon"
                             onClick={() => setIsFullscreen(!isFullscreen)}
-                            className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                            className="h-8 w-8 rounded-full text-zinc-400 hover:text-charcoal dark:hover:text-white"
                             title={isFullscreen ? 'Minimize Dialog' : 'Maximize to Fullscreen'}
                         >
                             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -234,7 +234,7 @@ export default function BiltyDetailDialog({
                             variant="ghost"
                             size="icon"
                             onClick={() => onOpenChange(false)}
-                            className="h-8 w-8 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50"
+                            className="h-8 w-8 rounded-full text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50"
                             title="Close"
                         >
                             <X className="w-4 h-4" />
@@ -386,59 +386,80 @@ export default function BiltyDetailDialog({
                             {/* 4. Financial & Operational Expenses Breakdown */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {/* Billing Voucher */}
-                                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-3">
-                                    <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-                                        <Receipt className="w-4 h-4 text-blue-600" />
-                                        <span className="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-xs">
+                                <div className="p-4 rounded-xl border border-hairline dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xs space-y-3">
+                                    <div className="flex items-center gap-2 border-b border-hairline dark:border-zinc-800 pb-2">
+                                        <Receipt className="w-4 h-4 text-charcoal dark:text-lavender" />
+                                        <span className="font-bold text-charcoal dark:text-white uppercase tracking-wider text-xs">
                                             Billing Summary
                                         </span>
                                     </div>
                                     <div className="space-y-2">
-                                        <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 text-[11px] flex items-center justify-between">
-                                            <span className="text-slate-500 font-semibold">Payment Condition:</span>
-                                            <span className="font-bold">
+                                        <div className="p-2.5 rounded-lg bg-cardgray dark:bg-zinc-800/50 border border-hairline dark:border-zinc-700/60 text-[11px] flex items-center justify-between">
+                                            <span className="text-zinc-500 font-semibold">Payment Condition:</span>
+                                            <span className="font-bold text-charcoal dark:text-zinc-100">
                                                 {isAlreadyPaid ? 'Already Paid at Booking' : isFree ? 'Free Freight' : 'To Collect on Delivery'}
                                             </span>
+                                        </div>
+                                        <div className="space-y-1.5 font-mono text-[11px] pt-1">
+                                            <div className="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+                                                <span>Chota Karaya (Base Tariff):</span>
+                                                <span className="font-semibold text-charcoal dark:text-white">
+                                                    {isAlreadyPaid || isFree ? 'Rs. 0.00' : formatCurrency(data.total_delivery_charges)}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+                                                <span>Station Expenses (In Bara Karaya):</span>
+                                                <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                                                    +{formatCurrency(data.total_expenses)}
+                                                </span>
+                                            </div>
+                                            <Separator className="my-1 border-hairline dark:border-zinc-800" />
+                                            <div className="flex justify-between items-center font-bold text-xs pt-0.5">
+                                                <span className="text-charcoal dark:text-white font-sans">Bara Karaya (Total Freight):</span>
+                                                <span className="font-mono text-charcoal dark:text-lavender text-sm">
+                                                    {isAlreadyPaid ? 'Already Paid' : isFree ? 'Free' : formatCurrency(data.total_charges)}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Operational & Station Expenses */}
-                                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-3">
-                                    <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
+                                <div className="p-4 rounded-xl border border-hairline dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xs space-y-3">
+                                    <div className="flex items-center gap-2 border-b border-hairline dark:border-zinc-800 pb-2">
                                         <Building2 className="w-4 h-4 text-purple-600" />
-                                        <span className="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-xs">
+                                        <span className="font-bold text-charcoal dark:text-white uppercase tracking-wider text-xs">
                                             Internal Station Expenses
                                         </span>
                                     </div>
                                     <div className="space-y-1.5 font-mono text-[11px]">
-                                        <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                                        <div className="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
                                             <span>Station Expense:</span>
-                                            <span className="font-semibold text-slate-900 dark:text-white">
+                                            <span className="font-semibold text-charcoal dark:text-white">
                                                 {formatCurrency(data.station_expense)}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                                        <div className="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
                                             <span>Bilty Expense:</span>
-                                            <span className="font-semibold text-slate-900 dark:text-white">
+                                            <span className="font-semibold text-charcoal dark:text-white">
                                                 {formatCurrency(data.bility_expense)}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                                        <div className="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
                                             <span>Station Labour:</span>
-                                            <span className="font-semibold text-slate-900 dark:text-white">
+                                            <span className="font-semibold text-charcoal dark:text-white">
                                                 {formatCurrency(data.station_labour)}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                                        <div className="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
                                             <span>Cart Labour:</span>
-                                            <span className="font-semibold text-slate-900 dark:text-white">
+                                            <span className="font-semibold text-charcoal dark:text-white">
                                                 {formatCurrency(data.cart_labour)}
                                             </span>
                                         </div>
-                                        <Separator className="my-1" />
+                                        <Separator className="my-1 border-hairline dark:border-zinc-800" />
                                         <div className="flex justify-between items-center font-bold text-xs">
-                                            <span className="text-slate-900 dark:text-white font-sans">Total Operational Exp:</span>
+                                            <span className="text-charcoal dark:text-white font-sans">Total Operational Exp:</span>
                                             <span className="font-mono text-purple-600 dark:text-purple-400">
                                                 {formatCurrency(data.total_expenses)}
                                             </span>
@@ -493,8 +514,8 @@ export default function BiltyDetailDialog({
                 </div>
 
                 {/* Modal Footer Controls */}
-                <div className="px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 backdrop-blur-xs flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
-                    <div className="text-xs text-slate-500 font-mono">
+                <div className="px-4 sm:px-6 py-3 border-t border-hairline dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
+                    <div className="text-xs text-zinc-400 font-mono">
                         Zikria Goods Management ERP • Single Consignment View
                     </div>
                     <div className="flex items-center gap-2 justify-end">
@@ -503,9 +524,9 @@ export default function BiltyDetailDialog({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => onPrint(data)}
-                                className="rounded-lg text-xs font-semibold gap-1.5 h-8 border-slate-200 dark:border-slate-700"
+                                className="rounded-full text-xs font-semibold gap-1.5 h-8 px-3 border-hairline dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                             >
-                                <Printer className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                                <Printer className="w-3.5 h-3.5 text-zinc-500" />
                                 Print Receipt
                             </Button>
                         )}
@@ -518,9 +539,9 @@ export default function BiltyDetailDialog({
                                     onOpenChange(false);
                                     onEdit(data);
                                 }}
-                                className="rounded-lg text-xs font-semibold gap-1.5 h-8 text-blue-600 border-blue-200 hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-950/40"
+                                className="rounded-full text-xs font-semibold gap-1.5 h-8 px-3 text-charcoal dark:text-zinc-200 border-hairline dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                             >
-                                <Pencil className="w-3.5 h-3.5" />
+                                <Pencil className="w-3.5 h-3.5 text-zinc-500" />
                                 Edit Bilty
                             </Button>
                         )}
@@ -528,7 +549,7 @@ export default function BiltyDetailDialog({
                         <Button
                             size="sm"
                             onClick={handleOpenFullPage}
-                            className="rounded-lg text-xs font-bold gap-1.5 h-8 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                            className="rounded-full text-xs font-bold gap-1.5 h-8 px-4 bg-charcoal hover:bg-zinc-800 text-white dark:bg-lavender dark:text-charcoal dark:hover:bg-lavenderhover shadow-2xs"
                         >
                             <ExternalLink className="w-3.5 h-3.5" />
                             Open Full View

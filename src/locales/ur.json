@@ -171,5 +171,12 @@
   "nav_edit_security": "ایڈٹ سیکیورٹی",
   "nav_set_edit_password": "ایڈٹ پاس ورڈ",
   "nav_backup": "بیک اپ",
-  "nav_database_backup": "ڈیٹا بیس بیک اپ"
+  "nav_database_backup": "ڈیٹا بیس بیک اپ",
+  "nav_recycle_bin": "ری سائیکل بن",
+  "recycle_bin_title": "ری سائیکل بن",
+  "recycle_bin_desc": "ڈیلیٹ شدہ بلٹیاں اور واؤچرز",
+  "recycle_bin_deleted_by": "ڈیلیٹ کنندہ",
+  "recycle_bin_deleted_at": "ڈیلیٹ کا وقت",
+  "recycle_bin_restore": "بحال کریں",
+  "recycle_bin_permanent_delete": "ہمیشہ کے لیے ڈیلیٹ کریں"
 }

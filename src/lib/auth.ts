@@ -33,6 +33,9 @@ export const Permissions = {
     LABOUR_MANAGEMENT: [UserRole.ADMIN, UserRole.SUPERADMIN],
     // Core Operations (Low Privilege)
     CORE_OPERATIONS: [UserRole.OPERATOR, UserRole.ADMIN, UserRole.SUPERADMIN],
+    // Recycle Bin Viewing and Management (Restricted to SuperAdmin)
+    RECYCLE_BIN_VIEW: [UserRole.SUPERADMIN],
+    PERMANENT_DELETE: [UserRole.SUPERADMIN],
 };
 
 // --- Password Utilities (Requires bcryptjs) ---

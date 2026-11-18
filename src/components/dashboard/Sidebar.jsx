@@ -8,7 +8,7 @@ import {
     ChevronDown, ChevronUp, ChevronRight, ChevronLeft,
     Home, Building, Car, Box, ListChecks, Package2,
     Database, LayoutGrid, FilePlus2, FolderSearch, BarChart2,
-    Settings, Sun, Moon, ShieldCheck
+    Settings, Sun, Moon, ShieldCheck, Trash2
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { useAuth } from '@/contexts/AuthContext';
@@ -290,6 +290,14 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                 translationKey: 'nav_shipments_report',
                 permissionKey: 'REPORTS_VIEW',
                 badge: 'Live'
+            },
+            {
+                name: t('nav_recycle_bin') || 'Recycle Bin',
+                href: '/recycle-bin',
+                icon: Trash2,
+                translationKey: 'nav_recycle_bin',
+                permissionKey: 'RECYCLE_BIN_VIEW',
+                badge: 'Admin'
             },
             {
                 name: t('nav_parties') || 'Parties Ledger',

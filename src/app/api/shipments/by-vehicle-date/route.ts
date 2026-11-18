@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
 
     const shipments = await prisma.shipment.findMany({
       where: {
+        is_deleted: false,
         ...(vehicleId && !isNaN(vehicleId) ? { vehicle_number_id: vehicleId } : {}),
         createdAt: {
           gte: startOfDay,

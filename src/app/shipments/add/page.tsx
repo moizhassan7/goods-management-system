@@ -1034,18 +1034,18 @@ export default function AddShipmentPage() {
         }
     };
 
-    // Delete Shipment
+    // Delete Shipment (Move to Recycle Bin)
     const handleDeleteShipment = async (regNumber: string) => {
-        if (!confirm(`Are you sure you want to permanently delete Bilty Reg #${regNumber}?`)) return;
+        if (!confirm(`Are you sure you want to move Bilty Reg #${regNumber} to the Recycle Bin?`)) return;
         try {
             const res = await fetchWithTimeout(`/api/shipments/${regNumber}`, {
                 method: 'DELETE',
             });
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.message || 'Failed to delete consignment.');
+                throw new Error(data.message || 'Failed to move consignment to Recycle Bin.');
             }
-            sonnerToast.success('Consignment Deleted', { description: `Bilty Reg #${regNumber} removed.` });
+            sonnerToast.success('Moved to Recycle Bin', { description: `Bilty Reg #${regNumber} moved to Recycle Bin.` });
             fetchShipments(savedBiltiesDate, shipmentsPage, shipmentsPageSize);
         } catch (err: any) {
             sonnerToast.error('Delete Failed', { description: err.message });

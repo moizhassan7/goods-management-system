@@ -78,7 +78,7 @@ export default function SingleBiltyFullViewPage() {
             });
             const data = await res.json();
             if (res.ok) {
-                toast.success('Bilty deleted successfully.');
+                toast.success('Bilty moved to Recycle Bin.');
                 router.push('/shipments/view');
             } else {
                 toast.error(data.message || 'Failed to delete bilty.');

@@ -175,5 +175,12 @@
   "nav_set_edit_password": "Edit Password",
   "nav_backup": "Backup",
   "nav_database_backup": "Database Backup",
-  "nav_view_items": "View Items"
+  "nav_view_items": "View Items",
+  "nav_recycle_bin": "Recycle Bin",
+  "recycle_bin_title": "Recycle Bin",
+  "recycle_bin_desc": "Deleted Bilties & Vouchers",
+  "recycle_bin_deleted_by": "Deleted By",
+  "recycle_bin_deleted_at": "Deleted At",
+  "recycle_bin_restore": "Recover / Restore",
+  "recycle_bin_permanent_delete": "Permanently Delete"
 }

@@ -119,12 +119,19 @@ model Shipment {
   transactions           Transaction[]
   vehicleTransactions    VehicleTransaction[]
   paymentHistory         LabourPaymentHistory[]
+  is_deleted             Boolean              @default(false)
+  deleted_at             DateTime?            @db.Timestamptz(6)
+  deleted_by_id          Int?
+  deleted_by_name        String?              @db.VarChar(100)
+  deletedBy              User?                @relation("DeletedShipments", fields: [deleted_by_id], references: [id])
 
   @@index([createdAt])
   @@index([created_day])
   @@index([bility_number])
   @@index([vehicle_number_id])
   @@index([delivery_date])
+  @@index([is_deleted])
+  @@index([deleted_at])
 }
 
 model ReturnShipment {
@@ -159,12 +166,13 @@ model ReturnItem {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  password  String
-  role      Role     @default(OPERATOR)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  id               Int        @id @default(autoincrement())
+  username         String     @unique
+  password         String
+  role             Role       @default(OPERATOR)
+  createdAt        DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime   @updatedAt @db.Timestamptz(3)
+  deletedShipments Shipment[] @relation("DeletedShipments")
 }
 
 model TripLog {

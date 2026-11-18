@@ -25,10 +25,9 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { 
-    Search, Loader2, RefreshCw, Truck, Package, Calendar, 
-    DollarSign, ArrowRight, CheckCircle2, Clock, Filter, X,
-    MoreVertical, Pencil, Printer, Lock, ShieldCheck, KeyRound, Eye, EyeOff, ExternalLink, Trash2,
-    ChevronLeft, ChevronRight,
+    Search, Loader2, RefreshCw, X,
+    MoreVertical, Pencil, Printer, Lock, ShieldCheck, Eye, EyeOff, Trash2,
+    ChevronLeft, ChevronRight, Plus,
 } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 import BiltyDetailDialog from '@/components/shipments/BiltyDetailDialog';
@@ -36,6 +35,7 @@ import { TablePagination } from '@/components/ui/TablePagination';
 import { fetchMasterLists } from '@/lib/master-lists-client';
 import { recordRowClass, recordRowId, useScrollToRecord } from '@/lib/record-deep-link';
 import { formatAppDate, formatAppDateTime } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface Toast {
     id: string;
@@ -141,7 +141,7 @@ const HighlightText = ({ text, query }: { text?: string | null; query?: string }
                 return isMatch ? (
                     <mark
                         key={index}
-                        className="bg-yellow-200 text-slate-900 dark:bg-yellow-400/30 dark:text-yellow-200 px-0.5 rounded font-bold"
+                        className="bg-lavender/60 text-charcoal dark:bg-lavender/30 dark:text-lavender px-1 rounded-xs font-bold"
                     >
                         {part}
                     </mark>
@@ -156,6 +156,7 @@ const HighlightText = ({ text, query }: { text?: string | null; query?: string }
 export default function ViewShipments() {
     const router = useRouter();
     const { toast } = useToast();
+    const { user } = useAuth();
     const [shipments, setShipments] = useState<ShipmentData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [totalItems, setTotalItems] = useState(0);
@@ -513,7 +514,7 @@ export default function ViewShipments() {
             });
             const data = await res.json();
             if (res.ok) {
-                sonnerToast.success('Deleted', { description: 'Bilty deleted successfully.' });
+                sonnerToast.success('Moved to Recycle Bin', { description: 'Bilty moved to Recycle Bin successfully.' });
                 fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder, sortBy);
             } else {
                 sonnerToast.error('Error', { description: data.message || 'Failed to delete bilty.' });
@@ -581,172 +582,226 @@ export default function ViewShipments() {
     useScrollToRecord(focusRegister, deepLinkReady && !isLoading && focusRegister !== '');
 
     return (
-        <div className="space-y-4 max-w-7xl mx-auto pb-10">
-            {/* Header with Title & Refresh */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
-                        <Search className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <h1 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
-                            Search & View Bilty Consignments
+        <div className="space-y-6 max-w-[1550px] mx-auto pb-12">
+            {/* Header with Title, Stats & Primary Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <div className="flex flex-wrap items-baseline gap-3">
+                        <h1 className="text-2xl sm:text-[28px] font-normal tracking-tight text-charcoal dark:text-white leading-none">
+                            Consignment Records
                         </h1>
-                        <p className="text-xs text-slate-500">
-                            Search, filter, view details, print receipts, and edit bilties.
-                        </p>
+                        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 border-l border-zinc-300 dark:border-zinc-700 pl-3">
+                            Search & Ledger Explorer
+                        </span>
+                        <span className="text-[11px] font-medium tracking-[0.05em] uppercase text-zinc-400 font-mono">
+                            {totalItems.toLocaleString()} Total
+                        </span>
                     </div>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 font-normal">
+                        Track, filter, print receipts, and manage verified freight bilties.
+                    </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Button
+                <div className="flex flex-wrap items-center gap-2.5">
+                    {user?.role === 'SUPERADMIN' && (
+                        <button
+                            type="button"
+                            onClick={() => router.push('/recycle-bin')}
+                            className="px-3.5 py-2 rounded-full bg-white dark:bg-zinc-900 border border-hairline dark:border-zinc-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Recycle Bin</span>
+                        </button>
+                    )}
+
+                    <button
+                        type="button"
                         onClick={() => fetchShipments(debouncedSearchTerm, startDate, endDate, vehicleId, currentPage, pageSize, linkedRegister, sortOrder, sortBy)}
-                        variant="outline"
-                        size="sm"
                         disabled={isLoading}
-                        className="rounded-lg text-xs font-semibold gap-1.5 h-8 border-slate-200 dark:border-slate-700 shadow-2xs"
+                        className="p-2 rounded-full bg-white dark:bg-zinc-900 border border-hairline dark:border-zinc-800 text-charcoal dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-2xs cursor-pointer"
+                        title="Refresh Consignment Records"
                     >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-                        Refresh List
-                    </Button>
+                        <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => router.push('/shipments/add')}
+                        className="px-4 py-2 rounded-full bg-lavender hover:bg-lavenderhover active:scale-[0.98] text-charcoal text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Register Bilty</span>
+                    </button>
                 </div>
             </div>
 
-            {/* Quick Metrics Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Consignments</p>
-                    <p className="text-lg font-mono font-extrabold text-slate-900 dark:text-white mt-0.5">{stats.totalBiltyCount}</p>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Chota Karaya</p>
-                    <p className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300 mt-1">{formatCurrency(stats.totalChotaKaraya)}</p>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Bara Karaya</p>
-                    <p className="text-sm font-mono font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">{formatCurrency(stats.totalBaraKaraya)}</p>
-                </div>
-            </div>
-
-            {/* Filter Control Card */}
-            <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900">
-                <CardContent className="p-3.5 sm:p-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
-                        {/* Search Input */}
-                        <div className="space-y-1 sm:col-span-2 lg:col-span-1">
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                Search Consignment
-                            </label>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                                <Input
-                                    placeholder="Search Bilty #, Sender, Receiver, Vehicle, Agency, Item..."
-                                    value={searchTerm}
-                                    onChange={(e) => {
-                                        setLinkedRegister('');
-                                        setSearchTerm(e.target.value);
-                                    }}
-                                    className="pl-9 h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs"
-                                />
-                                {searchTerm && (
-                                    <button 
-                                        onClick={() => {
-                                            setLinkedRegister('');
-                                            setSearchTerm('');
-                                        }}
-                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                    >
-                                        <X className="w-3.5 h-3.5" />
-                                    </button>
-                                )}
-                            </div>
+            {/* Quick KPI Metrics Strip (Editorial Transport Style) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* 1. Featured Dark Card (#202022) — BARA KARAYA */}
+                <div className="bg-charcoal text-white p-5 sm:p-6 rounded-2xl flex flex-col justify-between border border-zinc-800 shadow-2xs">
+                    <div>
+                        <div className="text-[10px] font-semibold tracking-[0.07em] uppercase text-zinc-300">
+                            BARA KARAYA (GROSS FREIGHT)
                         </div>
-
-                        {/* Start Date */}
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                Entry Start Date
-                            </label>
-                            <Input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs font-mono"
-                            />
-                        </div>
-
-                        {/* End Date */}
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                Entry End Date
-                            </label>
-                            <Input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs font-mono"
-                            />
-                        </div>
-
-                        {/* Vehicle Selector */}
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                Fleet Truck
-                            </label>
-                            <Select
-                                value={String(vehicleId)}
-                                onValueChange={(v) => setVehicleId(v === 'all' ? 'all' : parseInt(v))}
-                            >
-                                <SelectTrigger className="h-9 rounded-lg border-slate-200 dark:border-slate-700 text-xs">
-                                    <SelectValue placeholder="All Vehicles" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-lg">
-                                    <SelectItem value="all">All Vehicles</SelectItem>
-                                    {vehicles.map((v) => (
-                                        <SelectItem key={v.id} value={String(v.id)}>
-                                            {v.vehicleNumber}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-1.5">
-                            <Button
-                                onClick={handleFilterLoad}
-                                className="flex-1 h-9 rounded-lg font-bold text-xs bg-blue-600 hover:bg-blue-700"
-                                disabled={isLoading}
-                            >
-                                {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Apply'}
-                            </Button>
-                            <Button
-                                onClick={handleResetFilters}
-                                variant="outline"
-                                className="h-9 px-2.5 rounded-lg text-xs font-medium border-slate-200 dark:border-slate-700"
-                                title="Reset filters"
-                            >
-                                Reset
-                            </Button>
+                        <div className="mt-1.5 text-[11px] font-medium text-zinc-300">
+                            Total consolidated consignment freight
                         </div>
                     </div>
-                </CardContent>
-            </Card>
+                    <div className="text-2xl sm:text-[28px] font-light tracking-tight tabular-nums mt-4 leading-none">
+                        {formatCurrency(stats.totalBaraKaraya)}
+                    </div>
+                </div>
+
+                {/* 2. Soft Gray Card (#F6F6F8) — CHOTA KARAYA */}
+                <div className="bg-cardgray dark:bg-zinc-900/70 p-5 sm:p-6 rounded-2xl flex flex-col justify-between border border-hairline dark:border-zinc-800 shadow-2xs">
+                    <div>
+                        <div className="text-[10px] font-semibold tracking-[0.07em] uppercase text-charcoal dark:text-zinc-300">
+                            CHOTA KARAYA (BASE)
+                        </div>
+                        <div className="mt-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                            Primary raw transit fare
+                        </div>
+                    </div>
+                    <div className="text-2xl sm:text-[28px] font-light tracking-tight text-charcoal dark:text-white tabular-nums mt-4 leading-none">
+                        {formatCurrency(stats.totalChotaKaraya)}
+                    </div>
+                </div>
+
+                {/* 3. Soft Gray Card (#F6F6F8) — TOTAL CONSIGNMENTS */}
+                <div className="bg-cardgray dark:bg-zinc-900/70 p-5 sm:p-6 rounded-2xl flex flex-col justify-between border border-hairline dark:border-zinc-800 shadow-2xs">
+                    <div>
+                        <div className="text-[10px] font-semibold tracking-[0.07em] uppercase text-charcoal dark:text-zinc-300">
+                            TOTAL CONSIGNMENTS
+                        </div>
+                        <div className="mt-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                            Active filtered bilty records
+                        </div>
+                    </div>
+                    <div className="text-2xl sm:text-[28px] font-light tracking-tight text-charcoal dark:text-white tabular-nums mt-4 leading-none font-mono">
+                        {stats.totalBiltyCount.toLocaleString()}
+                    </div>
+                </div>
+            </div>
+
+            {/* Filter Control Box */}
+            <div className="bg-cardgray dark:bg-zinc-900/70 border border-hairline dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-2xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 items-end">
+                    {/* Search Input */}
+                    <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                        <label className="text-[11px] font-semibold tracking-wide uppercase text-zinc-500 dark:text-zinc-400">
+                            Search Consignment
+                        </label>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+                            <input
+                                type="text"
+                                placeholder="Bilty #, party, vehicle, agency..."
+                                value={searchTerm}
+                                onChange={(e) => {
+                                    setLinkedRegister('');
+                                    setSearchTerm(e.target.value);
+                                }}
+                                className="w-full pl-9 pr-8 h-9 rounded-xl bg-white dark:bg-zinc-900 border border-hairline dark:border-zinc-700 text-xs text-charcoal dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-charcoal dark:focus:border-lavender transition-colors"
+                            />
+                            {searchTerm && (
+                                <button 
+                                    onClick={() => {
+                                        setLinkedRegister('');
+                                        setSearchTerm('');
+                                    }}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Start Date */}
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-semibold tracking-wide uppercase text-zinc-500 dark:text-zinc-400">
+                            From Date
+                        </label>
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="w-full px-3 h-9 rounded-xl bg-white dark:bg-zinc-900 border border-hairline dark:border-zinc-700 text-xs font-mono text-charcoal dark:text-zinc-100 focus:outline-none focus:border-charcoal dark:focus:border-lavender transition-colors"
+                        />
+                    </div>
+
+                    {/* End Date */}
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-semibold tracking-wide uppercase text-zinc-500 dark:text-zinc-400">
+                            To Date
+                        </label>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-full px-3 h-9 rounded-xl bg-white dark:bg-zinc-900 border border-hairline dark:border-zinc-700 text-xs font-mono text-charcoal dark:text-zinc-100 focus:outline-none focus:border-charcoal dark:focus:border-lavender transition-colors"
+                        />
+                    </div>
+
+                    {/* Vehicle Selector */}
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-semibold tracking-wide uppercase text-zinc-500 dark:text-zinc-400">
+                            Fleet Vehicle
+                        </label>
+                        <Select
+                            value={String(vehicleId)}
+                            onValueChange={(v) => setVehicleId(v === 'all' ? 'all' : parseInt(v))}
+                        >
+                            <SelectTrigger className="h-9 rounded-xl bg-white dark:bg-zinc-900 border border-hairline dark:border-zinc-700 text-xs text-charcoal dark:text-zinc-100 focus:outline-none">
+                                <SelectValue placeholder="All Vehicles" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-hairline dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                                <SelectItem value="all">All Vehicles</SelectItem>
+                                {vehicles.map((v) => (
+                                    <SelectItem key={v.id} value={String(v.id)}>
+                                        {v.vehicleNumber}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={handleFilterLoad}
+                            disabled={isLoading}
+                            className="flex-1 h-9 rounded-full font-bold text-xs bg-charcoal hover:bg-zinc-800 text-white dark:bg-lavender dark:text-charcoal dark:hover:bg-lavenderhover transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+                        >
+                            {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Apply Filter'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleResetFilters}
+                            className="h-9 px-3.5 rounded-full bg-white dark:bg-zinc-900 border border-hairline dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-xs font-semibold text-zinc-600 dark:text-zinc-300 transition-colors shadow-2xs cursor-pointer"
+                            title="Reset all filters"
+                        >
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             {/* Security Verification Dialog for Bilty Edit */}
             <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
-                <DialogContent className="sm:max-w-md rounded-xl p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xl">
-                    <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+                <DialogContent className="sm:max-w-md rounded-2xl p-6 bg-white dark:bg-zinc-900 border border-hairline dark:border-zinc-800 shadow-xl">
+                    <DialogHeader className="pb-3 border-b border-hairline dark:border-zinc-800">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center font-bold">
+                            <div className="w-10 h-10 rounded-xl bg-lavender/40 dark:bg-lavender/20 text-charcoal dark:text-lavender flex items-center justify-center font-bold">
                                 <ShieldCheck className="w-5 h-5" />
                             </div>
                             <div>
-                                <DialogTitle className="text-base font-extrabold text-slate-900 dark:text-white">
+                                <DialogTitle className="text-base font-bold text-charcoal dark:text-white">
                                     Security Authorization Required
                                 </DialogTitle>
-                                <DialogDescription className="text-xs text-slate-500">
-                                    {authAction === 'edit' ? 'بلٹی میں ترمیم کے لیے پاس ورڈ درج کریں' : 'بلٹی کو ڈیلیٹ کرنے کے لیے پاس ورڈ درج کریں'}
+                                <DialogDescription className="text-xs text-zinc-500 mt-0.5">
+                                    {authAction === 'edit' ? 'بلٹی میں ترمیم کے لیے پاس ورڈ درج کریں' : 'بلٹی کو ری سائیکل بن (Recycle Bin) میں بھیجنے کے لیے پاس ورڈ درج کریں'}
                                 </DialogDescription>
                             </div>
                         </div>
@@ -754,19 +809,19 @@ export default function ViewShipments() {
                     
                     <form onSubmit={handleVerifyAndProceed} className="space-y-4 pt-2">
                         {targetShipmentToEdit && (
-                            <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                            <div className="p-3 rounded-xl bg-cardgray dark:bg-zinc-800/50 border border-hairline dark:border-zinc-800 flex items-center justify-between text-xs">
                                 <div>
-                                    <span className="text-slate-500">{authAction === 'edit' ? 'Editing' : 'Deleting'} Bilty: </span>
-                                    <span className="font-mono font-bold text-slate-900 dark:text-white">#{targetShipmentToEdit.bility_number}</span>
+                                    <span className="text-zinc-500">{authAction === 'edit' ? 'Editing' : 'Deleting'} Bilty: </span>
+                                    <span className="font-mono font-bold text-charcoal dark:text-white">#{targetShipmentToEdit.bility_number}</span>
                                 </div>
-                                <div className="font-mono text-slate-500">
+                                <div className="font-mono text-zinc-500">
                                     Reg: #{targetShipmentToEdit.register_number}
                                 </div>
                             </div>
                         )}
 
                         <div className="space-y-1.5">
-                            <Label htmlFor="viewEditPasswordInput" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            <Label htmlFor="viewEditPasswordInput" className="text-xs font-bold text-charcoal dark:text-zinc-200">
                                 Enter {authAction === 'edit' ? 'Edit' : 'Delete'} Password *
                             </Label>
                             <div className="relative">
@@ -780,12 +835,12 @@ export default function ViewShipments() {
                                         setPasswordError(null);
                                     }}
                                     autoFocus
-                                    className="h-10 rounded-lg text-xs font-mono pr-10 border-slate-200 dark:border-slate-700"
+                                    className="h-10 rounded-xl text-xs font-mono pr-10 border border-hairline dark:border-zinc-700 bg-white dark:bg-zinc-900"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPasswordInModal(!showPasswordInModal)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-charcoal dark:hover:text-zinc-200 transition-colors"
                                 >
                                     {showPasswordInModal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
@@ -797,13 +852,13 @@ export default function ViewShipments() {
                             )}
                         </div>
 
-                        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="flex justify-end gap-2 pt-3 border-t border-hairline dark:border-zinc-800">
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 type="button"
                                 onClick={() => setIsPasswordModalOpen(false)}
-                                className="rounded-lg text-xs"
+                                className="rounded-full text-xs font-semibold px-4 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                             >
                                 Cancel
                             </Button>
@@ -811,10 +866,10 @@ export default function ViewShipments() {
                                 size="sm"
                                 type="submit"
                                 disabled={isVerifyingPassword}
-                                className={`rounded-lg text-xs font-bold text-white gap-1.5 ${authAction === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                className={`rounded-full text-xs font-bold text-white px-4 h-9 shadow-2xs gap-1.5 ${authAction === 'delete' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-charcoal hover:bg-zinc-800 dark:bg-lavender dark:text-charcoal dark:hover:bg-lavenderhover'}`}
                             >
                                 {isVerifyingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (authAction === 'delete' ? <Trash2 className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />)}
-                                Verify & {authAction === 'edit' ? 'Edit' : 'Delete'}
+                                Verify & {authAction === 'edit' ? 'Edit' : 'Move to Bin'}
                             </Button>
                         </div>
                     </form>
@@ -823,18 +878,18 @@ export default function ViewShipments() {
 
             {/* Results Table Card */}
             <div ref={tableTopRef} />
-            <Card className="rounded-xl border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 overflow-hidden">
-                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 py-3 px-4">
+            <Card className="rounded-2xl border border-hairline dark:border-zinc-800 shadow-2xs bg-cardgray dark:bg-zinc-900/70 overflow-hidden">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-hairline dark:border-zinc-800 py-3.5 px-5 bg-white dark:bg-zinc-900">
                     <div>
                         <div className="flex items-center gap-2">
-                            <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                            <CardTitle className="text-xs font-bold uppercase tracking-wider text-charcoal dark:text-white">
                                 Consignment Records
                             </CardTitle>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-lavender/40 text-charcoal dark:bg-lavender/20 dark:text-lavender border border-lavender/60">
                                 {totalItems.toLocaleString()} total
                             </span>
                         </div>
-                        <CardDescription className="text-[11px] text-slate-500 mt-0.5">
+                        <CardDescription className="text-[11px] text-zinc-500 mt-0.5">
                             {totalItems > 0 
                                 ? `Showing ${startIndex}-${endIndex} of ${totalItems} consignments ${totalPages > 1 ? `(Page ${currentPage} of ${totalPages})` : ''}`
                                 : 'Showing filtered freight consignments'}
@@ -843,7 +898,7 @@ export default function ViewShipments() {
 
                     {totalItems > 0 && (
                         <div className="flex flex-wrap items-center gap-2.5 self-end sm:self-auto">
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                            <div className="flex items-center gap-1.5 text-xs text-zinc-500">
                                 <span className="text-[11px] font-medium hidden sm:inline">Group By:</span>
                                 <Select
                                     value={sortBy}
@@ -852,10 +907,10 @@ export default function ViewShipments() {
                                         setCurrentPage(1);
                                     }}
                                 >
-                                    <SelectTrigger className="h-8 w-[135px] text-xs font-semibold rounded-lg border-slate-200 dark:border-slate-700">
+                                    <SelectTrigger className="h-8 w-[140px] text-xs font-semibold rounded-full border border-hairline dark:border-zinc-700 bg-cardgray dark:bg-zinc-800/60 text-charcoal dark:text-zinc-200">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent align="end" className="rounded-lg">
+                                    <SelectContent align="end" className="rounded-xl border-hairline dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg">
                                         <SelectItem value="created_at">Entry Date</SelectItem>
                                         <SelectItem value="date_vehicle">Date & Vehicle</SelectItem>
                                         <SelectItem value="vehicle">Vehicle First</SelectItem>
@@ -865,7 +920,7 @@ export default function ViewShipments() {
                                 </Select>
                             </div>
 
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                            <div className="flex items-center gap-1.5 text-xs text-zinc-500">
                                 <span className="text-[11px] font-medium hidden sm:inline">Order:</span>
                                 <Select
                                     value={sortOrder}
@@ -874,17 +929,17 @@ export default function ViewShipments() {
                                         setCurrentPage(1);
                                     }}
                                 >
-                                    <SelectTrigger className="h-8 w-[105px] text-xs font-semibold rounded-lg border-slate-200 dark:border-slate-700">
+                                    <SelectTrigger className="h-8 w-[110px] text-xs font-semibold rounded-full border border-hairline dark:border-zinc-700 bg-cardgray dark:bg-zinc-800/60 text-charcoal dark:text-zinc-200">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent align="end" className="rounded-lg">
+                                    <SelectContent align="end" className="rounded-xl border-hairline dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg">
                                         <SelectItem value="asc">Ascending</SelectItem>
                                         <SelectItem value="desc">Descending</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                            <div className="flex items-center gap-1.5 text-xs text-zinc-500">
                                 <span className="text-[11px] font-medium hidden sm:inline">Per page:</span>
                                 <Select
                                     value={String(pageSize)}
@@ -893,10 +948,10 @@ export default function ViewShipments() {
                                         setCurrentPage(1);
                                     }}
                                 >
-                                    <SelectTrigger className="h-8 w-[72px] text-xs font-mono font-bold rounded-lg border-slate-200 dark:border-slate-700">
+                                    <SelectTrigger className="h-8 w-[76px] text-xs font-mono font-bold rounded-full border border-hairline dark:border-zinc-700 bg-cardgray dark:bg-zinc-800/60 text-charcoal dark:text-zinc-200">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent align="end" className="rounded-lg">
+                                    <SelectContent align="end" className="rounded-xl border-hairline dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg">
                                         <SelectItem value="10">10</SelectItem>
                                         <SelectItem value="25">25</SelectItem>
                                         <SelectItem value="50">50</SelectItem>
@@ -906,24 +961,24 @@ export default function ViewShipments() {
                             </div>
 
                             {totalPages > 1 && (
-                                <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-800 pl-2">
+                                <div className="flex items-center gap-1 border-l border-hairline dark:border-zinc-800 pl-2">
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="h-8 w-8 p-0 rounded-lg border-slate-200 dark:border-slate-700"
+                                        className="h-8 w-8 p-0 rounded-full border-hairline dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                                         onClick={() => handlePageChange(currentPage - 1)}
                                         disabled={currentPage === 1 || isLoading}
                                         title="Previous Page"
                                     >
                                         <ChevronLeft className="h-4 w-4" />
                                     </Button>
-                                    <span className="text-xs font-mono font-semibold px-1 text-slate-700 dark:text-slate-300">
+                                    <span className="text-xs font-mono font-semibold px-1 text-charcoal dark:text-zinc-300">
                                         {currentPage}/{totalPages}
                                     </span>
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="h-8 w-8 p-0 rounded-lg border-slate-200 dark:border-slate-700"
+                                        className="h-8 w-8 p-0 rounded-full border-hairline dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                                         onClick={() => handlePageChange(currentPage + 1)}
                                         disabled={currentPage === totalPages || isLoading}
                                         title="Next Page"
@@ -937,43 +992,44 @@ export default function ViewShipments() {
                 </CardHeader>
                 <CardContent className="p-0">
                     {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                            <Loader2 className="w-6 h-6 animate-spin text-blue-600 mb-1" />
-                            <p className="text-xs">Querying database...</p>
+                        <div className="flex flex-col items-center justify-center py-12 text-zinc-400">
+                            <Loader2 className="w-6 h-6 animate-spin text-charcoal dark:text-lavender mb-2" />
+                            <p className="text-xs font-medium">Querying database...</p>
                         </div>
                     ) : shipments.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 gap-3">
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                        <div className="flex flex-col items-center justify-center py-16 gap-3">
+                            <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
                                 {searchTerm ? 'No matching bilty records found' : 'No bilties yet'}
                             </p>
                             <Button
                                 type="button"
                                 onClick={() => router.push('/shipments/add')}
-                                className="h-9 px-4 text-xs font-semibold"
+                                className="h-9 px-5 rounded-full text-xs font-bold bg-charcoal hover:bg-zinc-800 text-white dark:bg-lavender dark:text-charcoal dark:hover:bg-lavenderhover shadow-2xs"
                             >
-                                Add bilty
+                                <Plus className="w-3.5 h-3.5 mr-1" />
+                                Add Bilty
                             </Button>
                         </div>
                     ) : (
                         <div>
                             <Table containerClassName="max-h-[calc(100vh-220px)]" className="min-w-[1150px]">
-                                <TableHeader className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-slate-50 dark:[&_th]:bg-slate-900">
-                                    <TableRow className="hover:bg-transparent">
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-4 w-16 whitespace-nowrap">Serial No.</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Bilty #</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Bilty Date</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Entry Date</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Departure</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Destination</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Vehicle</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Agency</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-center whitespace-nowrap">Quantity</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Item Type</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Sender</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Receiver</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right whitespace-nowrap">Chota Karaya</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right whitespace-nowrap">Bara Karaya</TableHead>
-                                        <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-center pr-4 whitespace-nowrap">Action</TableHead>
+                                <TableHeader className="sticky top-0 z-10 bg-white dark:bg-zinc-900 border-b border-hairline dark:border-zinc-800 [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white dark:[&_th]:bg-zinc-900">
+                                    <TableRow className="hover:bg-transparent border-b border-hairline dark:border-zinc-800">
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 pl-4 w-16 whitespace-nowrap">Serial No.</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 whitespace-nowrap">Bilty #</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 whitespace-nowrap">Bilty Date</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 whitespace-nowrap">Entry Date</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 whitespace-nowrap">Departure</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 whitespace-nowrap">Destination</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 whitespace-nowrap">Vehicle</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 whitespace-nowrap">Agency</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 text-center whitespace-nowrap">Quantity</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 whitespace-nowrap">Item Type</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 whitespace-nowrap">Sender</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 whitespace-nowrap">Receiver</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 text-right whitespace-nowrap">Chota Karaya</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 text-right whitespace-nowrap">Bara Karaya</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-[0.06em] text-zinc-400 text-center pr-4 whitespace-nowrap">Action</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -1005,11 +1061,11 @@ export default function ViewShipments() {
                                                 id={recordRowId(shipment.register_number)}
                                                 className={recordRowClass(
                                                     focusRegister !== '' && shipment.register_number === focusRegister,
-                                                    'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs transition-colors',
+                                                    'border-b border-hairline dark:border-zinc-800/60 hover:bg-white dark:hover:bg-zinc-800/50 text-xs transition-colors',
                                                 )}
                                             >
                                                 {/* 0. Serial Number */}
-                                                <TableCell className="pl-4 font-mono font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap text-xs">
+                                                <TableCell className="pl-4 font-mono font-semibold text-zinc-400 dark:text-zinc-500 whitespace-nowrap text-xs">
                                                     {serialNumber}
                                                 </TableCell>
 
@@ -1021,85 +1077,87 @@ export default function ViewShipments() {
                                                         className="text-left group cursor-pointer focus:outline-hidden"
                                                         title="Click to view complete bilty details in dialog"
                                                     >
-                                                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400 group-hover:underline flex items-center gap-1.5">
+                                                        <span className="font-mono font-bold text-charcoal dark:text-zinc-100 group-hover:text-purple-600 dark:group-hover:text-lavender flex items-center gap-1.5 transition-colors">
                                                             <HighlightText text={shipment.bility_number} query={searchTerm} />
-                                                            <Eye className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 text-blue-600 dark:text-blue-400 transition-opacity" />
+                                                            <Eye className="w-3.5 h-3.5 opacity-30 group-hover:opacity-100 text-purple-600 dark:text-lavender transition-all" />
                                                         </span>
-                                                        <span className="block text-[10px] text-slate-400 font-mono">
+                                                        <span className="block text-[10px] text-zinc-400 font-mono">
                                                             #<HighlightText text={shipment.register_number} query={searchTerm} />
                                                         </span>
                                                     </button>
                                                 </TableCell>
 
                                                 {/* 2. Bilty Date */}
-                                                <TableCell className="font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap text-[11px]">
+                                                <TableCell className="font-mono text-zinc-600 dark:text-zinc-400 whitespace-nowrap text-[11px]">
                                                     {formatAppDate(shipment.bility_date)}
                                                 </TableCell>
 
                                                 {/* 3. Entry Date */}
-                                                <TableCell className="font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap text-[11px]">
+                                                <TableCell className="font-mono text-zinc-400 dark:text-zinc-500 whitespace-nowrap text-[11px]">
                                                     {formatAppDate(createdVal)}
                                                 </TableCell>
 
                                                 {/* 4. Departure */}
-                                                <TableCell className="capitalize whitespace-nowrap">
+                                                <TableCell className="capitalize whitespace-nowrap text-zinc-800 dark:text-zinc-200">
                                                     <HighlightText text={shipment.departureCity?.name || 'Main Hub'} query={searchTerm} />
                                                 </TableCell>
 
                                                 {/* 5. Destination */}
-                                                <TableCell className="capitalize whitespace-nowrap">
+                                                <TableCell className="capitalize whitespace-nowrap text-zinc-800 dark:text-zinc-200">
                                                     <HighlightText text={shipment.toCity?.name || 'Local'} query={searchTerm} />
                                                 </TableCell>
 
                                                 {/* 6. Vehicle */}
-                                                <TableCell className="font-mono font-semibold uppercase whitespace-nowrap">
-                                                    <HighlightText text={shipment.vehicle?.vehicleNumber || '-'} query={searchTerm} />
+                                                <TableCell className="whitespace-nowrap">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-white dark:bg-zinc-800 text-charcoal dark:text-zinc-200 border border-hairline dark:border-zinc-700 uppercase">
+                                                        <HighlightText text={shipment.vehicle?.vehicleNumber || '-'} query={searchTerm} />
+                                                    </span>
                                                 </TableCell>
 
                                                 {/* 6.5 Agency */}
-                                                <TableCell className="capitalize whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">
+                                                <TableCell className="capitalize whitespace-nowrap font-medium text-zinc-700 dark:text-zinc-300">
                                                     <HighlightText text={shipment.forwardingAgency?.name || '-'} query={searchTerm} />
                                                 </TableCell>
 
                                                 {/* 7. Quantity */}
                                                 <TableCell className="text-center whitespace-nowrap" title={goodsTooltip || undefined}>
-                                                    <span className="inline-flex items-center justify-center min-w-8 px-2 py-0.5 rounded-md text-xs font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                                                    <span className="inline-flex items-center justify-center min-w-7 px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-white dark:bg-zinc-800 text-charcoal dark:text-zinc-200 border border-hairline dark:border-zinc-700">
                                                         {totalQuantity > 0 ? totalQuantity : '-'}
                                                     </span>
                                                 </TableCell>
 
                                                 {/* 8. Item Type */}
-                                                <TableCell className="max-w-[140px] truncate capitalize font-medium text-slate-800 dark:text-slate-200" title={goodsTooltip || itemText}>
+                                                <TableCell className="max-w-[140px] truncate capitalize font-medium text-zinc-800 dark:text-zinc-200" title={goodsTooltip || itemText}>
                                                     <HighlightText text={itemText} query={searchTerm} />
                                                 </TableCell>
 
                                                 {/* 9. Sender */}
-                                                <TableCell className="max-w-[120px] truncate capitalize" title={shipment.sender?.name || ''}>
+                                                <TableCell className="max-w-[120px] truncate capitalize text-zinc-700 dark:text-zinc-300" title={shipment.sender?.name || ''}>
                                                     <HighlightText text={shipment.sender?.name || '-'} query={searchTerm} />
                                                 </TableCell>
 
                                                 {/* 10. Receiver */}
-                                                <TableCell className="max-w-[120px] truncate capitalize" title={shipment.receiver?.name || ''}>
+                                                <TableCell className="max-w-[120px] truncate capitalize text-zinc-700 dark:text-zinc-300" title={shipment.receiver?.name || ''}>
                                                     <HighlightText text={shipment.receiver?.name || '-'} query={searchTerm} />
                                                 </TableCell>
 
                                                 {/* 11. Chota Karaya */}
-                                                <TableCell className="text-right font-mono font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                                <TableCell className="text-right font-mono font-semibold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
                                                     {isAlreadyPaid || isFree ? '0' : formatCurrency(Number(shipment.total_delivery_charges || 0))}
                                                 </TableCell>
 
                                                 {/* 12. Bara Karaya */}
                                                 <TableCell className="text-right font-mono font-bold whitespace-nowrap">
                                                     {isAlreadyPaid ? (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
                                                             Already Paid
                                                         </span>
                                                     ) : isFree ? (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40">
                                                             Free
                                                         </span>
                                                     ) : (
-                                                        <span className="text-slate-900 dark:text-white">
+                                                        <span className="text-charcoal dark:text-white font-bold">
                                                             {formatCurrency(Number(shipment.total_charges || 0))}
                                                         </span>
                                                     )}
@@ -1112,17 +1170,17 @@ export default function ViewShipments() {
                                                             type="button"
                                                             size="sm"
                                                             variant="outline"
-                                                            className="h-7 px-2 text-[11px] font-semibold"
+                                                            className="h-7 px-2.5 rounded-full bg-white dark:bg-zinc-800 border border-hairline dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-[11px] font-bold text-charcoal dark:text-zinc-200 gap-1 shadow-2xs"
                                                             onClick={() => router.push(`/shipments/view/${encodeURIComponent(shipment.register_number)}`)}
                                                         >
-                                                            <Eye className="w-3.5 h-3.5" />
+                                                            <Eye className="w-3.5 h-3.5 text-zinc-400" />
                                                             View
                                                         </Button>
                                                         <Button
                                                             type="button"
                                                             size="sm"
                                                             variant="outline"
-                                                            className="h-7 px-2 text-[11px] font-semibold"
+                                                            className="h-7 px-2.5 rounded-full bg-lavender/40 hover:bg-lavenderhover dark:bg-lavender/20 dark:hover:bg-lavender/30 border border-lavender/60 text-[11px] font-bold text-charcoal dark:text-zinc-100 gap-1 shadow-2xs"
                                                             onClick={() => handlePrintShipmentRow(shipment)}
                                                         >
                                                             <Printer className="w-3.5 h-3.5" />
@@ -1133,32 +1191,32 @@ export default function ViewShipments() {
                                                             <Button
                                                                 size="sm"
                                                                 variant="ghost"
-                                                                className="h-7 w-7 p-0 rounded text-slate-600 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                                                title="More"
+                                                                className="h-7 w-7 p-0 rounded-full text-zinc-400 hover:text-charcoal dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                                                title="More actions"
                                                             >
                                                                 <MoreVertical className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="w-40 rounded-lg shadow-md border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs">
+                                                        <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border border-hairline dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs p-1.5">
                                                             <DropdownMenuItem
                                                                 onClick={() => handleRequestEdit(shipment)}
-                                                                className="gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-200 focus:bg-blue-50 focus:text-blue-700 dark:focus:bg-blue-950/40 dark:focus:text-blue-300 py-1.5"
+                                                                className="gap-2 cursor-pointer font-semibold rounded-lg text-charcoal dark:text-zinc-200 focus:bg-cardgray dark:focus:bg-zinc-800 py-1.5"
                                                             >
-                                                                <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                                                                <Pencil className="w-3.5 h-3.5 text-zinc-500" />
                                                                 Edit Bilty
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
                                                                 onClick={() => handlePrintShipmentRow(shipment)}
-                                                                className="gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800 py-1.5"
+                                                                className="gap-2 cursor-pointer font-semibold rounded-lg text-charcoal dark:text-zinc-200 focus:bg-cardgray dark:focus:bg-zinc-800 py-1.5"
                                                             >
-                                                                <Printer className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                                                                <Printer className="w-3.5 h-3.5 text-zinc-500" />
                                                                 Print Receipt
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
                                                                 onClick={() => handleRequestDelete(shipment)}
-                                                                className="gap-2 cursor-pointer font-semibold text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/40 dark:focus:text-red-400 py-1.5"
+                                                                className="gap-2 cursor-pointer font-semibold rounded-lg text-rose-600 focus:bg-rose-50 focus:text-rose-700 dark:focus:bg-rose-950/40 dark:focus:text-rose-400 py-1.5"
                                                             >
-                                                                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                                                                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                                                                 Delete Bilty
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
@@ -1174,7 +1232,7 @@ export default function ViewShipments() {
                     )}
                 </CardContent>
 
-                <CardFooter className="p-0">
+                <CardFooter className="p-0 border-t border-hairline dark:border-zinc-800 bg-white dark:bg-zinc-900">
                     <TablePagination
                         className="w-full border-t-0"
                         currentPage={currentPage}

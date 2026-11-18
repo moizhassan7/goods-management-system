@@ -10,6 +10,8 @@ const Permissions = {
     DELIVERY_APPROVAL_SUPERADMIN: [UserRole.SUPERADMIN], // NEW
     LABOUR_MANAGEMENT: [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.OPERATOR],
     CORE_OPERATIONS: [UserRole.OPERATOR, UserRole.ADMIN, UserRole.SUPERADMIN],
+    RECYCLE_BIN_VIEW: [UserRole.SUPERADMIN],
+    PERMANENT_DELETE: [UserRole.SUPERADMIN],
 };
 
 type PermissionKey = keyof typeof Permissions;

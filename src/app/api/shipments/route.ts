@@ -247,7 +247,9 @@ export async function GET(request: Request) {
         const dateParam = searchParams.get('date');
         const bilityNumberParam = searchParams.get('bility_number'); 
 
-        const baseWhere: Prisma.ShipmentWhereInput = {};
+        const baseWhere: Prisma.ShipmentWhereInput = {
+            is_deleted: false,
+        };
 
         // 1. Apply 'delivered' filter first 
         if (delivered === 'false') {
